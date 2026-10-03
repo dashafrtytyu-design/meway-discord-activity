@@ -1,17 +1,17 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import './index.css';
-import App from './App.tsx';
-import { initializeDiscord } from './discord';
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.tsx'
+import { initializeDiscord } from './discord'
 
-async function startMEWAY() {
-  await initializeDiscord();
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
 
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <App />
-    </StrictMode>
-  );
-}
-
-startMEWAY();
+// Discord запускаем отдельно.
+// Даже если SDK не подключится, MEWAY уже будет отображаться.
+initializeDiscord().catch((error) => {
+  console.error('MEWAY: Discord SDK не удалось запустить', error)
+})

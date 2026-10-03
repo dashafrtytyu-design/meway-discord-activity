@@ -1,17 +1,22 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import './index.css';
-import App from './App.tsx';
-import { initializeDiscord } from './discord';
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.tsx'
+import { initializeDiscord } from './discord'
 
-async function startMEWAY() {
-  await initializeDiscord();
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
 
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <App />
-    </StrictMode>
-  );
-}
-
-startMEWAY();
+// Discord запускаем ПОСЛЕ отображения интерфейса.
+// В обычном браузере initializeDiscord() сама пропустит Discord SDK.
+initializeDiscord()
+  .then((result) => {
+    console.log('MEWAY Discord result:', result)
+  })
+  .catch((error) => {
+    console.error('MEWAY Discord startup error:', error)
+  })
+  

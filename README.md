@@ -1,32 +1,37 @@
-# React + TypeScript + Vite
+# MEWAY Discord Activity
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Готовая база MEWAY: React/Vite frontend + Discord Embedded App SDK + Cloudflare Worker + D1 content database + защищённая админ-панель.
 
-Currently, two official plugins are available:
+## Что уже подключено
+- Discord Activity OAuth (`identify`)
+- серверная проверка администратора по Discord User ID
+- ученический интерфейс и профиль
+- миссии с XP, ответами и объяснениями
+- Cloudflare D1 для контента
+- админ-панель: создать/редактировать/публиковать/архивировать/удалять миссии и вопросы
+- адаптивный интерфейс
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Cloudflare: обязательные секреты
+В Worker > Settings > Variables and Secrets добавьте как **Secret**:
+- `DISCORD_CLIENT_SECRET` — OAuth2 Client Secret приложения Discord
+- `ADMIN_DISCORD_ID` — Discord User ID администратора
 
-## React Compiler
+`DISCORD_CLIENT_ID` уже является публичной переменной в `wrangler.jsonc`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Не добавляйте секреты в GitHub.
 
-## Expanding the Oxlint configuration
+## Discord Developer Portal
+Activity должна использовать тот же Discord Application, Client ID которого указан в `src/discord.ts` и `wrangler.jsonc`.
+Для Activity нужен scope `identify`.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Deploy
+Cloudflare build command: `npm run build`
+Deploy command: `npx wrangler deploy`
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+`wrangler.jsonc` объявляет обязательные секреты. Если они не настроены, новый deploy должен остановиться с понятной ошибкой вместо публикации сломанной авторизации.
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+D1 binding `DB` называется `meway-content`. При первом API-запросе Worker создаёт таблицу `missions` и стартовые миссии автоматически.
+
+## Проверка
+После deploy откройте `/api/health`. Все четыре поля `config` должны быть `true`.
+Затем полностью закройте MEWAY Activity в Discord и откройте снова. Для Discord ID, совпадающего с `ADMIN_DISCORD_ID`, в меню появится `Админ`.

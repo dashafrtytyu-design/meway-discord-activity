@@ -1,6 +1,6 @@
 export type Level = 'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'
 
-export type MissionStatus = 'published' | 'draft'
+export type MissionStatus = 'published' | 'draft' | 'archived'
 
 export type Mission = {
   id: number

@@ -1,22 +1,36 @@
-import { StrictMode } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { initializeDiscord } from './discord'
+import {
+  initializeDiscord,
+  type MewayAuthResult,
+} from './discord'
+
+function MewayRoot() {
+  const [discordAuth, setDiscordAuth] = useState<MewayAuthResult>({
+    connected: false,
+    authenticated: false,
+    role: null,
+    user: null,
+  })
+
+  useEffect(() => {
+    initializeDiscord()
+      .then((result) => {
+        console.log('MEWAY Discord result:', result)
+        setDiscordAuth(result)
+      })
+      .catch((error) => {
+        console.error('MEWAY Discord startup error:', error)
+      })
+  }, [])
+
+  return <App discordAuth={discordAuth} />
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <MewayRoot />
   </StrictMode>,
 )
-
-// Discord запускаем ПОСЛЕ отображения интерфейса.
-// В обычном браузере initializeDiscord() сама пропустит Discord SDK.
-initializeDiscord()
-  .then((result) => {
-    console.log('MEWAY Discord result:', result)
-  })
-  .catch((error) => {
-    console.error('MEWAY Discord startup error:', error)
-  })
-  

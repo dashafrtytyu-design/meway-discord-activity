@@ -105,7 +105,7 @@ export default {
         return json(
           {
             ok: false,
-            error: 'Discord authorization failed.',
+            error: `Discord authorization failed: ${errorText}`,
           },
           401,
         )

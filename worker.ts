@@ -37,7 +37,11 @@ async function syncDiscordLevelRole(env:Env,userId:string,xp:number){
   }
   const results=await Promise.all(changes)
   const failed=results.find(r=>!r.ok&&r.status!==404)
-  if(failed){console.error('Discord role sync failed',failed.status);return {ok:false,configured:true,role:target?.name||null}}
+  if(failed){
+    const errorText=await failed.text().catch(()=> '')
+    console.error('Discord role sync failed',failed.status,errorText)
+    return {ok:false,configured:true,role:target?.name||null,roleId:target?.id||null,status:failed.status,error:errorText||`Discord API ${failed.status}`}
+  }
   return {ok:true,configured:true,role:target?.name||null,roleId:target?.id||null,changed:changes.length>0}
 }
 
@@ -83,6 +87,12 @@ const publicCache = new Map<string,{expires:number,data:unknown}>()
 const identityCache = new Map<string,{expires:number,user:DiscordUser}>()
 const PUBLIC_TTL_MS = 10 * 60 * 1000
 const IDENTITY_TTL_MS = 5 * 60 * 1000
+// Short server-side caches reduce repeated D1 reads inside a warm Worker isolate.
+// They never poll and are invalidated immediately after admin writes/progress updates.
+const queryCache=new Map<string,{expires:number,data:unknown}>()
+function getQueryCache<T>(key:string):T|null{const h=queryCache.get(key);if(!h||h.expires<Date.now()){queryCache.delete(key);return null}return h.data as T}
+function setQueryCache(key:string,data:unknown,ttl:number){queryCache.set(key,{expires:Date.now()+ttl,data})}
+function clearQueryCache(prefix?:string){for(const k of [...queryCache.keys()])if(!prefix||k.startsWith(prefix))queryCache.delete(k)}
 function cachedPublic(key:string){const hit=publicCache.get(key);if(!hit||hit.expires<Date.now()){publicCache.delete(key);return null}return hit.data}
 function setPublic(key:string,data:unknown){publicCache.set(key,{expires:Date.now()+PUBLIC_TTL_MS,data})}
 function clearPublic(){publicCache.clear()}
@@ -212,9 +222,9 @@ export default {
         const now=new Date().toISOString()
         const base:any = { xp: 120, completedMissions: [], completedContent: [], nickname: '', avatar: '', mistakes: 0, correctAnswers:0, answerCount:0, activityDays:[], sectionStats:{}, leaderboardVisible:true, firstSeen: now, lastSeen: now, discordUsername: user.username, discordGlobalName: user.global_name ?? '' }
         const previous:any=row?.data?JSON.parse(row.data):{};const progress:any = row?.data ? { ...base, ...previous, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' } : base; const today=now.slice(0,10);const hadToday=Array.isArray(previous.activityDays)&&previous.activityDays.includes(today);progress.activityDays=Array.from(new Set([...(progress.activityDays||[]),today])).slice(-60)
-        const desired=levelForXp(progress.xp)?.id||'';const roleSync=await syncDiscordLevelRole(env,user.id,progress.xp);if(roleSync.ok){progress.syncedRoleId=desired;progress.roleVerifiedAt=now}
-        // GET always verifies the real Discord role, but D1 is written only when useful: first visit, new active day, role repair, identity change, or a 15-minute last-seen checkpoint.
-        const lastMs=Date.parse(previous.lastSeen||row?.updated_at||'')||0;const identityChanged=previous.discordUsername!==user.username||previous.discordGlobalName!==(user.global_name??'');const shouldWrite=!row||!hadToday||Boolean(roleSync.changed)||identityChanged||Date.now()-lastMs>15*60*1000
+        // ZERO-POLLING: opening/refreshing the app never calls Discord just to re-check a role.
+        // D1 is written on GET only when persistent data actually changes (first visit, first activity of a new day, or Discord identity change).
+        const identityChanged=previous.discordUsername!==user.username||previous.discordGlobalName!==(user.global_name??'');const shouldWrite=!row||!hadToday||identityChanged
         if(shouldWrite)await env.DB.prepare('INSERT OR REPLACE INTO progress (user_id, data, updated_at) VALUES (?, ?, ?)').bind(user.id, JSON.stringify(progress), now).run()
         return json({ ok: true, progress })
       }
@@ -231,9 +241,22 @@ export default {
         const oldM=new Set<number>(Array.isArray(old.completedMissions)?old.completedMissions:[]),oldC=new Set<number>(Array.isArray(old.completedContent)?old.completedContent:[]);if(safe.completedMissions.some((id:number)=>!oldM.has(id)))addEvent('mission','завершил(а) новую миссию');if(safe.completedContent.some((id:number)=>!oldC.has(id)))addEvent('content','завершил(а) новый материал')
         const oldStreak=streakForDays(old.activityDays),newStreak=streakForDays(safe.activityDays),cfg=await getSettings(env);for(const milestone of cfg.streak.milestones){if(oldStreak<milestone&&newStreak>=milestone)addEvent('streak',`достиг(ла) серии ${milestone} дней 🔥`)}
         const desired=levelForXp(safe.xp)?.id||''
-        if(old.syncedRoleId!==desired){const roleSync=await syncDiscordLevelRole(env,user.id,safe.xp);if(roleSync.ok){safe.syncedRoleId=desired;safe.roleVerifiedAt=now}else safe.syncedRoleId=old.syncedRoleId||''}else{safe.syncedRoleId=old.syncedRoleId||'';safe.roleVerifiedAt=old.roleVerifiedAt||''}
+        // EVENT-ONLY role sync: no timer, polling, periodic verification, or role check on ordinary saves.
+        // Discord is contacted only when the XP level actually changes, or once when this user's role cache has never been initialized.
+        // The frontend marks a level-crossing save as urgent, so the new Discord role is granted immediately instead of waiting for the 20s batch.
+        const levelChanged=newLevel?.id!==oldLevel?.id
+        const roleCacheMissing=typeof old.syncedRoleId!=='string'
+        const mustVerifyRole=levelChanged||roleCacheMissing
+        let roleSync:any=null
+        if(mustVerifyRole){
+          roleSync=await syncDiscordLevelRole(env,user.id,safe.xp)
+          if(roleSync.ok){safe.syncedRoleId=desired;safe.roleVerifiedAt=now;delete safe.roleSyncError}
+          else{safe.syncedRoleId=old.syncedRoleId||'';safe.roleVerifiedAt=old.roleVerifiedAt||'';safe.roleSyncError=roleSync.configured?{status:roleSync.status||0,error:roleSync.error||'Discord role sync failed',at:now}: {status:0,error:'Discord role sync is not configured',at:now}}
+        }else{safe.syncedRoleId=old.syncedRoleId||'';safe.roleVerifiedAt=old.roleVerifiedAt||''}
         await env.DB.prepare('INSERT OR REPLACE INTO progress (user_id, data, updated_at) VALUES (?, ?, ?)').bind(user.id, JSON.stringify(safe), now).run()
-        return json({ok:true,progress:safe})
+        clearQueryCache('leaderboard')
+        clearQueryCache('students')
+        return json({ok:true,progress:safe,roleSync:roleSync?{ok:roleSync.ok,configured:roleSync.configured,role:roleSync.role||null,roleId:roleSync.roleId||null,status:roleSync.status||null,error:roleSync.error||null}:null})
       }
     }
 
@@ -249,15 +272,20 @@ export default {
 
 
     if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
+      const cached=getQueryCache<any[]>('leaderboard')
+      if(cached)return json({ok:true,leaders:cached})
       await ensureDb(env)
       const rows=await env.DB.prepare('SELECT user_id, data FROM progress').all<{user_id:string;data:string}>()
       const now=Date.now(),d7=now-7*86400000,d30=now-30*86400000;const leaders=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const ev=Array.isArray(d.xpEvents)?d.xpEvents:[];return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||'Ученик MEWAY',xp:Math.max(0,Number(d.xp)||0),xp7:ev.filter((e:any)=>Date.parse(e.date)>=d7).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),xp30:ev.filter((e:any)=>Date.parse(e.date)>=d30).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),completed:(d.completedMissions||[]).length+(d.completedContent||[]).length,visible:d.leaderboardVisible!==false}}).filter(x=>x.visible).slice(0,50)
+      setQueryCache('leaderboard',leaders,60_000)
       return json({ok:true,leaders})
     }
 
     if (url.pathname === '/api/admin/students' && request.method === 'GET') {
       const admin = await requireAdmin(request, env)
       if (!admin) return json({ok:false,error:'Admin access required.'},403)
+      const studentsCached=getQueryCache<any[]>('students')
+      if(studentsCached)return json({ok:true,students:studentsCached})
       await ensureDb(env)
       const [rows,missions,items]=await Promise.all([
         env.DB.prepare('SELECT user_id, data, updated_at FROM progress ORDER BY updated_at DESC').all<{user_id:string;data:string;updated_at:string}>(),
@@ -266,6 +294,7 @@ export default {
       const missionNames=new Map(missions.map(x=>[x.id,x.title]))
       const contentNames=new Map(items.map(x=>[x.id,x.title]))
       const students=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const xp=Math.max(0,Number(d.xp)||0);const lvl=levelForXp(xp);const answers=Math.max(0,Number(d.answerCount)||0),correct=Math.max(0,Number(d.correctAnswers)||0);const stats=d.sectionStats||{};const weakTopics=Object.entries(stats).map(([name,v]:any)=>({name,total:Number(v.total)||0,correct:Number(v.correct)||0,accuracy:v.total?Math.round(v.correct/v.total*100):0})).filter((x:any)=>x.total>=2).sort((a:any,b:any)=>a.accuracy-b.accuracy).slice(0,4);const fav=Object.entries(stats).sort((a:any,b:any)=>(Number(b[1]?.total)||0)-(Number(a[1]?.total)||0))[0]?.[0]||'—';const days=Array.isArray(d.activityDays)?d.activityDays:[];const cutoff7=Date.now()-7*86400000,cutoff30=Date.now()-30*86400000;return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||`Discord ${r.user_id}`,discordUsername:d.discordUsername||'',xp,level:lvl?.name||'До BEGINNER',mistakes:Math.max(0,Number(d.mistakes)||0),correctAnswers:correct,answerCount:answers,accuracy:answers?Math.round(correct/answers*100):0,favoriteSection:fav,active7:days.filter((x:string)=>Date.parse(x)>=cutoff7).length,active30:days.filter((x:string)=>Date.parse(x)>=cutoff30).length,weakTopics,firstSeen:d.firstSeen||r.updated_at,lastSeen:d.lastSeen||r.updated_at,completedMissions:(d.completedMissions||[]).map((id:number)=>({id,title:missionNames.get(id)||`Миссия #${id}`})),completedContent:(d.completedContent||[]).map((id:number)=>({id,title:contentNames.get(id)||`Материал #${id}`})),events:Array.isArray(d.events)?d.events.slice(-20):[]}})
+      setQueryCache('students',students,30_000)
       return json({ok:true,students})
     }
 

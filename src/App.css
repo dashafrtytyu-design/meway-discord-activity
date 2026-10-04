@@ -152,3 +152,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{margin:0;min-width
 @media (prefers-reduced-motion:reduce){
  *,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.12s!important}
 }
+
+/* V7.6.4: keep XP labels above decorative card layers on mobile and desktop. */
+.missionCard footer,.contentCard footer{position:relative;z-index:3;isolation:isolate}
+.missionCard footer b,.contentCard footer b{position:relative;z-index:4;display:inline-block;white-space:nowrap;flex:0 0 auto}
+.missionCard:after,.contentCard:after{z-index:1;pointer-events:none}
+@media(max-width:720px){
+  .missionCard footer,.contentCard footer{gap:12px}
+  .missionCard footer b,.contentCard footer b{padding-right:2px}
+}

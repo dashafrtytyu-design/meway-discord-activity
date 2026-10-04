@@ -1,0 +1,15 @@
+MEWAY V7.6.4 — MOBILE XP + IMMEDIATE DISCORD ROLE SYNC
+
+1. Fixed mobile mission/content XP labels: decorative ✦ can no longer cover XP text.
+2. Discord role sync now runs immediately whenever the calculated XP level changes.
+3. syncedRoleId remains cache only; stale role state is re-verified every 15 minutes on progress updates.
+4. Role sync reads the real Discord member roles and changes only the six MEWAY XP roles.
+5. Discord API failure status/body is returned as roleSync and stored as roleSyncError for diagnostics.
+6. MASTER ZONE role 1555241516363030568 remains at 10000 XP.
+7. Existing V7.6.3 Motion UI/content preserved.
+
+IMPORTANT DEPLOYMENT CHECK:
+- Cloudflare secret DISCORD_BOT_TOKEN must exist.
+- DISCORD_GUILD_ID must be the MEWAY server ID.
+- Bot needs Manage Roles.
+- Bot's highest Discord role must be ABOVE all six MEWAY XP roles in Server Settings > Roles.

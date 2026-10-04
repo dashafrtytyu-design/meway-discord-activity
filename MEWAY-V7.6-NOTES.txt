@@ -1,0 +1,9 @@
+MEWAY V7.6 FINAL CONTROL
+- Added admin Automation panel for Daily Mission, Smart Coach and Streak milestones.
+- Daily Mission can be enabled/disabled and configured for answers, completed missions, or completed materials, with target and XP reward.
+- Smart Coach remains automatic: it uses real per-topic answer statistics and weak-topic accuracy, while admin can configure thresholds and texts.
+- Streak milestone days are admin-configurable.
+- Settings are delivered with the existing /api/missions response, so student UI does not make a separate settings request.
+- Progress still batches ordinary activity for 20 seconds. Mission/content completion only flushes immediately when it crosses an XP level; otherwise it joins the batch. Daily reward remains immediate.
+- Existing missions/content/progress data are preserved. A small settings table is created non-destructively with CREATE TABLE IF NOT EXISTS.
+- Discord role sync and all six XP roles, including MASTER ZONE 1555241516363030568, remain intact.

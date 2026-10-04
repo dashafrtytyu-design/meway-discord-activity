@@ -47,6 +47,15 @@ type Mission = {
   tasks: Array<{ id: number; question: string; options: string[]; correctAnswer: string; explanation: string }>
 }
 
+
+type MewaySettings = {
+  daily:{enabled:boolean;title:string;description:string;metric:'answers'|'missions'|'materials';target:number;rewardXp:number}
+  coach:{enabled:boolean;minAnswers:number;weakBelow:number;maxTopics:number;fallbackTitle:string;fallbackText:string;weakTitle:string;weakTemplate:string}
+  streak:{milestones:number[]}
+}
+const DEFAULT_SETTINGS:MewaySettings={daily:{enabled:true,title:'5 ответов за день',description:'Ответь на задания в миссиях, играх или квизах.',metric:'answers',target:5,rewardXp:15},coach:{enabled:true,minAnswers:4,weakBelow:75,maxTopics:3,fallbackTitle:'Отличный маршрут!',fallbackText:'Продолжай проходить задания — после нескольких ответов здесь появятся персональные рекомендации.',weakTitle:'Что повторить следующим рейсом',weakTemplate:'Сфокусируйся на: {topics}'},streak:{milestones:[3,7,14,30]}}
+async function getSettings(env:Env){await ensureDb(env);const hit=cachedPublic('settings') as MewaySettings|null;if(hit)return hit;const row=await env.DB.prepare('SELECT data FROM settings WHERE id = 1').first<{data:string}>();let value=DEFAULT_SETTINGS;try{if(row?.data)value={...DEFAULT_SETTINGS,...JSON.parse(row.data),daily:{...DEFAULT_SETTINGS.daily,...JSON.parse(row.data).daily},coach:{...DEFAULT_SETTINGS.coach,...JSON.parse(row.data).coach},streak:{...DEFAULT_SETTINGS.streak,...JSON.parse(row.data).streak}}}catch{}setPublic('settings',value);return value}
+
 type ContentItem = { id: number; section: 'games'|'quizzes'|'words'|'challenges'|'rewards'; title: string; description: string; status: 'published'|'draft'|'archived'; level: string; icon: string; xp: number; category: string; payload: any }
 
 const seed: Mission[] = [
@@ -81,7 +90,7 @@ function clearPublic(){publicCache.clear()}
 
 async function ensureDb(env: Env) {
   if (dbReady) return
-  await env.DB.exec(`CREATE TABLE IF NOT EXISTS missions (id INTEGER PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS content (id INTEGER PRIMARY KEY, section TEXT NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS progress (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL);`)
+  await env.DB.exec(`CREATE TABLE IF NOT EXISTS missions (id INTEGER PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS content (id INTEGER PRIMARY KEY, section TEXT NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS progress (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, updated_at TEXT NOT NULL);`)
   const row = await env.DB.prepare('SELECT COUNT(*) AS count FROM missions').first<{ count: number }>()
   if (!row?.count) {
     for (const mission of seed) {
@@ -215,12 +224,12 @@ export default {
         const oldRow=await env.DB.prepare('SELECT data FROM progress WHERE user_id = ?').bind(user.id).first<{data:string}>()
         const old:any=oldRow?.data?JSON.parse(oldRow.data):{}
         const now=new Date().toISOString()
-        const safe:any = { xp: Math.max(0, Number(data.xp)||0), completedMissions: Array.isArray(data.completedMissions)?data.completedMissions.slice(0,1000):[], completedContent: Array.isArray(data.completedContent)?data.completedContent.slice(0,2000):[], nickname: String(data.nickname||'').slice(0,40), avatar: String(data.avatar||'').slice(0,750000), mistakes: Math.max(0,Number(data.mistakes??old.mistakes)||0), correctAnswers:Math.max(0,Number(data.correctAnswers??old.correctAnswers)||0), answerCount:Math.max(0,Number(data.answerCount??old.answerCount)||0), activityDays:Array.isArray(data.activityDays)?data.activityDays.slice(-60):Array.isArray(old.activityDays)?old.activityDays.slice(-60):[], sectionStats:(data.sectionStats&&typeof data.sectionStats==='object')?data.sectionStats:(old.sectionStats||{}), dailyAnswers:Math.max(0,Number(data.dailyAnswers??old.dailyAnswers)||0),dailyAnswerDate:String(data.dailyAnswerDate ?? old.dailyAnswerDate ?? '').slice(0,10),dailyClaimDate:String(data.dailyClaimDate ?? old.dailyClaimDate ?? '').slice(0,10),leaderboardVisible:data.leaderboardVisible!==false, xpEvents:Array.isArray(old.xpEvents)?old.xpEvents.slice(-120):[], events:Array.isArray(old.events)?old.events.slice(-80):[], firstSeen: old.firstSeen||now, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' }
+        const safe:any = { xp: Math.max(0, Number(data.xp)||0), completedMissions: Array.isArray(data.completedMissions)?data.completedMissions.slice(0,1000):[], completedContent: Array.isArray(data.completedContent)?data.completedContent.slice(0,2000):[], nickname: String(data.nickname||'').slice(0,40), avatar: String(data.avatar||'').slice(0,750000), mistakes: Math.max(0,Number(data.mistakes??old.mistakes)||0), correctAnswers:Math.max(0,Number(data.correctAnswers??old.correctAnswers)||0), answerCount:Math.max(0,Number(data.answerCount??old.answerCount)||0), activityDays:Array.isArray(data.activityDays)?data.activityDays.slice(-60):Array.isArray(old.activityDays)?old.activityDays.slice(-60):[], sectionStats:(data.sectionStats&&typeof data.sectionStats==='object')?data.sectionStats:(old.sectionStats||{}), dailyAnswers:Math.max(0,Number(data.dailyAnswers??old.dailyAnswers)||0),dailyMissionCount:Math.max(0,Number(data.dailyMissionCount??old.dailyMissionCount)||0),dailyContentCount:Math.max(0,Number(data.dailyContentCount??old.dailyContentCount)||0),dailyAnswerDate:String(data.dailyAnswerDate ?? old.dailyAnswerDate ?? '').slice(0,10),dailyClaimDate:String(data.dailyClaimDate ?? old.dailyClaimDate ?? '').slice(0,10),leaderboardVisible:data.leaderboardVisible!==false, xpEvents:Array.isArray(old.xpEvents)?old.xpEvents.slice(-120):[], events:Array.isArray(old.events)?old.events.slice(-80):[], firstSeen: old.firstSeen||now, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' }
         const oldXp=Math.max(0,Number(old.xp)||0);if(safe.xp>oldXp){safe.xpEvents=[...(safe.xpEvents||[]),{date:now,delta:safe.xp-oldXp}].slice(-120)}
         const addEvent=(type:string,text:string)=>{safe.events=[...(safe.events||[]),{date:now,type,text}].slice(-80)}
         const oldLevel=levelForXp(oldXp),newLevel=levelForXp(safe.xp);if(newLevel?.id&&newLevel.id!==oldLevel?.id)addEvent('level',`достиг(ла) уровня ${newLevel.name}`)
         const oldM=new Set<number>(Array.isArray(old.completedMissions)?old.completedMissions:[]),oldC=new Set<number>(Array.isArray(old.completedContent)?old.completedContent:[]);if(safe.completedMissions.some((id:number)=>!oldM.has(id)))addEvent('mission','завершил(а) новую миссию');if(safe.completedContent.some((id:number)=>!oldC.has(id)))addEvent('content','завершил(а) новый материал')
-        const oldStreak=streakForDays(old.activityDays),newStreak=streakForDays(safe.activityDays);for(const milestone of [3,7,14,30])if(oldStreak<milestone&&newStreak>=milestone)addEvent('streak',`достиг(ла) серии ${milestone} дней 🔥`)
+        const oldStreak=streakForDays(old.activityDays),newStreak=streakForDays(safe.activityDays),cfg=await getSettings(env);for(const milestone of cfg.streak.milestonesif(oldStreak<milestone&&newStreak>=milestone)addEvent('streak',`достиг(ла) серии ${milestone} дней 🔥`)
         const desired=levelForXp(safe.xp)?.id||''
         if(old.syncedRoleId!==desired){const roleSync=await syncDiscordLevelRole(env,user.id,safe.xp);if(roleSync.ok){safe.syncedRoleId=desired;safe.roleVerifiedAt=now}else safe.syncedRoleId=old.syncedRoleId||''}else{safe.syncedRoleId=old.syncedRoleId||'';safe.roleVerifiedAt=old.roleVerifiedAt||''}
         await env.DB.prepare('INSERT OR REPLACE INTO progress (user_id, data, updated_at) VALUES (?, ?, ?)').bind(user.id, JSON.stringify(safe), now).run()
@@ -263,8 +272,18 @@ export default {
     if (url.pathname === '/api/admin/bootstrap' && request.method === 'GET') {
       const admin = await requireAdmin(request, env)
       if (!admin) return json({ ok: false, error: 'Admin access required.' }, 403)
-      const [missions, items] = await Promise.all([listMissions(env, true), listContent(env, undefined, true)])
-      return json({ ok: true, missions, items })
+      const [missions, items, settings] = await Promise.all([listMissions(env, true), listContent(env, undefined, true), getSettings(env)])
+      return json({ ok: true, missions, items, settings })
+    }
+
+    if (url.pathname === '/api/admin/settings') {
+      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403)
+      if(request.method==='GET')return json({ok:true,settings:await getSettings(env)})
+      if(request.method==='PUT'){
+        const raw=await request.json<any>();const daily={...DEFAULT_SETTINGS.daily,...(raw.daily||{})},coach={...DEFAULT_SETTINGS.coach,...(raw.coach||{})},streak={...DEFAULT_SETTINGS.streak,...(raw.streak||{})}
+        daily.target=Math.max(1,Math.min(100,Number(daily.target)||5));daily.rewardXp=Math.max(0,Math.min(1000,Number(daily.rewardXp)||0));coach.minAnswers=Math.max(1,Math.min(100,Number(coach.minAnswers)||4));coach.weakBelow=Math.max(1,Math.min(100,Number(coach.weakBelow)||75));coach.maxTopics=Math.max(1,Math.min(6,Number(coach.maxTopics)||3));streak.milestones=(Array.isArray(streak.milestones)?streak.milestones:[]).map(Number).filter((x:number)=>x>0&&x<=365).slice(0,12).sort((a:number,b:number)=>a-b)
+        const settings={daily,coach,streak};await ensureDb(env);await env.DB.prepare('INSERT OR REPLACE INTO settings (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify(settings),new Date().toISOString()).run();clearPublic();return json({ok:true,settings})
+      }
     }
 
     if (url.pathname === '/api/admin/content') {
@@ -296,10 +315,10 @@ export default {
 
     if (url.pathname === '/api/missions' && request.method === 'GET') {
       const hit=cachedPublic('missions')
-      if(hit) return json({ok:true,missions:hit})
+      if(hit) return json({ok:true,missions:hit,settings:await getSettings(env)})
       const missions=await listMissions(env)
       setPublic('missions',missions)
-      return json({ok:true,missions})
+      return json({ok:true,missions,settings:await getSettings(env)})
     }
 
     if (url.pathname === '/api/admin/missions') {

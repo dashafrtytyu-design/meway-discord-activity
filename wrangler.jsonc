@@ -19,7 +19,7 @@
   },
 
   "secrets": {
-    "required": ["DISCORD_CLIENT_SECRET"]
+    "required": ["DISCORD_CLIENT_SECRET", "DISCORD_BOT_TOKEN"]
   },
 
   "d1_databases": [

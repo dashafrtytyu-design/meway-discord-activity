@@ -16,22 +16,29 @@ const LEVEL_ROLES = [
   { xp: 2000, id: '1554470707629395968', name: 'ACTIVE LEARNER' },
   { xp: 3000, id: '1554470802555019325', name: 'ENGLISH EXPLORER' },
   { xp: 5000, id: '1554470911904714852', name: 'ENGLISH MASTER' },
+  { xp: 10000, id: '1555241516363030568', name: 'MASTER ZONE' },
 ] as const
 function levelForXp(xp:number){ return [...LEVEL_ROLES].reverse().find(x=>xp>=x.xp) || null }
+function streakForDays(days:unknown){const set=new Set(Array.isArray(days)?days.filter((x):x is string=>typeof x==='string'):[]);let n=0,d=new Date();for(;;){const k=d.toISOString().slice(0,10);if(!set.has(k))break;n++;d.setUTCDate(d.getUTCDate()-1)}return n}
 async function syncDiscordLevelRole(env:Env,userId:string,xp:number){
   if(!env.DISCORD_BOT_TOKEN||!env.DISCORD_GUILD_ID) return {ok:false,configured:false}
   const target=levelForXp(xp)
   const headers={Authorization:`Bot ${env.DISCORD_BOT_TOKEN}`}
+  // Read the real Discord member state. D1 is only a cache, never the source of truth for roles.
+  const member=await fetch(`https://discord.com/api/v10/guilds/${env.DISCORD_GUILD_ID}/members/${userId}`,{headers})
+  if(!member.ok){console.error('Discord member lookup failed',member.status,await member.text());return {ok:false,configured:true}}
+  const memberData=await member.json<any>()
+  const current=new Set<string>(Array.isArray(memberData.roles)?memberData.roles:[])
+  const changes:Promise<Response>[]=[]
   for(const role of LEVEL_ROLES){
-    if(role.id===target?.id) continue
-    const r=await fetch(`https://discord.com/api/v10/guilds/${env.DISCORD_GUILD_ID}/members/${userId}/roles/${role.id}`,{method:'DELETE',headers})
-    if(!r.ok&&r.status!==404) console.error('Discord role remove failed',role.name,r.status)
+    const shouldHave=role.id===target?.id
+    if(current.has(role.id)&&!shouldHave) changes.push(fetch(`https://discord.com/api/v10/guilds/${env.DISCORD_GUILD_ID}/members/${userId}/roles/${role.id}`,{method:'DELETE',headers}))
+    if(!current.has(role.id)&&shouldHave) changes.push(fetch(`https://discord.com/api/v10/guilds/${env.DISCORD_GUILD_ID}/members/${userId}/roles/${role.id}`,{method:'PUT',headers}))
   }
-  if(target){
-    const r=await fetch(`https://discord.com/api/v10/guilds/${env.DISCORD_GUILD_ID}/members/${userId}/roles/${target.id}`,{method:'PUT',headers})
-    if(!r.ok){ console.error('Discord role add failed',target.name,r.status,await r.text()); return {ok:false,configured:true,role:target.name} }
-  }
-  return {ok:true,configured:true,role:target?.name||null,roleId:target?.id||null}
+  const results=await Promise.all(changes)
+  const failed=results.find(r=>!r.ok&&r.status!==404)
+  if(failed){console.error('Discord role sync failed',failed.status);return {ok:false,configured:true,role:target?.name||null}}
+  return {ok:true,configured:true,role:target?.name||null,roleId:target?.id||null,changed:changes.length>0}
 }
 
 type Mission = {
@@ -65,7 +72,7 @@ let contentSeedChecked = false
 // Warm-isolate caches reduce repeated D1 reads and Discord identity lookups.
 const publicCache = new Map<string,{expires:number,data:unknown}>()
 const identityCache = new Map<string,{expires:number,user:DiscordUser}>()
-const PUBLIC_TTL_MS = 2 * 60 * 1000
+const PUBLIC_TTL_MS = 10 * 60 * 1000
 const IDENTITY_TTL_MS = 5 * 60 * 1000
 function cachedPublic(key:string){const hit=publicCache.get(key);if(!hit||hit.expires<Date.now()){publicCache.delete(key);return null}return hit.data}
 function setPublic(key:string,data:unknown){publicCache.set(key,{expires:Date.now()+PUBLIC_TTL_MS,data})}
@@ -194,11 +201,12 @@ export default {
       if (request.method === 'GET') {
         const row = await env.DB.prepare('SELECT data, updated_at FROM progress WHERE user_id = ?').bind(user.id).first<{data:string;updated_at:string}>()
         const now=new Date().toISOString()
-        const base:any = { xp: 120, completedMissions: [], completedContent: [], nickname: '', avatar: '', mistakes: 0, firstSeen: now, lastSeen: now, discordUsername: user.username, discordGlobalName: user.global_name ?? '' }
-        const progress:any = row?.data ? { ...base, ...JSON.parse(row.data), lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' } : base
-        const desired=levelForXp(progress.xp)?.id||''
-        if(progress.syncedRoleId!==desired){const roleSync=await syncDiscordLevelRole(env,user.id,progress.xp);if(roleSync.ok)progress.syncedRoleId=desired}
-        await env.DB.prepare('INSERT OR REPLACE INTO progress (user_id, data, updated_at) VALUES (?, ?, ?)').bind(user.id, JSON.stringify(progress), now).run()
+        const base:any = { xp: 120, completedMissions: [], completedContent: [], nickname: '', avatar: '', mistakes: 0, correctAnswers:0, answerCount:0, activityDays:[], sectionStats:{}, leaderboardVisible:true, firstSeen: now, lastSeen: now, discordUsername: user.username, discordGlobalName: user.global_name ?? '' }
+        const previous:any=row?.data?JSON.parse(row.data):{};const progress:any = row?.data ? { ...base, ...previous, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' } : base; const today=now.slice(0,10);const hadToday=Array.isArray(previous.activityDays)&&previous.activityDays.includes(today);progress.activityDays=Array.from(new Set([...(progress.activityDays||[]),today])).slice(-60)
+        const desired=levelForXp(progress.xp)?.id||'';const roleSync=await syncDiscordLevelRole(env,user.id,progress.xp);if(roleSync.ok){progress.syncedRoleId=desired;progress.roleVerifiedAt=now}
+        // GET always verifies the real Discord role, but D1 is written only when useful: first visit, new active day, role repair, identity change, or a 15-minute last-seen checkpoint.
+        const lastMs=Date.parse(previous.lastSeen||row?.updated_at||'')||0;const identityChanged=previous.discordUsername!==user.username||previous.discordGlobalName!==(user.global_name??'');const shouldWrite=!row||!hadToday||Boolean(roleSync.changed)||identityChanged||Date.now()-lastMs>15*60*1000
+        if(shouldWrite)await env.DB.prepare('INSERT OR REPLACE INTO progress (user_id, data, updated_at) VALUES (?, ?, ?)').bind(user.id, JSON.stringify(progress), now).run()
         return json({ ok: true, progress })
       }
       if (request.method === 'PUT') {
@@ -207,9 +215,14 @@ export default {
         const oldRow=await env.DB.prepare('SELECT data FROM progress WHERE user_id = ?').bind(user.id).first<{data:string}>()
         const old:any=oldRow?.data?JSON.parse(oldRow.data):{}
         const now=new Date().toISOString()
-        const safe:any = { xp: Math.max(0, Number(data.xp)||0), completedMissions: Array.isArray(data.completedMissions)?data.completedMissions.slice(0,1000):[], completedContent: Array.isArray(data.completedContent)?data.completedContent.slice(0,2000):[], nickname: String(data.nickname||'').slice(0,40), avatar: String(data.avatar||'').slice(0,750000), mistakes: Math.max(0,Number(data.mistakes??old.mistakes)||0), firstSeen: old.firstSeen||now, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' }
+        const safe:any = { xp: Math.max(0, Number(data.xp)||0), completedMissions: Array.isArray(data.completedMissions)?data.completedMissions.slice(0,1000):[], completedContent: Array.isArray(data.completedContent)?data.completedContent.slice(0,2000):[], nickname: String(data.nickname||'').slice(0,40), avatar: String(data.avatar||'').slice(0,750000), mistakes: Math.max(0,Number(data.mistakes??old.mistakes)||0), correctAnswers:Math.max(0,Number(data.correctAnswers??old.correctAnswers)||0), answerCount:Math.max(0,Number(data.answerCount??old.answerCount)||0), activityDays:Array.isArray(data.activityDays)?data.activityDays.slice(-60):Array.isArray(old.activityDays)?old.activityDays.slice(-60):[], sectionStats:(data.sectionStats&&typeof data.sectionStats==='object')?data.sectionStats:(old.sectionStats||{}), dailyAnswers:Math.max(0,Number(data.dailyAnswers??old.dailyAnswers)||0),dailyAnswerDate:String(data.dailyAnswerDate??old.dailyAnswerDate||'').slice(0,10),dailyClaimDate:String(data.dailyClaimDate??old.dailyClaimDate||'').slice(0,10),leaderboardVisible:data.leaderboardVisible!==false, xpEvents:Array.isArray(old.xpEvents)?old.xpEvents.slice(-120):[], events:Array.isArray(old.events)?old.events.slice(-80):[], firstSeen: old.firstSeen||now, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' }
+        const oldXp=Math.max(0,Number(old.xp)||0);if(safe.xp>oldXp){safe.xpEvents=[...(safe.xpEvents||[]),{date:now,delta:safe.xp-oldXp}].slice(-120)}
+        const addEvent=(type:string,text:string)=>{safe.events=[...(safe.events||[]),{date:now,type,text}].slice(-80)}
+        const oldLevel=levelForXp(oldXp),newLevel=levelForXp(safe.xp);if(newLevel?.id&&newLevel.id!==oldLevel?.id)addEvent('level',`достиг(ла) уровня ${newLevel.name}`)
+        const oldM=new Set<number>(Array.isArray(old.completedMissions)?old.completedMissions:[]),oldC=new Set<number>(Array.isArray(old.completedContent)?old.completedContent:[]);if(safe.completedMissions.some((id:number)=>!oldM.has(id)))addEvent('mission','завершил(а) новую миссию');if(safe.completedContent.some((id:number)=>!oldC.has(id)))addEvent('content','завершил(а) новый материал')
+        const oldStreak=streakForDays(old.activityDays),newStreak=streakForDays(safe.activityDays);for(const milestone of [3,7,14,30])if(oldStreak<milestone&&newStreak>=milestone)addEvent('streak',`достиг(ла) серии ${milestone} дней 🔥`)
         const desired=levelForXp(safe.xp)?.id||''
-        if(old.syncedRoleId!==desired){const roleSync=await syncDiscordLevelRole(env,user.id,safe.xp);if(roleSync.ok)safe.syncedRoleId=desired;else safe.syncedRoleId=old.syncedRoleId||''}else safe.syncedRoleId=old.syncedRoleId||''
+        if(old.syncedRoleId!==desired){const roleSync=await syncDiscordLevelRole(env,user.id,safe.xp);if(roleSync.ok){safe.syncedRoleId=desired;safe.roleVerifiedAt=now}else safe.syncedRoleId=old.syncedRoleId||''}else{safe.syncedRoleId=old.syncedRoleId||'';safe.roleVerifiedAt=old.roleVerifiedAt||''}
         await env.DB.prepare('INSERT OR REPLACE INTO progress (user_id, data, updated_at) VALUES (?, ?, ?)').bind(user.id, JSON.stringify(safe), now).run()
         return json({ok:true,progress:safe})
       }
@@ -225,6 +238,14 @@ export default {
       return json({ok:true,items})
     }
 
+
+    if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
+      await ensureDb(env)
+      const rows=await env.DB.prepare('SELECT user_id, data FROM progress').all<{user_id:string;data:string}>()
+      const now=Date.now(),d7=now-7*86400000,d30=now-30*86400000;const leaders=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const ev=Array.isArray(d.xpEvents)?d.xpEvents:[];return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||'Ученик MEWAY',xp:Math.max(0,Number(d.xp)||0),xp7:ev.filter((e:any)=>Date.parse(e.date)>=d7).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),xp30:ev.filter((e:any)=>Date.parse(e.date)>=d30).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),completed:(d.completedMissions||[]).length+(d.completedContent||[]).length,visible:d.leaderboardVisible!==false}}).filter(x=>x.visible).slice(0,50)
+      return json({ok:true,leaders})
+    }
+
     if (url.pathname === '/api/admin/students' && request.method === 'GET') {
       const admin = await requireAdmin(request, env)
       if (!admin) return json({ok:false,error:'Admin access required.'},403)
@@ -235,7 +256,7 @@ export default {
       ])
       const missionNames=new Map(missions.map(x=>[x.id,x.title]))
       const contentNames=new Map(items.map(x=>[x.id,x.title]))
-      const students=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const xp=Math.max(0,Number(d.xp)||0);const lvl=levelForXp(xp);return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||`Discord ${r.user_id}`,discordUsername:d.discordUsername||'',xp,level:lvl?.name||'До BEGINNER',mistakes:Math.max(0,Number(d.mistakes)||0),firstSeen:d.firstSeen||r.updated_at,lastSeen:d.lastSeen||r.updated_at,completedMissions:(d.completedMissions||[]).map((id:number)=>({id,title:missionNames.get(id)||`Миссия #${id}`})),completedContent:(d.completedContent||[]).map((id:number)=>({id,title:contentNames.get(id)||`Материал #${id}`}))}})
+      const students=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const xp=Math.max(0,Number(d.xp)||0);const lvl=levelForXp(xp);const answers=Math.max(0,Number(d.answerCount)||0),correct=Math.max(0,Number(d.correctAnswers)||0);const stats=d.sectionStats||{};const weakTopics=Object.entries(stats).map(([name,v]:any)=>({name,total:Number(v.total)||0,correct:Number(v.correct)||0,accuracy:v.total?Math.round(v.correct/v.total*100):0})).filter((x:any)=>x.total>=2).sort((a:any,b:any)=>a.accuracy-b.accuracy).slice(0,4);const fav=Object.entries(stats).sort((a:any,b:any)=>(Number(b[1]?.total)||0)-(Number(a[1]?.total)||0))[0]?.[0]||'—';const days=Array.isArray(d.activityDays)?d.activityDays:[];const cutoff7=Date.now()-7*86400000,cutoff30=Date.now()-30*86400000;return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||`Discord ${r.user_id}`,discordUsername:d.discordUsername||'',xp,level:lvl?.name||'До BEGINNER',mistakes:Math.max(0,Number(d.mistakes)||0),correctAnswers:correct,answerCount:answers,accuracy:answers?Math.round(correct/answers*100):0,favoriteSection:fav,active7:days.filter((x:string)=>Date.parse(x)>=cutoff7).length,active30:days.filter((x:string)=>Date.parse(x)>=cutoff30).length,weakTopics,firstSeen:d.firstSeen||r.updated_at,lastSeen:d.lastSeen||r.updated_at,completedMissions:(d.completedMissions||[]).map((id:number)=>({id,title:missionNames.get(id)||`Миссия #${id}`})),completedContent:(d.completedContent||[]).map((id:number)=>({id,title:contentNames.get(id)||`Материал #${id}`})),events:Array.isArray(d.events)?d.events.slice(-20):[]}})
       return json({ok:true,students})
     }
 

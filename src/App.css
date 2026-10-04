@@ -49,3 +49,106 @@
 .levelUpToast{position:fixed;z-index:100;right:24px;top:24px;display:flex;align-items:center;gap:12px;max-width:390px;padding:14px 18px;border-radius:20px;color:#fff;background:linear-gradient(125deg,#087be9,#575ff0);box-shadow:0 20px 55px #075ab64a;cursor:pointer;animation:levelPop .35s ease}.levelUpToast img{width:68px;height:68px;object-fit:contain}.levelUpToast span,.levelUpToast b,.levelUpToast small{display:block}.levelUpToast span{font-size:9px;letter-spacing:1.3px;opacity:.8;font-weight:900}.levelUpToast b{font-size:18px;margin:3px 0}.levelUpToast small{font-size:10px;opacity:.82}@keyframes levelPop{from{transform:translateY(-15px) scale(.96);opacity:0}}@media(max-width:600px){.levelUpToast{left:12px;right:12px;top:12px}}
 
 .settingsGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}.settingsPanel .editBox{display:flex;flex-direction:column;gap:12px}.settingsPanel label{display:flex;flex-direction:column;gap:6px;font-weight:700}.settingsPanel input,.settingsPanel textarea,.settingsPanel select{width:100%;box-sizing:border-box}.settingsPanel label>input[type=checkbox]{width:auto;align-self:flex-start}.settingsPanel small{font-weight:500;opacity:.7}.settingsPanel p{line-height:1.6}
+
+/* V7.6.2 — responsive polish: phone / tablet / laptop / desktop */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{margin:0;min-width:320px;overflow-x:hidden}.app{overflow-x:clip}.app button,.app input,.app select,.app textarea{touch-action:manipulation}.pageHeroCopy{min-width:0}.pageHero h1,.pageHero p,.hero h1,.hero p{overflow-wrap:anywhere}.pageIcon{flex:0 0 auto;font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif;font-size:30px;line-height:1}.filters{-webkit-overflow-scrolling:touch}.filters::-webkit-scrollbar,.adminTabs::-webkit-scrollbar{display:none}
+
+/* More balanced page headers: the mascot remains decorative, never covers text. */
+@media (min-width:721px) and (max-width:1180px){
+  .app>aside{width:210px;padding-left:14px;padding-right:14px}.app>main{margin-left:210px;padding-left:3.2vw;padding-right:3.2vw}
+  .brand{padding-left:8px}.brand b{font-size:23px}.app nav button{padding:12px 10px;gap:10px;font-size:14px}
+  .pageHero{padding:30px 28px;gap:18px}.pageHeroCopy{max-width:calc(100% - 235px)}.pageMascot{width:145px;right:8px}.pageHero h1{font-size:clamp(28px,3.5vw,38px)}
+  .hero{padding-left:5%;padding-right:5%}.cards,.contentGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Tablets: spacious two-column content, touch-friendly controls. */
+@media (min-width:721px) and (max-width:900px){
+  .app>aside{width:190px}.app>main{margin-left:190px}
+  .brand small{display:none}.brandMark{width:48px;height:48px}.brandMark img{max-width:100%}.app nav button{font-size:13px}
+  .pageHeroCopy{max-width:calc(100% - 170px)}.pageMascot{width:120px;bottom:-24px}.pageIcon{width:58px;height:58px;border-radius:18px;font-size:25px}
+  .metricRow,.adminStats,.stats{gap:10px}.pilotPassport{grid-template-columns:80px 1fr}.passportMetrics{grid-column:1/-1}
+}
+
+/* Phones / Discord mobile Activity. Keep every student destination in ONE bottom row. */
+@media (max-width:720px){
+  .app>aside{height:calc(64px + env(safe-area-inset-bottom));padding:6px 5px env(safe-area-inset-bottom);align-items:center;overflow:visible}
+  .app nav{height:58px;display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:1px;align-items:center;overflow:visible}
+  .app nav button,.app nav button:nth-child(6),.app nav button:nth-child(7),.app nav button:nth-child(8),.app nav button:nth-child(9){display:grid;place-items:center;min-width:0;width:100%;height:52px;padding:3px 0;margin:0;border:0;border-radius:12px;font-size:0;line-height:1;box-shadow:none!important;transform:none!important}
+  .app nav button:after{display:none}.app nav button i{width:30px;height:30px;margin:0;border-radius:10px;font-size:16px;line-height:1;background:transparent;box-shadow:none;transform:none!important}
+  .app nav button.active{background:linear-gradient(145deg,#e5f4ff,#eef1ff);box-shadow:inset 0 0 0 1px #cfe6ff!important}.app nav button.active i{background:linear-gradient(145deg,#d8efff,#e8eaff);box-shadow:none}
+  .app nav .adminNav{position:fixed;right:10px;top:max(10px,env(safe-area-inset-top));width:40px;height:40px;padding:0;border:1px solid #d8e8f8!important;border-radius:13px;font-size:0;background:#fffffff2;z-index:70}.app nav .adminNav i{font-size:17px}
+  .app>main{width:100%;margin:0;padding:0 12px calc(86px + env(safe-area-inset-bottom))}
+  .topbar{height:58px;min-width:0}.topActions{margin-left:auto;min-width:0}.topActions>span{padding:8px 9px}.avatar{flex:0 0 auto}
+  .hero{min-height:0;padding:26px 20px 190px;margin-top:6px;border-radius:24px;background-position:center}.hero h1{font-size:clamp(27px,8.5vw,34px);letter-spacing:-1px}.hero p{font-size:13px;line-height:1.55}.heroMascot{width:min(280px,76vw);right:50%;transform:translateX(50%);bottom:-10px}.heroMascot>img{animation:none}.heroBtns{gap:9px;margin-top:22px}.heroBtns button{min-height:50px}
+  .metricRow{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0 25px}.metricRow article{padding:13px 10px;min-width:0}.metricRow article>span{width:36px;height:36px}.metricRow b{font-size:14px}.metricRow small{font-size:9px}.metricRow article:last-child{grid-column:1/-1}
+  .pageHero{display:grid;grid-template-columns:54px minmax(0,1fr);align-items:center;gap:12px;margin-top:8px;padding:20px 16px;min-height:118px;text-align:left;border-radius:22px}.pageHeroCopy{max-width:none;min-width:0}.pageIcon{width:54px;height:54px;margin:0;border-radius:17px;font-size:24px}.pageHero h1{font-size:clamp(23px,7vw,30px);line-height:1.08;letter-spacing:-.7px;margin:4px 0}.pageHero p{font-size:12px;line-height:1.45;padding-right:0}.pageHero>div>span{font-size:9px;letter-spacing:1.3px}.pageMascot{display:none}
+  .filters{gap:8px;margin:14px -2px 20px;padding:0 2px 5px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}.filters button{min-height:44px;padding:10px 15px;border-radius:13px;flex:0 0 auto}
+  .cards,.contentGrid,.wordGrid{grid-template-columns:1fr;gap:12px}.missionCard,.contentCard{padding:18px;border-radius:20px}.contentCard>img{width:calc(100% + 36px);margin:-18px -18px 16px}
+  .sectionHead{align-items:center;gap:10px}.sectionHead h2{font-size:21px}.sectionHead button{flex:0 0 auto}
+  .player,.quizShell,.gameShell,.featurePanel{width:100%;padding:16px;margin:10px auto;border-radius:20px}.question{padding:15px}.answers button,.gameOptions button{min-height:48px}.gameTextInput{font-size:16px}
+  .flightMap{padding:18px 14px;border-radius:20px}.dailyMission{padding:14px;gap:10px}.dailyPlane img{width:48px;height:48px}.dailyMission h3{font-size:16px}.dailyMission p{font-size:11px}
+  .pilotPassport{padding:16px;border-radius:20px}.smartCoach{padding:15px;border-radius:19px}.smartCoach h3{font-size:17px}.streakBadges{gap:6px}.streakBadges span{padding:7px 9px}
+  .leaderboard article{padding:13px 12px;gap:9px}.leaderboard h3{font-size:14px}.leaderboard strong{font-size:15px}
+  .studentMain{grid-template-columns:42px minmax(0,1fr) 72px;gap:9px;padding:13px 12px}.studentMetric b{font-size:13px}.studentIdentity{min-width:0}.studentIdentity b,.studentIdentity small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .settingsGrid{grid-template-columns:1fr}.editor{max-height:calc(100dvh - 16px);overflow:auto}.editorFooter{padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+}
+
+/* Very small phones (320–380px): keep the nine icons aligned without wrapping. */
+@media (max-width:380px){
+  .app>main{padding-left:9px;padding-right:9px}.app nav{gap:0}.app nav button i{width:27px;height:27px;font-size:14px}.hero{padding-left:17px;padding-right:17px}.pageHero{grid-template-columns:48px minmax(0,1fr);padding:17px 13px}.pageIcon{width:48px;height:48px;font-size:21px}.pageHero h1{font-size:22px}.metricRow article{padding:11px 8px}.metricRow article>span{display:none}.topActions>span:first-child{display:none}
+}
+
+/* Wide screens: stop content becoming excessively stretched. */
+@media (min-width:1600px){.app>main{padding-left:6vw;padding-right:6vw}.hero,.pageHero,.metricRow,.flightMap,.dailyMission,.sectionHead,.cards,.contentGrid,.wordGrid,.filterStack{max-width:1440px;margin-left:auto;margin-right:auto}}
+
+@media (hover:none){.missionCard:hover,.contentCard:hover{transform:none}.app nav button:hover{transform:none}}
+
+/* V7.6.3 — MEWAY Motion UI. Pure client-side visual layer; zero API/D1 calls. */
+:root{--meway-ease:cubic-bezier(.2,.8,.2,1)}
+.app{background:
+ radial-gradient(circle at 88% 4%,rgba(83,177,255,.16),transparent 28%),
+ radial-gradient(circle at 16% 72%,rgba(105,91,255,.08),transparent 24%),#f4f8fd}
+.app button{transition:transform .22s var(--meway-ease),box-shadow .22s var(--meway-ease),background .22s ease,border-color .22s ease}
+.primary{position:relative;overflow:hidden}.primary:before{content:"";position:absolute;inset:-70% auto -70% -35%;width:25%;transform:rotate(18deg);background:linear-gradient(90deg,transparent,#fff9,transparent);animation:mewayShine 5s ease-in-out infinite}.primary:active,.filters button:active,.app nav button:active{transform:scale(.96)}
+.hero{isolation:isolate}.hero:after{animation:heroOrbit 12s linear infinite}.hero:before{animation:heroOrbit 17s linear infinite reverse}.heroMascot{filter:drop-shadow(0 24px 30px rgba(3,44,110,.28))}.heroMascot>img{animation:mewayFloat 4.2s ease-in-out infinite}.flightChip{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.pageHero{position:relative;isolation:isolate;overflow:hidden}.pageHero:after{content:"";position:absolute;z-index:-1;width:220px;height:220px;border-radius:50%;right:-80px;top:-120px;background:radial-gradient(circle,rgba(65,166,255,.16),transparent 68%);animation:softPulse 5s ease-in-out infinite}.pageIcon{position:relative;isolation:isolate;box-shadow:0 16px 35px rgba(22,119,255,.24),inset 0 1px 0 #ffffff55}.pageIcon:before{content:"";position:absolute;z-index:-1;inset:-6px;border:1px solid rgba(55,154,255,.18);border-radius:27px;animation:iconHalo 3s ease-in-out infinite}.pageIcon:after{content:"";position:absolute;inset:1px;border-radius:inherit;background:linear-gradient(135deg,#ffffff3d,transparent 42%);pointer-events:none}
+.missionCard,.contentCard,.wordCard,.metricRow article,.pilotPassport,.smartCoach,.dailyMission,.flightMap{transition:transform .28s var(--meway-ease),box-shadow .28s var(--meway-ease),border-color .28s ease}.missionCard:hover,.contentCard:hover,.wordCard:hover{transform:translateY(-7px) scale(1.012);box-shadow:0 24px 58px rgba(22,105,194,.16)}.missionIcon,.contentIcon{transition:transform .25s var(--meway-ease),filter .25s ease}.missionCard:hover .missionIcon,.contentCard:hover .contentIcon{transform:rotate(-5deg) scale(1.08);filter:drop-shadow(0 7px 10px rgba(22,119,255,.2))}
+.filters button{position:relative;overflow:hidden}.filters button.active{box-shadow:0 10px 24px rgba(19,127,255,.22)}
+.smartCoach{position:relative;overflow:hidden}.smartCoach:after{content:"";position:absolute;width:140px;height:140px;right:-55px;top:-80px;border-radius:50%;background:#8f7cff12;animation:softPulse 4s ease-in-out infinite}.smartCoach img{animation:mewayFloat 4.6s ease-in-out infinite}
+.levelUpToast{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+@keyframes mewayFloat{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-8px) rotate(1deg)}}
+@keyframes mewayShine{0%,70%{left:-35%;opacity:0}78%{opacity:1}92%,100%{left:125%;opacity:0}}
+@keyframes heroOrbit{to{transform:rotate(360deg)}}
+@keyframes softPulse{0%,100%{transform:scale(.92);opacity:.55}50%{transform:scale(1.08);opacity:1}}
+@keyframes iconHalo{0%,100%{transform:scale(.96);opacity:.35}50%{transform:scale(1.06);opacity:.9}}
+
+/* Touch devices keep the effects, but use tap/active feedback instead of hover. */
+@media (hover:none){
+ .missionCard:hover,.contentCard:hover,.wordCard:hover{transform:none;box-shadow:0 10px 35px #1648790c}
+ .missionCard:active,.contentCard:active,.wordCard:active{transform:scale(.985);border-color:#b9d9ff;box-shadow:0 14px 34px rgba(22,105,194,.13)}
+ .metricRow article:active,.dailyMission:active,.smartCoach:active{transform:scale(.985)}
+}
+
+/* Premium mobile dock: one line, animated selection, iOS/Android safe area. */
+@media (max-width:720px){
+ .app>aside{background:rgba(249,252,255,.88);border-top:1px solid rgba(193,218,246,.75);box-shadow:0 -12px 38px rgba(14,72,139,.12);backdrop-filter:blur(24px) saturate(1.35);-webkit-backdrop-filter:blur(24px) saturate(1.35)}
+ .app nav button{position:relative;overflow:visible}.app nav button i{display:grid;place-items:center;transition:transform .24s var(--meway-ease),background .24s ease,box-shadow .24s ease;filter:saturate(.92)}
+ .app nav button.active{background:transparent!important}.app nav button.active i{transform:translateY(-3px) scale(1.08)!important;background:linear-gradient(145deg,#e3f4ff,#e9e9ff);box-shadow:0 7px 16px rgba(20,112,226,.16)!important;filter:saturate(1.15)}
+ .app nav button.active:before{content:"";position:absolute;bottom:1px;left:50%;width:16px;height:3px;border-radius:9px;transform:translateX(-50%);background:linear-gradient(90deg,#12a5ff,#4b5cff);box-shadow:0 0 12px #1682ff88}
+ .hero:before,.hero:after{opacity:.55}.heroMascot>img{animation:mewayFloat 4.8s ease-in-out infinite}.hero{box-shadow:0 20px 45px rgba(10,75,156,.2)}
+ .pageIcon:before{inset:-4px;border-radius:21px}.pageHero{box-shadow:0 13px 34px rgba(25,91,160,.08)}
+ .filters{scroll-snap-type:x proximity}.filters button{scroll-snap-align:start}
+ .metricRow article,.missionCard,.contentCard,.wordCard,.dailyMission,.smartCoach,.flightMap,.pilotPassport{box-shadow:0 9px 28px rgba(23,75,129,.08)}
+ .primary:before{animation-duration:5.8s}
+}
+
+/* Tablet: richer glass panels and gentle depth without desktop-sized movement. */
+@media (min-width:721px) and (max-width:1180px){
+ .pageHero,.dailyMission,.smartCoach{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+ .missionCard:hover,.contentCard:hover,.wordCard:hover{transform:translateY(-4px) scale(1.006)}
+}
+
+/* Accessibility / battery: respect OS motion preference while keeping the premium styling. */
+@media (prefers-reduced-motion:reduce){
+ *,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.12s!important}
+}

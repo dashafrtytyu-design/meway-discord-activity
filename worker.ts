@@ -61,21 +61,28 @@ async function ensureDb(env: Env) {
 
 async function seedContent(env: Env) {
   if (contentSeedChecked) return
-  const row = await env.DB.prepare('SELECT COUNT(*) AS count FROM content').first<{ count: number }>()
-  if (row?.count) { contentSeedChecked = true; return }
+  await ensureDb(env)
   const samples: ContentItem[] = [
     {id:101,section:'games',title:'Найди перевод',description:'Выбирай правильный перевод и собирай серию точных ответов.',status:'published',level:'A1',icon:'🎯',xp:15,category:'Слова',payload:{gameType:'word-match',words:[{ru:'Самолёт',en:'Plane'},{ru:'Билет',en:'Ticket'},{ru:'Багаж',en:'Luggage'},{ru:'Паспорт',en:'Passport'}]}},
     {id:102,section:'games',title:'Собери слово',description:'Собери английское слово из перемешанных букв.',status:'published',level:'A1',icon:'🔤',xp:15,category:'Слова',payload:{gameType:'word-builder',words:[{ru:'Путешествие',en:'Travel'},{ru:'Аэропорт',en:'Airport'}]}},
     {id:103,section:'games',title:'Memory Cards',description:'Найди пары русского и английского слова.',status:'published',level:'A2',icon:'🧠',xp:20,category:'Память',payload:{gameType:'memory',words:[{ru:'Дом',en:'House'},{ru:'Книга',en:'Book'},{ru:'Вода',en:'Water'},{ru:'Друг',en:'Friend'}]}},
-    {id:104,section:'games',title:'Speed English',description:'Отвечай быстро и набирай комбо за 30 секунд.',status:'published',level:'A2',icon:'⚡',xp:25,category:'Скорость',payload:{gameType:'speed',words:[{ru:'Быстро',en:'Fast'},{ru:'Медленно',en:'Slow'}]}},
+    {id:104,section:'games',title:'Speed English',description:'Отвечай быстро и набирай комбо.',status:'published',level:'A2',icon:'⚡',xp:25,category:'Скорость',payload:{gameType:'speed',words:[{ru:'Быстро',en:'Fast'},{ru:'Медленно',en:'Slow'}]}},
     {id:105,section:'games',title:'Grammar Race',description:'Выбирай правильную форму и двигайся к финишу.',status:'published',level:'B1',icon:'🏁',xp:30,category:'Грамматика',payload:{gameType:'grammar-race',words:[{ru:'идёт',en:'goes'},{ru:'играют',en:'play'}]}},
-    {id:106,section:'games',title:'Лишнее слово',description:'Найди слово, которое не подходит к теме.',status:'published',level:'A2',icon:'🔎',xp:20,category:'Смешанное',payload:{gameType:'odd-one',words:[{ru:'яблоко',en:'apple'},{ru:'банан',en:'banana'},{ru:'поезд',en:'train'}]}},
+    {id:106,section:'games',title:'Лишнее слово',description:'Найди слово, которое не подходит к теме.',status:'published',level:'A2',icon:'🔎',xp:20,category:'Смешанное',payload:{gameType:'odd-one',words:[{ru:'яблоко',en:'apple'},{ru:'банан',en:'banana'},{ru:'поезд',en:'train'}],oddAnswer:'train'}},
+    {id:107,section:'games',title:'Что на фото?',description:'Посмотри на изображение и выбери английское слово.',status:'published',level:'A1',icon:'🖼️',xp:20,category:'Фото',payload:{gameType:'image-guess',words:[{ru:'Вишня',en:'Cherry',transcription:'/ˈtʃer.i/',image:''},{ru:'Яблоко',en:'Apple',transcription:'/ˈæp.əl/',image:''},{ru:'Банан',en:'Banana',transcription:'/bəˈnɑː.nə/',image:''}]}},
+    {id:108,section:'games',title:'Собери предложение',description:'Расставь английские слова в правильном порядке.',status:'published',level:'A2',icon:'🧩',xp:25,category:'Предложения',payload:{gameType:'sentence-order',words:[{ru:'Я люблю путешествовать',en:'I love to travel',hint:'I love to travel'},{ru:'Она читает каждый день',en:'She reads every day',hint:'She reads every day'}]}},
+    {id:109,section:'games',title:'Правда или ложь',description:'Определи, верно ли английское утверждение.',status:'published',level:'A2',icon:'✅',xp:20,category:'Смешанное',payload:{gameType:'true-false',words:[{ru:'Кошка',en:'cat',hint:'Кошка = cat'},{ru:'Собака',en:'dog',hint:'Собака = cat'}]}},
+    {id:110,section:'games',title:'Пропущенное слово',description:'Вставь правильное английское слово в предложение.',status:'published',level:'B1',icon:'✍️',xp:30,category:'Грамматика',payload:{gameType:'missing-word',words:[{ru:'путешествовать',en:'travel',hint:'I love to ___ in summer.'},{ru:'учиться',en:'study',hint:'I ___ English every day.'}]}},
+    {id:111,section:'games',title:'Напиши перевод',description:'Введи английский перевод самостоятельно.',status:'published',level:'A1',icon:'⌨️',xp:25,category:'Слова',payload:{gameType:'translation-input',words:[{ru:'Дом',en:'house',transcription:'/haʊs/'},{ru:'Книга',en:'book',transcription:'/bʊk/'}]}},
+    {id:112,section:'games',title:'Разложи по категориям',description:'Определи, к какой теме относится слово.',status:'published',level:'A2',icon:'🗂️',xp:25,category:'Смешанное',payload:{gameType:'category-sort',words:[{ru:'Яблоко',en:'Apple',category:'Еда'},{ru:'Самолёт',en:'Plane',category:'Путешествия'},{ru:'Учитель',en:'Teacher',category:'Школа'}]}},
     {id:201,section:'quizzes',title:'Quick Grammar A1',description:'Короткая проверка базовой грамматики.',status:'published',level:'A1',icon:'📝',xp:20,category:'Грамматика',payload:{questions:[{id:1,question:'She ___ English every day.',options:['study','studies','studying','studied'],correctAnswer:'studies',explanation:'С she в Present Simple добавляем -s/-es.'}]}},
     {id:301,section:'words',title:'Путешествия',description:'Главные слова для аэропорта, поездки и отеля.',status:'published',level:'A1',icon:'✈️',xp:0,category:'Путешествия',payload:{words:[{ru:'Самолёт',en:'Plane',transcription:'/pleɪn/',image:'',example:'The plane is ready.'},{ru:'Багаж',en:'Luggage',transcription:'/ˈlʌɡ.ɪdʒ/',image:'',example:'My luggage is heavy.'},{ru:'Билет',en:'Ticket',transcription:'/ˈtɪk.ɪt/',image:'',example:'Here is my ticket.'}]}},
     {id:401,section:'challenges',title:'7 дней английского',description:'Выполняй одно короткое задание каждый день.',status:'published',level:'A1',icon:'🔥',xp:100,category:'Серия',payload:{goal:'Не пропустить 7 дней подряд',instructions:'Каждый день открой MEWAY и заверши хотя бы одну миссию или квиз.',reward:'Значок «7 Day Streak» + 100 XP'}},
     {id:501,section:'rewards',title:'First Flight',description:'Твоя первая награда в MEWAY.',status:'published',level:'A1',icon:'🏆',xp:0,category:'Достижения',payload:{goal:'Заверши первую миссию',instructions:'Пройди любую опубликованную миссию до конца.',reward:'Значок First Flight'}}
   ]
-  for (const x of samples) await env.DB.prepare('INSERT INTO content (id, section, data, updated_at) VALUES (?, ?, ?, ?)').bind(x.id,x.section,JSON.stringify(x),new Date().toISOString()).run()
+  const existing = await env.DB.prepare('SELECT id FROM content').all<{id:number}>()
+  const ids = new Set(existing.results.map(r=>Number(r.id)))
+  for (const x of samples) if (!ids.has(x.id)) await env.DB.prepare('INSERT INTO content (id, section, data, updated_at) VALUES (?, ?, ?, ?)').bind(x.id,x.section,JSON.stringify(x),new Date().toISOString()).run()
   contentSeedChecked = true
 }
 
@@ -180,6 +187,13 @@ export default {
       const items=await listContent(env,section)
       setPublic(key,items)
       return json({ok:true,items})
+    }
+
+    if (url.pathname === '/api/admin/bootstrap' && request.method === 'GET') {
+      const admin = await requireAdmin(request, env)
+      if (!admin) return json({ ok: false, error: 'Admin access required.' }, 403)
+      const [missions, items] = await Promise.all([listMissions(env, true), listContent(env, undefined, true)])
+      return json({ ok: true, missions, items })
     }
 
     if (url.pathname === '/api/admin/content') {

@@ -4,9 +4,35 @@ interface Env {
   DISCORD_CLIENT_ID: string
   DISCORD_CLIENT_SECRET: string
   ADMIN_DISCORD_ID: string
+  DISCORD_GUILD_ID?: string
+  DISCORD_BOT_TOKEN?: string
 }
 
 type DiscordUser = { id: string; username: string; global_name?: string | null; avatar?: string | null }
+
+const LEVEL_ROLES = [
+  { xp: 500, id: '1554470422907723836', name: 'BEGINNER' },
+  { xp: 1000, id: '1554470628818690160', name: 'LEARNER' },
+  { xp: 2000, id: '1554470707629395968', name: 'ACTIVE LEARNER' },
+  { xp: 3000, id: '1554470802555019325', name: 'ENGLISH EXPLORER' },
+  { xp: 5000, id: '1554470911904714852', name: 'ENGLISH MASTER' },
+] as const
+function levelForXp(xp:number){ return [...LEVEL_ROLES].reverse().find(x=>xp>=x.xp) || null }
+async function syncDiscordLevelRole(env:Env,userId:string,xp:number){
+  if(!env.DISCORD_BOT_TOKEN||!env.DISCORD_GUILD_ID) return {ok:false,configured:false}
+  const target=levelForXp(xp)
+  const headers={Authorization:`Bot ${env.DISCORD_BOT_TOKEN}`}
+  for(const role of LEVEL_ROLES){
+    if(role.id===target?.id) continue
+    const r=await fetch(`https://discord.com/api/v10/guilds/${env.DISCORD_GUILD_ID}/members/${userId}/roles/${role.id}`,{method:'DELETE',headers})
+    if(!r.ok&&r.status!==404) console.error('Discord role remove failed',role.name,r.status)
+  }
+  if(target){
+    const r=await fetch(`https://discord.com/api/v10/guilds/${env.DISCORD_GUILD_ID}/members/${userId}/roles/${target.id}`,{method:'PUT',headers})
+    if(!r.ok){ console.error('Discord role add failed',target.name,r.status,await r.text()); return {ok:false,configured:true,role:target.name} }
+  }
+  return {ok:true,configured:true,role:target?.name||null,roleId:target?.id||null}
+}
 
 type Mission = {
   id: number; title: string; description: string; category: string; level: string
@@ -166,15 +192,25 @@ export default {
       if (!user) return json({ ok: false, error: 'Discord authentication required.' }, 401)
       await ensureDb(env)
       if (request.method === 'GET') {
-        const row = await env.DB.prepare('SELECT data FROM progress WHERE user_id = ?').bind(user.id).first<{data:string}>()
-        const base = { xp: 120, completedMissions: [], completedContent: [], nickname: '', avatar: '' }
-        return json({ ok: true, progress: row?.data ? { ...base, ...JSON.parse(row.data) } : base })
+        const row = await env.DB.prepare('SELECT data, updated_at FROM progress WHERE user_id = ?').bind(user.id).first<{data:string;updated_at:string}>()
+        const now=new Date().toISOString()
+        const base:any = { xp: 120, completedMissions: [], completedContent: [], nickname: '', avatar: '', mistakes: 0, firstSeen: now, lastSeen: now, discordUsername: user.username, discordGlobalName: user.global_name ?? '' }
+        const progress:any = row?.data ? { ...base, ...JSON.parse(row.data), lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' } : base
+        const desired=levelForXp(progress.xp)?.id||''
+        if(progress.syncedRoleId!==desired){const roleSync=await syncDiscordLevelRole(env,user.id,progress.xp);if(roleSync.ok)progress.syncedRoleId=desired}
+        await env.DB.prepare('INSERT OR REPLACE INTO progress (user_id, data, updated_at) VALUES (?, ?, ?)').bind(user.id, JSON.stringify(progress), now).run()
+        return json({ ok: true, progress })
       }
       if (request.method === 'PUT') {
         const data = await request.json<any>().catch(()=>null)
         if (!data || typeof data !== 'object') return json({ok:false,error:'Invalid progress.'},400)
-        const safe = { xp: Math.max(0, Number(data.xp)||0), completedMissions: Array.isArray(data.completedMissions)?data.completedMissions.slice(0,1000):[], completedContent: Array.isArray(data.completedContent)?data.completedContent.slice(0,2000):[], nickname: String(data.nickname||'').slice(0,40), avatar: String(data.avatar||'').slice(0,750000) }
-        await env.DB.prepare('INSERT OR REPLACE INTO progress (user_id, data, updated_at) VALUES (?, ?, ?)').bind(user.id, JSON.stringify(safe), new Date().toISOString()).run()
+        const oldRow=await env.DB.prepare('SELECT data FROM progress WHERE user_id = ?').bind(user.id).first<{data:string}>()
+        const old:any=oldRow?.data?JSON.parse(oldRow.data):{}
+        const now=new Date().toISOString()
+        const safe:any = { xp: Math.max(0, Number(data.xp)||0), completedMissions: Array.isArray(data.completedMissions)?data.completedMissions.slice(0,1000):[], completedContent: Array.isArray(data.completedContent)?data.completedContent.slice(0,2000):[], nickname: String(data.nickname||'').slice(0,40), avatar: String(data.avatar||'').slice(0,750000), mistakes: Math.max(0,Number(data.mistakes??old.mistakes)||0), firstSeen: old.firstSeen||now, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' }
+        const desired=levelForXp(safe.xp)?.id||''
+        if(old.syncedRoleId!==desired){const roleSync=await syncDiscordLevelRole(env,user.id,safe.xp);if(roleSync.ok)safe.syncedRoleId=desired;else safe.syncedRoleId=old.syncedRoleId||''}else safe.syncedRoleId=old.syncedRoleId||''
+        await env.DB.prepare('INSERT OR REPLACE INTO progress (user_id, data, updated_at) VALUES (?, ?, ?)').bind(user.id, JSON.stringify(safe), now).run()
         return json({ok:true,progress:safe})
       }
     }
@@ -187,6 +223,20 @@ export default {
       const items=await listContent(env,section)
       setPublic(key,items)
       return json({ok:true,items})
+    }
+
+    if (url.pathname === '/api/admin/students' && request.method === 'GET') {
+      const admin = await requireAdmin(request, env)
+      if (!admin) return json({ok:false,error:'Admin access required.'},403)
+      await ensureDb(env)
+      const [rows,missions,items]=await Promise.all([
+        env.DB.prepare('SELECT user_id, data, updated_at FROM progress ORDER BY updated_at DESC').all<{user_id:string;data:string;updated_at:string}>(),
+        listMissions(env,true),listContent(env,undefined,true)
+      ])
+      const missionNames=new Map(missions.map(x=>[x.id,x.title]))
+      const contentNames=new Map(items.map(x=>[x.id,x.title]))
+      const students=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const xp=Math.max(0,Number(d.xp)||0);const lvl=levelForXp(xp);return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||`Discord ${r.user_id}`,discordUsername:d.discordUsername||'',xp,level:lvl?.name||'До BEGINNER',mistakes:Math.max(0,Number(d.mistakes)||0),firstSeen:d.firstSeen||r.updated_at,lastSeen:d.lastSeen||r.updated_at,completedMissions:(d.completedMissions||[]).map((id:number)=>({id,title:missionNames.get(id)||`Миссия #${id}`})),completedContent:(d.completedContent||[]).map((id:number)=>({id,title:contentNames.get(id)||`Материал #${id}`}))}})
+      return json({ok:true,students})
     }
 
     if (url.pathname === '/api/admin/bootstrap' && request.method === 'GET') {

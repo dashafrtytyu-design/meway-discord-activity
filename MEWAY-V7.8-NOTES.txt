@@ -1,0 +1,18 @@
+MEWAY V7.8 — VISUAL ADMIN STUDIO
+
+Added without changing existing student structure or API endpoints:
+- One LIVE visual prototype inside Mission and every Content editor.
+- Edit title and description directly inside the prototype.
+- Games show a mechanic-specific prototype.
+- Crossword: live grid + word preview + row controls + direction switch.
+- Picture puzzle: live image grid + 2x2/3x3/4x4/5x5 controls.
+- Drag & Sort: live draggable-style word/category layout preview.
+- Words: live flashcard editor.
+- Quizzes and missions: live question/answer layout.
+- Challenges: live goal/instructions layout.
+- Rewards: live achievement card.
+- Existing detailed text/form controls remain below and stay synchronized.
+- Responsive styling for desktop/tablet/mobile and light/dark themes.
+- Preview editing is React local state only. It adds zero Cloudflare/D1 requests. Existing save behavior is unchanged: network write occurs only when saving.
+
+Build note: local dependency installation in this sandbox did not complete; npm run build could not find vite/client and @types/node. No API/backend dependency was added.

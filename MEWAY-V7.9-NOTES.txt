@@ -1,0 +1,16 @@
+MEWAY V7.9 — EXACT VISUAL ADMIN EDITOR
+
+- Reworked LIVE preview into a student-view visual editor for missions, games, quizzes, words, challenges and rewards.
+- Title, description, icon, level, category and XP editable directly in the preview.
+- Questions: edit every question, answer option, correct answer and explanation in preview; add/remove questions.
+- Words: edit every card, Russian/English/transcription/example and upload/replace image in preview.
+- Crossword: edit individual visible cells; edit each clue/word; move each word up/down/left/right and switch direction directly in preview.
+- Picture puzzle: replace image in preview, edit label and switch 2x2–5x5 grid.
+- Drag & Sort: edit words and categories directly in visual groups.
+- Other game mechanics: edit every round and answer options directly in the student-style game card.
+- Challenge/reward fields editable directly in the visual card.
+- Existing detailed text/form editors are preserved below as requested.
+- Light/dark and responsive mobile/tablet/desktop CSS added.
+- Cloud Saver preserved: preview edits are React local state only; no fetch/API/D1 calls were added. Cloud write happens only through the existing Save action.
+
+Build note: npm dependency installation in the packaging environment was incomplete, so local tsc could not resolve vite/client and node type definitions. Source changes are included; no Worker/API schema change is required.

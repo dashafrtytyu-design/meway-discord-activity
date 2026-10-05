@@ -1,0 +1,9 @@
+MEWAY V7.6.7 — Reliable Discord XP roles + Cloud Saver
+
+- Preserves the existing UI, content, D1 schema, 20-second progress batching, leaderboard/admin/student caches and zero-polling behavior.
+- Keeps the same six managed XP roles and thresholds.
+- Discord role sync still runs immediately when XP crosses a level threshold.
+- Fix: if Discord role assignment previously failed, syncedRoleId no longer prevents future recovery forever.
+- A failed/mismatched role is retried only on a later progress save, with a 5-minute cooldown.
+- No background timer, no role polling, no Discord check on app open/refresh, and no extra request on normal saves when the cached role matches.
+- Existing non-XP Discord roles are untouched.

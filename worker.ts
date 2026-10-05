@@ -241,12 +241,16 @@ export default {
         const oldM=new Set<number>(Array.isArray(old.completedMissions)?old.completedMissions:[]),oldC=new Set<number>(Array.isArray(old.completedContent)?old.completedContent:[]);if(safe.completedMissions.some((id:number)=>!oldM.has(id)))addEvent('mission','завершил(а) новую миссию');if(safe.completedContent.some((id:number)=>!oldC.has(id)))addEvent('content','завершил(а) новый материал')
         const oldStreak=streakForDays(old.activityDays),newStreak=streakForDays(safe.activityDays),cfg=await getSettings(env);for(const milestone of cfg.streak.milestones){if(oldStreak<milestone&&newStreak>=milestone)addEvent('streak',`достиг(ла) серии ${milestone} дней 🔥`)}
         const desired=levelForXp(safe.xp)?.id||''
-        // EVENT-ONLY role sync: no timer, polling, periodic verification, or role check on ordinary saves.
-        // Discord is contacted only when the XP level actually changes, or once when this user's role cache has never been initialized.
-        // The frontend marks a level-crossing save as urgent, so the new Discord role is granted immediately instead of waiting for the 20s batch.
+        // CLOUD-SAVER role sync: no timer, polling, refresh-time Discord checks, or checks on ordinary saves.
+        // Discord is contacted immediately on an XP-level crossing. If a previous Discord sync failed,
+        // retry only on a later progress save and at most once every 5 minutes until D1 confirms the desired role.
+        // This keeps normal Cloudflare/Discord traffic minimal while making failed role grants self-healing.
         const levelChanged=newLevel?.id!==oldLevel?.id
         const roleCacheMissing=typeof old.syncedRoleId!=='string'
-        const mustVerifyRole=levelChanged||roleCacheMissing
+        const roleCacheMismatch=(typeof old.syncedRoleId==='string'&&old.syncedRoleId!==desired)
+        const lastRoleErrorAt=Date.parse(String(old.roleSyncError?.at||''))
+        const retryDue=roleCacheMismatch&&(!Number.isFinite(lastRoleErrorAt)||(Date.now()-lastRoleErrorAt)>=5*60*1000)
+        const mustVerifyRole=levelChanged||roleCacheMissing||retryDue
         let roleSync:any=null
         if(mustVerifyRole){
           roleSync=await syncDiscordLevelRole(env,user.id,safe.xp)

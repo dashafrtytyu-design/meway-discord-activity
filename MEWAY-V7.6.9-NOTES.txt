@@ -1,0 +1,6 @@
+MEWAY V7.6.9 — Dark Theme Readability Polish
+- Fixed unreadable text on light/white admin surfaces in dark mode.
+- Dark-styled admin statistics, content lists, student panels, settings and editors.
+- Replaced the bright diagonal background stripe in dark mode with subtle MEWAY blue ambient glows + a faint grid texture.
+- Light theme, application logic, XP, roles, D1, API and existing content are unchanged.
+- CSS-only visual update: zero additional Cloudflare Worker/D1 requests.

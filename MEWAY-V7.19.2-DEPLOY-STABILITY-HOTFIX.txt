@@ -1,0 +1,14 @@
+MEWAY V7.19.2 — DEPLOY STABILITY HOTFIX
+
+Fixed Cloudflare Worker module-evaluation errors in contentSeed.ts:
+1. LEVELS -> levels (from V7.19.1).
+2. Removed all undeclared id++ references in the V7.19 expansion.
+3. Content entries now use expansionContentId.
+4. Mission entries now use expansionMissionId and the existing SeedMission schema (duration + tasks, published status).
+5. Verified there are no remaining bare LEVELS or id++ references.
+6. Compiled contentSeed.ts independently with TypeScript successfully.
+7. Executed the compiled contentSeed module under Node successfully.
+8. Runtime generation result: 2730 content items and 1428 missions.
+9. Verified generated content IDs are unique and generated mission IDs are unique.
+
+UI/design and application architecture were not intentionally changed.

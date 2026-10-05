@@ -1,4 +1,5 @@
 import { generatedContent, generatedMissions } from './contentSeed'
+import { MEWAY_BUILD_ID } from './buildVersion'
 interface Env {
   ASSETS: Fetcher
   DB: D1Database
@@ -77,17 +78,28 @@ const seed: Mission[] = [
   ...generatedMissions as Mission[]
 ]
 
+const PRIVATE_FIELD=/^(admin|adminNotes?|internal|internalNotes?|private|secret|draftData|hiddenData|moderation|ownerOnly)$/i
+function stripPrivate(value:any):any{
+  if(Array.isArray(value)) return value.map(stripPrivate)
+  if(value&&typeof value==='object'){const out:any={};for(const [k,v] of Object.entries(value))if(!PRIVATE_FIELD.test(k))out[k]=stripPrivate(v);return out}
+  return value
+}
+function studentMission(m:Mission){return stripPrivate({id:m.id,title:m.title,description:m.description,category:m.category,level:m.level,xp:m.xp,icon:m.icon,duration:m.duration,status:m.status,tasks:m.tasks})}
+function studentContent(x:ContentItem){return stripPrivate({id:x.id,section:x.section,title:x.title,description:x.description,status:x.status,level:x.level,icon:x.icon,xp:x.xp,category:x.category,payload:x.payload})}
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=UTF-8', 'Cache-Control': 'no-store' } })
 }
 
 let dbReady = false
-let contentSeedChecked = false
 
 // Warm-isolate caches reduce repeated D1 reads and Discord identity lookups.
 const publicCache = new Map<string,{expires:number,data:unknown}>()
 const identityCache = new Map<string,{expires:number,user:DiscordUser}>()
-const PUBLIC_TTL_MS = 10 * 60 * 1000
+const PUBLIC_TTL_MS = 30 * 1000
+const APP_CONTENT_VERSION = MEWAY_BUILD_ID
+type Revisions={missions:string;games:string;quizzes:string;words:string;challenges:string;rewards:string;settings:string}
+const EMPTY_REVISIONS:Revisions={missions:'0',games:'0',quizzes:'0',words:'0',challenges:'0',rewards:'0',settings:'0'}
 const IDENTITY_TTL_MS = 5 * 60 * 1000
 // Short server-side caches reduce repeated D1 reads inside a warm Worker isolate.
 // They never poll and are invalidated immediately after admin writes/progress updates.
@@ -102,49 +114,66 @@ function clearPublic(){publicCache.clear()}
 
 async function ensureDb(env: Env) {
   if (dbReady) return
-  await env.DB.exec(`CREATE TABLE IF NOT EXISTS missions (id INTEGER PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS content (id INTEGER PRIMARY KEY, section TEXT NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS progress (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL); CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, updated_at TEXT NOT NULL);`)
-  const existingMissions = await env.DB.prepare('SELECT id FROM missions').all<{id:number}>()
-  const missionIds = new Set((existingMissions.results||[]).map(r=>Number(r.id)))
-  for (const mission of seed) if (!missionIds.has(mission.id)) {
-    await env.DB.prepare('INSERT INTO missions (id, data, updated_at) VALUES (?, ?, ?)').bind(mission.id, JSON.stringify(mission), new Date().toISOString()).run()
-  }
+  // IMPORTANT: schema creation only. The built-in curriculum lives in the Worker bundle
+  // and is never copied row-by-row into D1 on a user request. This keeps cold starts fast
+  // even with thousands of MEWAY materials.
+  await env.DB.exec(`
+    CREATE TABLE IF NOT EXISTS missions (id INTEGER PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS content (id INTEGER PRIMARY KEY, section TEXT NOT NULL, data TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS progress (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS deleted_missions (id INTEGER PRIMARY KEY, deleted_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS deleted_content (id INTEGER PRIMARY KEY, deleted_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS meway_meta (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, updated_at TEXT NOT NULL);
+  `)
   dbReady = true
 }
 
-
-async function seedContent(env: Env) {
-  if (contentSeedChecked) return
-  await ensureDb(env)
-  const samples: ContentItem[] = [
-    {id:101,section:'games',title:'Найди перевод',description:'Выбирай правильный перевод и собирай серию точных ответов.',status:'published',level:'A1',icon:'🎯',xp:15,category:'Слова',payload:{gameType:'word-match',words:[{ru:'Самолёт',en:'Plane'},{ru:'Билет',en:'Ticket'},{ru:'Багаж',en:'Luggage'},{ru:'Паспорт',en:'Passport'}]}},
-    {id:102,section:'games',title:'Собери слово',description:'Собери английское слово из перемешанных букв.',status:'published',level:'A1',icon:'🔤',xp:15,category:'Слова',payload:{gameType:'word-builder',words:[{ru:'Путешествие',en:'Travel'},{ru:'Аэропорт',en:'Airport'}]}},
-    {id:103,section:'games',title:'Memory Cards',description:'Найди пары русского и английского слова.',status:'published',level:'A2',icon:'🧠',xp:20,category:'Память',payload:{gameType:'memory',words:[{ru:'Дом',en:'House'},{ru:'Книга',en:'Book'},{ru:'Вода',en:'Water'},{ru:'Друг',en:'Friend'}]}},
-    {id:104,section:'games',title:'Speed English',description:'Отвечай быстро и набирай комбо.',status:'published',level:'A2',icon:'⚡',xp:25,category:'Скорость',payload:{gameType:'speed',words:[{ru:'Быстро',en:'Fast'},{ru:'Медленно',en:'Slow'}]}},
-    {id:105,section:'games',title:'Grammar Race',description:'Выбирай правильную форму и двигайся к финишу.',status:'published',level:'B1',icon:'🏁',xp:30,category:'Грамматика',payload:{gameType:'grammar-race',words:[{ru:'идёт',en:'goes'},{ru:'играют',en:'play'}]}},
-    {id:106,section:'games',title:'Лишнее слово',description:'Найди слово, которое не подходит к теме.',status:'published',level:'A2',icon:'🔎',xp:20,category:'Смешанное',payload:{gameType:'odd-one',words:[{ru:'яблоко',en:'apple'},{ru:'банан',en:'banana'},{ru:'поезд',en:'train'}],oddAnswer:'train'}},
-    {id:107,section:'games',title:'Что на фото?',description:'Посмотри на изображение и выбери английское слово.',status:'published',level:'A1',icon:'🖼️',xp:20,category:'Фото',payload:{gameType:'image-guess',words:[{ru:'Вишня',en:'Cherry',transcription:'/ˈtʃer.i/',image:''},{ru:'Яблоко',en:'Apple',transcription:'/ˈæp.əl/',image:''},{ru:'Банан',en:'Banana',transcription:'/bəˈnɑː.nə/',image:''}]}},
-    {id:108,section:'games',title:'Собери предложение',description:'Расставь английские слова в правильном порядке.',status:'published',level:'A2',icon:'🧩',xp:25,category:'Предложения',payload:{gameType:'sentence-order',words:[{ru:'Я люблю путешествовать',en:'I love to travel',hint:'I love to travel'},{ru:'Она читает каждый день',en:'She reads every day',hint:'She reads every day'}]}},
-    {id:109,section:'games',title:'Правда или ложь',description:'Определи, верно ли английское утверждение.',status:'published',level:'A2',icon:'✅',xp:20,category:'Смешанное',payload:{gameType:'true-false',words:[{ru:'Кошка',en:'cat',hint:'Кошка = cat'},{ru:'Собака',en:'dog',hint:'Собака = cat'}]}},
-    {id:110,section:'games',title:'Пропущенное слово',description:'Вставь правильное английское слово в предложение.',status:'published',level:'B1',icon:'✍️',xp:30,category:'Грамматика',payload:{gameType:'missing-word',words:[{ru:'путешествовать',en:'travel',hint:'I love to ___ in summer.'},{ru:'учиться',en:'study',hint:'I ___ English every day.'}]}},
-    {id:111,section:'games',title:'Напиши перевод',description:'Введи английский перевод самостоятельно.',status:'published',level:'A1',icon:'⌨️',xp:25,category:'Слова',payload:{gameType:'translation-input',words:[{ru:'Дом',en:'house',transcription:'/haʊs/'},{ru:'Книга',en:'book',transcription:'/bʊk/'}]}},
-    {id:112,section:'games',title:'Разложи по категориям',description:'Определи, к какой теме относится слово.',status:'published',level:'A2',icon:'🗂️',xp:25,category:'Смешанное',payload:{gameType:'category-sort',words:[{ru:'Яблоко',en:'Apple',category:'Еда'},{ru:'Самолёт',en:'Plane',category:'Путешествия'},{ru:'Учитель',en:'Teacher',category:'Школа'}]}},
-    {id:201,section:'quizzes',title:'Quick Grammar A1',description:'Короткая проверка базовой грамматики.',status:'published',level:'A1',icon:'📝',xp:20,category:'Грамматика',payload:{questions:[{id:1,question:'She ___ English every day.',options:['study','studies','studying','studied'],correctAnswer:'studies',explanation:'С she в Present Simple добавляем -s/-es.'}]}},
-    {id:301,section:'words',title:'Путешествия',description:'Главные слова для аэропорта, поездки и отеля.',status:'published',level:'A1',icon:'✈️',xp:0,category:'Путешествия',payload:{words:[{ru:'Самолёт',en:'Plane',transcription:'/pleɪn/',image:'',example:'The plane is ready.'},{ru:'Багаж',en:'Luggage',transcription:'/ˈlʌɡ.ɪdʒ/',image:'',example:'My luggage is heavy.'},{ru:'Билет',en:'Ticket',transcription:'/ˈtɪk.ɪt/',image:'',example:'Here is my ticket.'}]}},
-    {id:401,section:'challenges',title:'7 дней английского',description:'Выполняй одно короткое задание каждый день.',status:'published',level:'A1',icon:'🔥',xp:100,category:'Серия',payload:{goal:'Не пропустить 7 дней подряд',instructions:'Каждый день открой MEWAY и заверши хотя бы одну миссию или квиз.',reward:'Значок «7 Day Streak» + 100 XP'}},
-    {id:501,section:'rewards',title:'First Flight',description:'Твоя первая награда в MEWAY.',status:'published',level:'A1',icon:'🏆',xp:0,category:'Достижения',payload:{goal:'Заверши первую миссию',instructions:'Пройди любую опубликованную миссию до конца.',reward:'Значок First Flight'}},
-    ...generatedContent as ContentItem[]
-  ]
-  const existing = await env.DB.prepare('SELECT id FROM content').all<{id:number}>()
-  const ids = new Set(existing.results.map(r=>Number(r.id)))
-  for (const x of samples) if (!ids.has(x.id)) await env.DB.prepare('INSERT INTO content (id, section, data, updated_at) VALUES (?, ?, ?, ?)').bind(x.id,x.section,JSON.stringify(x),new Date().toISOString()).run()
-  contentSeedChecked = true
+async function getRevisions(env:Env):Promise<Revisions>{
+  await ensureDb(env);const hit=getQueryCache<Revisions>('revisions');if(hit)return hit
+  const row=await env.DB.prepare('SELECT data FROM meway_meta WHERE id=1').first<{data:string}>();let rev={...EMPTY_REVISIONS};try{if(row?.data)rev={...rev,...JSON.parse(row.data)}}catch{};setQueryCache('revisions',rev,15_000);return rev
 }
+async function bumpRevision(env:Env,key:keyof Revisions,now=new Date().toISOString()){
+  const rev=await getRevisions(env);const next={...rev,[key]:now};await env.DB.prepare('INSERT OR REPLACE INTO meway_meta (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify(next),now).run();clearQueryCache('revisions');return next
+}
+function resourceKey(section:string|undefined):keyof Revisions{return (section||'games') as keyof Revisions}
+
+const builtInContent: ContentItem[] = [
+  {id:101,section:'games',title:'Найди перевод',description:'Выбирай правильный перевод и собирай серию точных ответов.',status:'published',level:'A1',icon:'🎯',xp:15,category:'Слова',payload:{gameType:'word-match',words:[{ru:'Самолёт',en:'Plane'},{ru:'Билет',en:'Ticket'},{ru:'Багаж',en:'Luggage'},{ru:'Паспорт',en:'Passport'}]}},
+  {id:102,section:'games',title:'Собери слово',description:'Собери английское слово из перемешанных букв.',status:'published',level:'A1',icon:'🔤',xp:15,category:'Слова',payload:{gameType:'word-builder',words:[{ru:'Путешествие',en:'Travel'},{ru:'Аэропорт',en:'Airport'}]}},
+  {id:103,section:'games',title:'Memory Cards',description:'Найди пары русского и английского слова.',status:'published',level:'A2',icon:'🧠',xp:20,category:'Память',payload:{gameType:'memory',words:[{ru:'Дом',en:'House'},{ru:'Книга',en:'Book'},{ru:'Вода',en:'Water'},{ru:'Друг',en:'Friend'}]}},
+  {id:104,section:'games',title:'Speed English',description:'Отвечай быстро и набирай комбо.',status:'published',level:'A2',icon:'⚡',xp:25,category:'Скорость',payload:{gameType:'speed',words:[{ru:'Быстро',en:'Fast'},{ru:'Медленно',en:'Slow'}]}},
+  {id:105,section:'games',title:'Grammar Race',description:'Выбирай правильную форму и двигайся к финишу.',status:'published',level:'B1',icon:'🏁',xp:30,category:'Грамматика',payload:{gameType:'grammar-race',words:[{ru:'идёт',en:'goes'},{ru:'играют',en:'play'}]}},
+  {id:106,section:'games',title:'Лишнее слово',description:'Найди слово, которое не подходит к теме.',status:'published',level:'A2',icon:'🔎',xp:20,category:'Смешанное',payload:{gameType:'odd-one',words:[{ru:'яблоко',en:'apple'},{ru:'банан',en:'banana'},{ru:'поезд',en:'train'}],oddAnswer:'train'}},
+  {id:107,section:'games',title:'Что на фото?',description:'Посмотри на изображение и выбери английское слово.',status:'published',level:'A1',icon:'🖼️',xp:20,category:'Фото',payload:{gameType:'image-guess',words:[{ru:'Вишня',en:'Cherry',transcription:'/ˈtʃer.i/',image:''},{ru:'Яблоко',en:'Apple',transcription:'/ˈæp.əl/',image:''},{ru:'Банан',en:'Banana',transcription:'/bəˈnɑː.nə/',image:''}]}},
+  {id:108,section:'games',title:'Собери предложение',description:'Расставь английские слова в правильном порядке.',status:'published',level:'A2',icon:'🧩',xp:25,category:'Предложения',payload:{gameType:'sentence-order',words:[{ru:'Я люблю путешествовать',en:'I love to travel',hint:'I love to travel'},{ru:'Она читает каждый день',en:'She reads every day',hint:'She reads every day'}]}},
+  {id:109,section:'games',title:'Правда или ложь',description:'Определи, верно ли английское утверждение.',status:'published',level:'A2',icon:'✅',xp:20,category:'Смешанное',payload:{gameType:'true-false',words:[{ru:'Кошка',en:'cat',hint:'Кошка = cat'},{ru:'Собака',en:'dog',hint:'Собака = cat'}]}},
+  {id:110,section:'games',title:'Пропущенное слово',description:'Вставь правильное английское слово в предложение.',status:'published',level:'B1',icon:'✍️',xp:30,category:'Грамматика',payload:{gameType:'missing-word',words:[{ru:'путешествовать',en:'travel',hint:'I love to ___ in summer.'},{ru:'учиться',en:'study',hint:'I ___ English every day.'}]}},
+  {id:111,section:'games',title:'Напиши перевод',description:'Введи английский перевод самостоятельно.',status:'published',level:'A1',icon:'⌨️',xp:25,category:'Слова',payload:{gameType:'translation-input',words:[{ru:'Дом',en:'house',transcription:'/haʊs/'},{ru:'Книга',en:'book',transcription:'/bʊk/'}]}},
+  {id:112,section:'games',title:'Разложи по категориям',description:'Определи, к какой теме относится слово.',status:'published',level:'A2',icon:'🗂️',xp:25,category:'Смешанное',payload:{gameType:'category-sort',words:[{ru:'Яблоко',en:'Apple',category:'Еда'},{ru:'Самолёт',en:'Plane',category:'Путешествия'},{ru:'Учитель',en:'Teacher',category:'Школа'}]}},
+  {id:201,section:'quizzes',title:'Quick Grammar A1',description:'Короткая проверка базовой грамматики.',status:'published',level:'A1',icon:'📝',xp:20,category:'Грамматика',payload:{questions:[{id:1,question:'She ___ English every day.',options:['study','studies','studying','studied'],correctAnswer:'studies',explanation:'С she в Present Simple добавляем -s/-es.'}]}},
+  {id:301,section:'words',title:'Путешествия',description:'Главные слова для аэропорта, поездки и отеля.',status:'published',level:'A1',icon:'✈️',xp:0,category:'Путешествия',payload:{words:[{ru:'Самолёт',en:'Plane',transcription:'/pleɪn/',image:'',example:'The plane is ready.'},{ru:'Багаж',en:'Luggage',transcription:'/ˈlʌɡ.ɪdʒ/',image:'',example:'My luggage is heavy.'},{ru:'Билет',en:'Ticket',transcription:'/ˈtɪk.ɪt/',image:'',example:'Here is my ticket.'}]}},
+  {id:401,section:'challenges',title:'7 дней английского',description:'Выполняй одно короткое задание каждый день.',status:'published',level:'A1',icon:'🔥',xp:100,category:'Серия',payload:{goal:'Не пропустить 7 дней подряд',instructions:'Каждый день открой MEWAY и заверши хотя бы одну миссию или квиз.',reward:'Значок «7 Day Streak» + 100 XP'}},
+  {id:501,section:'rewards',title:'First Flight',description:'Твоя первая награда в MEWAY.',status:'published',level:'A1',icon:'🏆',xp:0,category:'Достижения',payload:{goal:'Заверши первую миссию',instructions:'Пройди любую опубликованную миссию до конца.',reward:'Значок First Flight'}},
+  ...generatedContent as ContentItem[]
+]
 
 async function listContent(env: Env, section?: string, all = false) {
-  await ensureDb(env); await seedContent(env)
-  const result = section ? await env.DB.prepare('SELECT data FROM content WHERE section = ? ORDER BY id DESC').bind(section).all<{data:string}>() : await env.DB.prepare('SELECT data FROM content ORDER BY id DESC').all<{data:string}>()
-  const items = result.results.map(r=>JSON.parse(r.data) as ContentItem)
-  return all ? items : items.filter(x=>x.status==='published')
+  await ensureDb(env)
+  const key=`merged-content:${section||'all'}:${all?'all':'published'}`
+  const hit=getQueryCache<ContentItem[]>(key); if(hit) return hit
+  const [custom, deleted] = await Promise.all([
+    section ? env.DB.prepare('SELECT data FROM content WHERE section = ?').bind(section).all<{data:string}>() : env.DB.prepare('SELECT data FROM content').all<{data:string}>(),
+    env.DB.prepare('SELECT id FROM deleted_content').all<{id:number}>()
+  ])
+  const deletedIds=new Set((deleted.results||[]).map(x=>Number(x.id)))
+  const merged=new Map<number,ContentItem>()
+  for(const x of builtInContent) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
+  for(const r of custom.results||[]){try{const x=JSON.parse(r.data) as ContentItem;if(!deletedIds.has(x.id))merged.set(x.id,x)}catch{}}
+  const items=[...merged.values()].sort((a,b)=>b.id-a.id)
+  const result=all?items:items.filter(x=>x.status==='published')
+  setQueryCache(key,result,30_000)
+  return result
 }
 
 async function getDiscordUser(token: string): Promise<DiscordUser | null> {
@@ -174,9 +203,20 @@ async function requireAdmin(request: Request, env: Env) {
 
 async function listMissions(env: Env, all = false) {
   await ensureDb(env)
-  const result = await env.DB.prepare('SELECT data FROM missions ORDER BY id DESC').all<{ data: string }>()
-  const items = result.results.map((r) => JSON.parse(r.data) as Mission)
-  return all ? items : items.filter((m) => m.status === 'published')
+  const key=`merged-missions:${all?'all':'published'}`
+  const hit=getQueryCache<Mission[]>(key); if(hit) return hit
+  const [custom,deleted]=await Promise.all([
+    env.DB.prepare('SELECT data FROM missions').all<{data:string}>(),
+    env.DB.prepare('SELECT id FROM deleted_missions').all<{id:number}>()
+  ])
+  const deletedIds=new Set((deleted.results||[]).map(x=>Number(x.id)))
+  const merged=new Map<number,Mission>()
+  for(const m of seed) if(!deletedIds.has(m.id)) merged.set(m.id,m)
+  for(const r of custom.results||[]){try{const m=JSON.parse(r.data) as Mission;if(!deletedIds.has(m.id))merged.set(m.id,m)}catch{}}
+  const items=[...merged.values()].sort((a,b)=>b.id-a.id)
+  const result=all?items:items.filter(m=>m.status==='published')
+  setQueryCache(key,result,30_000)
+  return result
 }
 
 export default {
@@ -185,7 +225,7 @@ export default {
 
     if (url.pathname === '/api/health') {
       return json({ ok: true, app: 'MEWAY', backend: 'Cloudflare Worker', config: {
-        clientId: Boolean(env.DISCORD_CLIENT_ID), clientSecret: Boolean(env.DISCORD_CLIENT_SECRET), adminId: Boolean(env.ADMIN_DISCORD_ID), database: Boolean(env.DB)
+        ready: Boolean(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET && env.ADMIN_DISCORD_ID && env.DB), version: APP_CONTENT_VERSION
       }})
     }
 
@@ -266,23 +306,44 @@ export default {
       }
     }
 
+    if (url.pathname === '/api/settings' && request.method === 'GET') {
+      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      return json({ok:true,settings:await getSettings(env)})
+    }
+
+    if (url.pathname === '/api/manifest' && request.method === 'GET') {
+      const revisions=await getRevisions(env)
+      return new Response(JSON.stringify({ok:true,appVersion:APP_CONTENT_VERSION,revisions}),{headers:{'Content-Type':'application/json; charset=UTF-8','Cache-Control':'no-store'}})
+    }
+
+    if (url.pathname === '/api/sync' && request.method === 'GET') {
+      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      const resource=url.searchParams.get('resource')||'';const since=url.searchParams.get('since')||'';await ensureDb(env)
+      if(resource==='missions'){const [changed,deleted]=await Promise.all([env.DB.prepare('SELECT data,updated_at FROM missions WHERE updated_at > ?').bind(since).all<{data:string;updated_at:string}>(),env.DB.prepare('SELECT id,deleted_at FROM deleted_missions WHERE deleted_at > ?').bind(since).all<{id:number;deleted_at:string}>()]);return json({ok:true,resource,changed:(changed.results||[]).map(x=>{try{return resource==='missions'?studentMission(JSON.parse(x.data)):studentContent(JSON.parse(x.data))}catch{return null}}).filter(Boolean),deleted:(deleted.results||[]).map(x=>x.id),revision:(await getRevisions(env)).missions})}
+      if(['games','quizzes','words','challenges','rewards'].includes(resource)){const [changed,deleted]=await Promise.all([env.DB.prepare('SELECT data,updated_at FROM content WHERE section = ? AND updated_at > ?').bind(resource,since).all<{data:string;updated_at:string}>(),env.DB.prepare('SELECT id,deleted_at FROM deleted_content WHERE deleted_at > ?').bind(since).all<{id:number;deleted_at:string}>()]);return json({ok:true,resource,changed:(changed.results||[]).map(x=>{try{return resource==='missions'?studentMission(JSON.parse(x.data)):studentContent(JSON.parse(x.data))}catch{return null}}).filter(Boolean),deleted:(deleted.results||[]).map(x=>x.id),revision:(await getRevisions(env))[resource as keyof Revisions]})}
+      return json({ok:false,error:'Unknown sync resource.'},400)
+    }
+
     if (url.pathname === '/api/content' && request.method === 'GET') {
+      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
       const section=url.searchParams.get('section') || undefined
       const key=`content:${section||'all'}`
       const hit=cachedPublic(key)
       if(hit) return json({ok:true,items:hit})
       const items=await listContent(env,section)
-      setPublic(key,items)
-      return json({ok:true,items})
+      const safeItems=items.map(studentContent)
+      setPublic(key,safeItems)
+      return json({ok:true,items:safeItems})
     }
 
 
     if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
+      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
       const cached=getQueryCache<any[]>('leaderboard')
       if(cached)return json({ok:true,leaders:cached})
       await ensureDb(env)
       const rows=await env.DB.prepare('SELECT user_id, data FROM progress').all<{user_id:string;data:string}>()
-      const now=Date.now(),d7=now-7*86400000,d30=now-30*86400000;const leaders=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const ev=Array.isArray(d.xpEvents)?d.xpEvents:[];return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||'Ученик MEWAY',xp:Math.max(0,Number(d.xp)||0),xp7:ev.filter((e:any)=>Date.parse(e.date)>=d7).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),xp30:ev.filter((e:any)=>Date.parse(e.date)>=d30).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),completed:(d.completedMissions||[]).length+(d.completedContent||[]).length,visible:d.leaderboardVisible!==false}}).filter(x=>x.visible).slice(0,50)
+      const now=Date.now(),d7=now-7*86400000,d30=now-30*86400000;const leaders=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const ev=Array.isArray(d.xpEvents)?d.xpEvents:[];return {name:d.nickname||d.discordGlobalName||d.discordUsername||'Ученик MEWAY',xp:Math.max(0,Number(d.xp)||0),xp7:ev.filter((e:any)=>Date.parse(e.date)>=d7).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),xp30:ev.filter((e:any)=>Date.parse(e.date)>=d30).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),completed:(d.completedMissions||[]).length+(d.completedContent||[]).length,visible:d.leaderboardVisible!==false}}).filter(x=>x.visible).slice(0,50)
       setQueryCache('leaderboard',leaders,60_000)
       return json({ok:true,leaders})
     }
@@ -299,7 +360,7 @@ export default {
       ])
       const missionNames=new Map(missions.map(x=>[x.id,x.title]))
       const contentNames=new Map(items.map(x=>[x.id,x.title]))
-      const students=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const xp=Math.max(0,Number(d.xp)||0);const lvl=levelForXp(xp);const answers=Math.max(0,Number(d.answerCount)||0),correct=Math.max(0,Number(d.correctAnswers)||0);const stats=d.sectionStats||{};const weakTopics=Object.entries(stats).map(([name,v]:any)=>({name,total:Number(v.total)||0,correct:Number(v.correct)||0,accuracy:v.total?Math.round(v.correct/v.total*100):0})).filter((x:any)=>x.total>=2).sort((a:any,b:any)=>a.accuracy-b.accuracy).slice(0,4);const fav=Object.entries(stats).sort((a:any,b:any)=>(Number(b[1]?.total)||0)-(Number(a[1]?.total)||0))[0]?.[0]||'—';const days=Array.isArray(d.activityDays)?d.activityDays:[];const cutoff7=Date.now()-7*86400000,cutoff30=Date.now()-30*86400000;return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||`Discord ${r.user_id}`,discordUsername:d.discordUsername||'',xp,level:lvl?.name||'До BEGINNER',mistakes:Math.max(0,Number(d.mistakes)||0),correctAnswers:correct,answerCount:answers,accuracy:answers?Math.round(correct/answers*100):0,favoriteSection:fav,active7:days.filter((x:string)=>Date.parse(x)>=cutoff7).length,active30:days.filter((x:string)=>Date.parse(x)>=cutoff30).length,weakTopics,firstSeen:d.firstSeen||r.updated_at,lastSeen:d.lastSeen||r.updated_at,completedMissions:(d.completedMissions||[]).map((id:number)=>({id,title:missionNames.get(id)||`Миссия #${id}`})),completedContent:(d.completedContent||[]).map((id:number)=>({id,title:contentNames.get(id)||`Материал #${id}`})),events:Array.isArray(d.events)?d.events.slice(-20):[]}})
+      const students=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const xp=Math.max(0,Number(d.xp)||0);const lvl=levelForXp(xp);const answers=Math.max(0,Number(d.answerCount)||0),correct=Math.max(0,Number(d.correctAnswers)||0);const stats=d.sectionStats||{};const weakTopics=Object.entries(stats).map(([name,v]:any)=>({name,total:Number(v.total)||0,correct:Number(v.correct)||0,accuracy:v.total?Math.round(v.correct/v.total*100):0})).filter((x:any)=>x.total>=2).sort((a:any,b:any)=>a.accuracy-b.accuracy).slice(0,4);const fav=Object.entries(stats).sort((a:any,b:any)=>(Number(b[1]?.total)||0)-(Number(a[1]?.total)||0))[0]?.[0]||'—';const days=Array.isArray(d.activityDays)?d.activityDays:[];const cutoff7=Date.now()-7*86400000,cutoff30=Date.now()-30*86400000;return {name:d.nickname||d.discordGlobalName||d.discordUsername||`Discord ${r.user_id}`,discordUsername:d.discordUsername||'',xp,level:lvl?.name||'До BEGINNER',mistakes:Math.max(0,Number(d.mistakes)||0),correctAnswers:correct,answerCount:answers,accuracy:answers?Math.round(correct/answers*100):0,favoriteSection:fav,active7:days.filter((x:string)=>Date.parse(x)>=cutoff7).length,active30:days.filter((x:string)=>Date.parse(x)>=cutoff30).length,weakTopics,firstSeen:d.firstSeen||r.updated_at,lastSeen:d.lastSeen||r.updated_at,completedMissions:(d.completedMissions||[]).map((id:number)=>({id,title:missionNames.get(id)||`Миссия #${id}`})),completedContent:(d.completedContent||[]).map((id:number)=>({id,title:contentNames.get(id)||`Материал #${id}`})),events:Array.isArray(d.events)?d.events.slice(-20):[]}})
       setQueryCache('students',students,30_000)
       return json({ok:true,students})
     }
@@ -307,7 +368,8 @@ export default {
     if (url.pathname === '/api/admin/bootstrap' && request.method === 'GET') {
       const admin = await requireAdmin(request, env)
       if (!admin) return json({ ok: false, error: 'Admin access required.' }, 403)
-      const [missions, items, settings] = await Promise.all([listMissions(env, true), listContent(env, undefined, true), getSettings(env)])
+      const section=url.searchParams.get('section')||undefined
+      const [missions, items, settings] = await Promise.all([listMissions(env, true), section?listContent(env, section, true):Promise.resolve([] as ContentItem[]), getSettings(env)])
       return json({ ok: true, missions, items, settings })
     }
 
@@ -317,19 +379,19 @@ export default {
       if(request.method==='PUT'){
         const raw=await request.json<any>();const daily={...DEFAULT_SETTINGS.daily,...(raw.daily||{})},coach={...DEFAULT_SETTINGS.coach,...(raw.coach||{})},streak={...DEFAULT_SETTINGS.streak,...(raw.streak||{})}
         daily.target=Math.max(1,Math.min(100,Number(daily.target)||5));daily.rewardXp=Math.max(0,Math.min(1000,Number(daily.rewardXp)||0));coach.minAnswers=Math.max(1,Math.min(100,Number(coach.minAnswers)||4));coach.weakBelow=Math.max(1,Math.min(100,Number(coach.weakBelow)||75));coach.maxTopics=Math.max(1,Math.min(6,Number(coach.maxTopics)||3));streak.milestones=(Array.isArray(streak.milestones)?streak.milestones:[]).map(Number).filter((x:number)=>x>0&&x<=365).slice(0,12).sort((a:number,b:number)=>a-b)
-        const settings={daily,coach,streak};await ensureDb(env);await env.DB.prepare('INSERT OR REPLACE INTO settings (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify(settings),new Date().toISOString()).run();clearPublic();return json({ok:true,settings})
+        const settings={daily,coach,streak};await ensureDb(env);await env.DB.prepare('INSERT OR REPLACE INTO settings (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify(settings),new Date().toISOString()).run();await bumpRevision(env,'settings');clearPublic();return json({ok:true,settings})
       }
     }
 
     if (url.pathname === '/api/admin/content') {
       const admin = await requireAdmin(request, env)
       if (!admin) return json({ ok: false, error: 'Admin access required.' }, 403)
-      if (request.method === 'GET') return json({ ok: true, items: await listContent(env, undefined, true) })
+      if (request.method === 'GET') { const section=url.searchParams.get('section')||undefined; return json({ ok: true, items: await listContent(env, section, true) }) }
       if (request.method === 'POST') {
         const item = await request.json<ContentItem>(); item.id = Date.now()
         await ensureDb(env)
         await env.DB.prepare('INSERT INTO content (id, section, data, updated_at) VALUES (?, ?, ?, ?)').bind(item.id,item.section,JSON.stringify(item),new Date().toISOString()).run()
-        clearPublic()
+        await env.DB.prepare('DELETE FROM deleted_content WHERE id = ?').bind(item.id).run(); await bumpRevision(env,item.section); clearPublic(); clearQueryCache('merged-content:')
         return json({ok:true,item},201)
       }
     }
@@ -342,18 +404,23 @@ export default {
       if (request.method === 'PUT') {
         const item=await request.json<ContentItem>(); item.id=id
         await env.DB.prepare('INSERT OR REPLACE INTO content (id, section, data, updated_at) VALUES (?, ?, ?, ?)').bind(id,item.section,JSON.stringify(item),new Date().toISOString()).run()
-        clearPublic()
+        await env.DB.prepare('DELETE FROM deleted_content WHERE id = ?').bind(id).run(); await bumpRevision(env,item.section); clearPublic(); clearQueryCache('merged-content:')
         return json({ok:true,item})
       }
-      if (request.method === 'DELETE') { const result=await env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id).run(); clearPublic(); return json({ok:true,deleted:id,changes:result.meta.changes}) }
+      if (request.method === 'DELETE') { const now=new Date().toISOString(); const row=await env.DB.prepare('SELECT section FROM content WHERE id=?').bind(id).first<{section:string}>(); const builtIn=builtInContent.find(x=>x.id===id); const sec=(row?.section||builtIn?.section||'games') as keyof Revisions; let changes=0; if(builtIn){const results=await env.DB.batch([env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id),env.DB.prepare('INSERT OR REPLACE INTO deleted_content (id,deleted_at) VALUES (?,?)').bind(id,now)]);changes=results[0]?.meta?.changes||0}else{const result=await env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id).run();changes=result.meta?.changes||0} await bumpRevision(env,sec,now); clearPublic(); clearQueryCache('merged-content:'); return json({ok:true,deleted:id,changes}) }
     }
 
     if (url.pathname === '/api/missions' && request.method === 'GET') {
-      const hit=cachedPublic('missions')
-      if(hit) return json({ok:true,missions:hit,settings:await getSettings(env)})
+      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      const requestedLimit=Math.max(0,Math.min(2000,Number(url.searchParams.get('limit'))||0))
+      const hit=!requestedLimit?cachedPublic('missions'):null
+      if(hit) return json({ok:true,missions:(hit as Mission[]).map(studentMission),settings:await getSettings(env),partial:false})
       const missions=await listMissions(env)
-      setPublic('missions',missions)
-      return json({ok:true,missions,settings:await getSettings(env)})
+      const limit=Math.max(0,Math.min(2000,Number(url.searchParams.get('limit'))||0))
+      const result=limit?missions.slice(0,limit):missions
+      const safeResult=result.map(studentMission)
+      if(!limit)setPublic('missions',safeResult)
+      return json({ok:true,missions:safeResult,settings:await getSettings(env),partial:Boolean(limit)})
     }
 
     if (url.pathname === '/api/admin/missions') {
@@ -365,7 +432,7 @@ export default {
         const mission = await request.json<Mission>()
         mission.id = Date.now()
         await env.DB.prepare('INSERT INTO missions (id, data, updated_at) VALUES (?, ?, ?)').bind(mission.id, JSON.stringify(mission), new Date().toISOString()).run()
-        clearPublic()
+        await env.DB.prepare('DELETE FROM deleted_missions WHERE id = ?').bind(mission.id).run(); await bumpRevision(env,'missions'); clearPublic(); clearQueryCache('merged-missions:')
         return json({ ok: true, mission }, 201)
       }
     }
@@ -379,13 +446,16 @@ export default {
       if (request.method === 'PUT') {
         const mission = await request.json<Mission>(); mission.id = id
         await env.DB.prepare('INSERT OR REPLACE INTO missions (id, data, updated_at) VALUES (?, ?, ?)').bind(id, JSON.stringify(mission), new Date().toISOString()).run()
-        clearPublic()
+        await env.DB.prepare('DELETE FROM deleted_missions WHERE id = ?').bind(id).run(); await bumpRevision(env,'missions'); clearPublic(); clearQueryCache('merged-missions:')
         return json({ ok: true, mission })
       }
       if (request.method === 'DELETE') {
-        const result = await env.DB.prepare('DELETE FROM missions WHERE id = ?').bind(id).run()
-        clearPublic()
-        return json({ ok: true, deleted: id, changes: result.meta.changes })
+        const now=new Date().toISOString(),builtIn=seed.some(m=>m.id===id)
+        let changes=0
+        if(builtIn){const results=await env.DB.batch([env.DB.prepare('DELETE FROM missions WHERE id = ?').bind(id),env.DB.prepare('INSERT OR REPLACE INTO deleted_missions (id,deleted_at) VALUES (?,?)').bind(id,now)]);changes=results[0]?.meta?.changes||0}
+        else{const result=await env.DB.prepare('DELETE FROM missions WHERE id = ?').bind(id).run();changes=result.meta?.changes||0}
+        await bumpRevision(env,'missions',now); clearPublic(); clearQueryCache('merged-missions:')
+        return json({ ok: true, deleted: id, changes })
       }
     }
 

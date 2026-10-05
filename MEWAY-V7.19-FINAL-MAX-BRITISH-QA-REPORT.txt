@@ -1,0 +1,20 @@
+MEWAY V7.19 — FINAL MAX BRITISH CURRICULUM — QA REPORT
+
+Scope
+- Built on V7.18 without redesigning the MEWAY interface architecture.
+- British English remains the primary language policy.
+- Added 60 further lexical themes / 480 curated candidate entries before global de-duplication.
+- Added per-theme quiz, two games, two challenges and two missions.
+- Added a dictionary search field that filters the already loaded client-side data. Typing does not create a Cloudflare request.
+- Existing level/category filters remain intact.
+
+Quality controls
+- New lexical candidates are globally de-duplicated against existing word content before insertion.
+- Empty English keys are rejected.
+- New quiz/mission options are generated from distinct entries in the same curated theme.
+- Existing user-requested emergency/accident-topic runtime exclusion remains applied after this expansion.
+- No third-party lesson text is copied into this expansion.
+- CEFR A1–C2 is used as the proficiency organisation model; British English is the language variety policy.
+
+Important release note
+No automated system can truthfully certify that a large educational corpus contains literally zero linguistic errors. This build is a structured QA release, not an official certification by the Council of Europe, British Council, Cambridge, or another third party. Independent human editorial review remains appropriate before a commercial launch.

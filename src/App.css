@@ -348,3 +348,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{margin:0;min-width
 /* V7.10 — content-only exact visual editor */
 .vpOrderTools{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}.vpOrderTools button{min-height:36px}.vpOrderTools button:disabled{opacity:.35;cursor:not-allowed}.exactPrototype .vpInline,.exactPrototype textarea,.exactPrototype select{transition:border-color .15s ease,box-shadow .15s ease}.exactPrototype .vpInline:focus,.exactPrototype textarea:focus,.exactPrototype select:focus{outline:none;border-color:#168cff;box-shadow:0 0 0 3px rgba(22,140,255,.14)}
 @media(max-width:700px){.vpOrderTools{display:grid;grid-template-columns:1fr 1fr}.vpOrderTools .vpRemoveCard{grid-column:1/-1}.exactPrototype .vpHead{align-items:flex-start}.exactPrototype .vpDevice{white-space:nowrap}}
+
+/* V7.19 local dictionary search: no request is sent per keystroke. */
+.dictionarySearch{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:center;padding:12px 14px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.06);backdrop-filter:blur(10px)}
+.dictionarySearch span{font-size:24px;opacity:.75}.dictionarySearch input{width:100%;border:0;outline:0;background:transparent;color:inherit;font:inherit;font-size:15px}.dictionarySearch input::placeholder{color:rgba(255,255,255,.55)}.dictionarySearch small{grid-column:2;font-size:11px;opacity:.58}

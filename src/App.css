@@ -199,3 +199,78 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{margin:0;min-width
 .darkTheme .settingsPanel,.darkTheme .settingsGrid{color:#eaf5ff}.darkTheme .settingsPanel .editBox{background:linear-gradient(145deg,#0e2136,#10283f);border-color:#294763}.darkTheme .settingsPanel label{color:#b8cce0}.darkTheme .settingsPanel small{color:#8fa8c6}
 .darkTheme .editor{background:#091a2b;color:#eaf5ff}.darkTheme .editor>header,.darkTheme .editorFooter{background:#0e2136;border-color:#294763}.darkTheme .editor>header h2,.darkTheme .taskTitle,.darkTheme .taskTop,.darkTheme .wordEditHead{color:#edf7ff}.darkTheme .editor>header button{background:#17304a;color:#dcecff}.darkTheme .taskEdit,.darkTheme .wordEdit{background:#0e2136;border-color:#294763}.darkTheme .formGrid label{color:#a9bfd6}.darkTheme .gameTypeGrid button{background:#10253c;border-color:#294763;color:#b8cce0}.darkTheme .gameTypeGrid button.active{background:#123d63;border-color:#1680ff;color:#7ec8ff}.darkTheme .inlineEdit .danger{background:#132b43;border-color:#5b3b47}
 .darkTheme .result,.darkTheme .empty{background:#0e2136;border-color:#294763;color:#eaf5ff}.darkTheme .leaderboard article.podium{background:linear-gradient(120deg,#10253b,#132f49)}
+
+/* MEWAY V7.6.10 — final dark-theme contrast pass. Visual-only; no API/D1/Worker calls. */
+/* Light hero banners stay airy in dark mode, but every label is deliberately dark and readable. */
+.darkTheme .pageHero{
+  background:linear-gradient(135deg,#eef8ff 0%,#e4f2ff 58%,#d9ecff 100%)!important;
+  border-color:#9fc9ee!important;
+  color:#0b3158!important;
+}
+.darkTheme .pageHero h1{color:#123b66!important;text-shadow:none!important;opacity:1!important}
+.darkTheme .pageHero p{color:#55789d!important;opacity:1!important}
+.darkTheme .pageHero>div>span{color:#1682d8!important;opacity:1!important}
+.darkTheme .pageIcon{box-shadow:0 12px 28px rgba(13,103,197,.24)!important}
+
+/* Daily mission is the active task: soft MEWAY blue, never plain white. */
+.darkTheme .dailyMission{
+  background:linear-gradient(120deg,#cfe8ff 0%,#bddcff 52%,#d8ecff 100%)!important;
+  border-color:#7db8e9!important;
+  color:#0b3158!important;
+  box-shadow:0 14px 34px rgba(0,0,0,.18)!important;
+}
+.darkTheme .dailyMission h3{color:#123b66!important;opacity:1!important}
+.darkTheme .dailyMission p{color:#55789d!important;opacity:1!important}
+.darkTheme .dailyMission span{color:#0c70c8!important}
+.darkTheme .dailyReward b{color:#076fd3!important}.darkTheme .dailyReward small{color:#416c98!important}
+
+/* Normal/active learning cards: a slightly lighter navy-blue. */
+.darkTheme .missionCard:not(.completedCard),
+.darkTheme .contentCard:not(.completedCard){
+  background:linear-gradient(145deg,#153a5b,#12314d)!important;
+  border-color:#315b7d!important;
+  color:#f1f7ff!important;
+}
+.darkTheme .missionCard:not(.completedCard) h3,
+.darkTheme .contentCard:not(.completedCard) h3{color:#f4f9ff!important;opacity:1!important}
+.darkTheme .missionCard:not(.completedCard) p,
+.darkTheme .contentCard:not(.completedCard) p,
+.darkTheme .missionCard:not(.completedCard) footer small,
+.darkTheme .contentCard:not(.completedCard) footer small{color:#b3c8dc!important;opacity:1!important}
+.darkTheme .missionCard:not(.completedCard) .chips span,
+.darkTheme .contentCard:not(.completedCard) .chips span{background:#1b476d!important;color:#d5e8f8!important}
+
+/* Completed cards: clearly darker than active cards; never grey/white. */
+.darkTheme .completedCard{
+  background:linear-gradient(145deg,#091b2d 0%,#0b2238 58%,#0d2943 100%)!important;
+  border-color:#254965!important;
+  color:#eaf5ff!important;
+  opacity:1!important;
+  filter:none!important;
+}
+.darkTheme .completedCard h3{color:#f0f7ff!important;opacity:1!important}
+.darkTheme .completedCard p{color:#a8bfd5!important;opacity:1!important}
+.darkTheme .completedCard footer small{color:#91abc4!important;opacity:1!important}
+.darkTheme .completedCard footer b{color:#63b9ff!important;opacity:1!important}
+.darkTheme .completedCard .chips span{background:#173a58!important;color:#c6dcef!important;opacity:1!important}
+.darkTheme .completedCard .contentIcon,
+.darkTheme .completedCard .missionIcon{background:#15334d!important;color:#eaf6ff!important;border-color:#3c617d!important;opacity:1!important}
+.darkTheme .completedBadge,
+.darkTheme .done{background:#123f50!important;color:#83e7cf!important;border:1px solid #24677a!important;opacity:1!important}
+
+/* White top XP pill was low-contrast in night mode. */
+.darkTheme .topActions>span{background:#102a44!important;border-color:#31516f!important;color:#eaf5ff!important}
+.darkTheme .topActions .xpPill,.darkTheme .xpPill{color:#65baff!important}
+
+/* Defensive contrast for light surfaces that intentionally remain light in night mode. */
+.darkTheme .pageHero *,
+.darkTheme .dailyMission *{text-shadow:none}
+
+@media(max-width:1100px){
+  .darkTheme .pageHero h1{font-size:clamp(28px,4vw,38px)}
+}
+@media(max-width:720px){
+  .darkTheme .pageHero{background:linear-gradient(145deg,#edf8ff,#dceeff)!important}
+  .darkTheme .dailyMission{background:linear-gradient(145deg,#cce6ff,#bcdcff)!important}
+  .darkTheme .completedCard{background:linear-gradient(145deg,#091b2d,#0c2943)!important}
+}

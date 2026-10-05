@@ -1,0 +1,9 @@
+MEWAY V7.6.10 — DARK CONTRAST FINAL
+- Dark theme only. Light theme untouched.
+- Light hero panels now use dark readable typography.
+- Daily/active task panel changed from white to soft MEWAY blue with dark text.
+- Active learning cards use a lighter navy blue.
+- Completed cards use a darker navy blue, with high-contrast text/badges.
+- Fixed low-contrast XP pill in the dark header.
+- Responsive rules included for desktop/tablet/mobile.
+- CSS-only change: zero additional Worker/D1/API requests.

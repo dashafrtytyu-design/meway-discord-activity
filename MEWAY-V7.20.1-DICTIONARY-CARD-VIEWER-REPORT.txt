@@ -1,0 +1,10 @@
+MEWAY V7.20.1 — DICTIONARY CARD VIEWER
+
+- Every dictionary word is guaranteed a visual through wordVisual(): explicit admin image first, otherwise a local semantic SVG pictogram fallback.
+- This applies to every CEFR level A1-C2 and every dictionary collection rendered by WordCollection.
+- Dictionary cards are clickable and open in a large modal viewer.
+- Viewer includes Back, X close, Previous, Next, keyboard Escape/Left/Right.
+- Closing restores the exact previous page scroll position in the same dictionary collection/topic.
+- Opening/navigating/closing the viewer is entirely local and makes no Cloud request.
+- Existing persistent curriculum cache/delta sync remains unchanged.
+- Existing materials, XP rules, topic picker and main design are preserved.

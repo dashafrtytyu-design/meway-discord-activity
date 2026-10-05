@@ -181,3 +181,47 @@ const v718Excluded=/(accident|emergency|crash|collision|disaster|crisis|ambulanc
 function v718SafeText(x:any){try{return !v718Excluded.test(JSON.stringify(x))}catch{return true}}
 for(let i=generatedContent.length-1;i>=0;i--) if(!v718SafeText(generatedContent[i])) generatedContent.splice(i,1)
 for(let i=generatedMissions.length-1;i>=0;i--) if(!v718SafeText(generatedMissions[i])) generatedMissions.splice(i,1)
+
+// V7.19.8 progression pass: rewards reflect CEFR level + actual task complexity.
+// Word Vault is reference material only and never awards XP.
+const v7198LevelWeight:Record<string,number>={A1:0,A2:1,B1:2,B2:3,C1:4,C2:5}
+const v7198GameWeight:Record<string,number>={'word-match':0,'memory':0,'true-false':0,'image-guess':1,'odd-one':1,'word-builder':1,'missing-word':1,'sentence-order':2,'translation-input':2,'category-sort':2,'drag-sort':2,'speed':2,'grammar-race':3,'crossword':3,'picture-puzzle':3}
+function v7198Reward(level:string,kind:'mission'|'game'|'quiz'|'challenge',steps:number,complexity=0){
+ const li=v7198LevelWeight[level]??0
+ const base={mission:14,game:10,quiz:12,challenge:16}[kind]
+ const per={mission:2.4,game:1.7,quiz:2.0,challenge:2.5}[kind]
+ const levelStep={mission:7,game:6,quiz:7,challenge:8}[kind]
+ const complexityStep={mission:5,game:5,quiz:4,challenge:6}[kind]
+ const raw=base+li*levelStep+Math.max(1,steps)*per+complexity*(complexityStep+li)
+ const ceiling={mission:170,game:150,quiz:160,challenge:190}[kind]
+ return Math.max(kind==='game'?10:15,Math.min(ceiling,Math.round(raw/5)*5))
+}
+for(const item of generatedContent){
+ if(item.section==='words'){item.xp=0;continue}
+ if(item.section==='games'){const steps=Array.isArray(item.payload?.words)?Math.min(item.payload.words.length,12):6;item.xp=v7198Reward(item.level,'game',steps,v7198GameWeight[item.payload?.gameType]??1)}
+ else if(item.section==='quizzes'){item.xp=v7198Reward(item.level,'quiz',Array.isArray(item.payload?.questions)?item.payload.questions.length:5,1)}
+ else if(item.section==='challenges'){const steps=Array.isArray(item.payload?.questions)?item.payload.questions.length:Number(item.payload?.target||6);item.xp=v7198Reward(item.level,'challenge',steps,2);if(item.payload?.reward)item.payload.reward=`+${item.xp} XP`}
+}
+for(const mission of generatedMissions){
+ const steps=Array.isArray(mission.tasks)?mission.tasks.length:5
+ const complex=/grammar|academic|analysis|synthesis|argument|writing|discourse|precision|critical/i.test(`${mission.category} ${mission.title}`)?2:0
+ mission.xp=v7198Reward(mission.level,'mission',steps,complex)
+}
+
+// Keep mission availability balanced across A1–C2. If a safety/content pass removes
+// more missions from one CEFR level, top it up with original MEWAY practice rather
+// than leaving that level sparse or empty.
+const v7198Counts=()=>Object.fromEntries(levels.map(l=>[l,generatedMissions.filter(m=>m.level===l&&m.status==='published').length])) as Record<string,number>
+const v7198Before=v7198Counts()
+const v7198Target=Math.max(v7198Before.C1||0,v7198Before.C2||0,...Object.values(v7198Before))
+let v7198MissionId=Math.max(9000,...generatedMissions.map(m=>m.id))+1
+for(const lv of levels){
+ let n=v7198Before[lv]||0
+ const cols=expansionLexicon[lv]
+ while(n<v7198Target){
+   const [topic,words]=cols[n%cols.length]
+   const tasks=expansionQuiz(lv,topic,words,n).slice(0,5+(n%6))
+   generatedMissions.push({id:v7198MissionId++,title:`${lv} Practice Mission ${n+1}: ${topic}`,description:`Практическая миссия ${lv} по теме «${topic}»: понимание, точность и употребление в контексте.`,category:'Практика',level:lv,xp:v7198Reward(lv,'mission',tasks.length,1),icon:'🎯',duration:`${7+(n%6)} мин`,status:'published',tasks})
+   n++
+ }
+}

@@ -158,6 +158,20 @@ const builtInContent: ContentItem[] = [
   ...generatedContent as ContentItem[]
 ]
 
+
+// V7.19.8 reward normalization for the small hand-authored built-in starter set.
+// The large generated curriculum is normalized in contentSeed.ts.
+const v7198LevelWeight:Record<string,number>={A1:0,A2:1,B1:2,B2:3,C1:4,C2:5}
+const v7198GameWeight:Record<string,number>={'word-match':0,'memory':0,'true-false':0,'image-guess':1,'odd-one':1,'word-builder':1,'missing-word':1,'sentence-order':2,'translation-input':2,'category-sort':2,'drag-sort':2,'speed':2,'grammar-race':3,'crossword':3,'picture-puzzle':3}
+function v7198Reward(level:string,kind:'mission'|'game'|'quiz'|'challenge',steps:number,complexity=0){const li=v7198LevelWeight[level]??0;const base={mission:5,game:3,quiz:4,challenge:6}[kind];const per={mission:1.25,game:.9,quiz:1,challenge:1.3}[kind];return Math.max(kind==='game'?3:5,Math.min(150,Math.round((base+li*4+Math.max(1,steps)*per+complexity*(2+li))/5)*5))}
+for(const m of seed){if(m.id<=3)m.xp=v7198Reward(m.level,'mission',m.tasks?.length||1,/grammar/i.test(`${m.category} ${m.title}`)?1:0)}
+for(const x of builtInContent){
+ if(x.section==='words'){x.xp=0;continue}
+ if(x.section==='games')x.xp=v7198Reward(x.level,'game',Array.isArray(x.payload?.words)?x.payload.words.length:5,v7198GameWeight[x.payload?.gameType]??1)
+ else if(x.section==='quizzes')x.xp=v7198Reward(x.level,'quiz',Array.isArray(x.payload?.questions)?x.payload.questions.length:5,1)
+ else if(x.section==='challenges'){x.xp=v7198Reward(x.level,'challenge',Array.isArray(x.payload?.questions)?x.payload.questions.length:Number(x.payload?.target||7),2);if(x.payload?.reward)x.payload.reward=`+${x.xp} XP`}
+}
+
 async function listContent(env: Env, section?: string, all = false) {
   await ensureDb(env)
   const key=`merged-content:${section||'all'}:${all?'all':'published'}`

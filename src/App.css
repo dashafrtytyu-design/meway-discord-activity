@@ -419,3 +419,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{margin:0;min-width
 .topicOptionList label{scroll-margin:0!important}
 @media(max-width:980px){.topicPopover{max-height:min(72dvh,620px)}.topicOptionList{max-height:min(48dvh,390px)}}
 @media(max-width:600px){.topicPopover{max-height:none}.topicOptionList{max-height:52dvh}.topicTopRow{position:relative}.topicQuick{grid-template-columns:1fr!important}}
+/* V7.21.3: puzzle tiles render an actual local <img> instead of CSS background-image.
+   This works for data-URI SVG word art and uploaded/static images on desktop, tablet and mobile. */
+.puzzleBoard button{position:relative;overflow:hidden;padding:0!important;background:#f7fbff!important}
+.puzzleBoard button>img{position:absolute;max-width:none!important;object-fit:fill;pointer-events:none;user-select:none}
+.darkTheme .puzzleBoard button{background:#123652!important}

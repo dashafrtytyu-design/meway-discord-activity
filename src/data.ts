@@ -22,6 +22,8 @@ export type MissionTask = {
   options: string[]
   correctAnswer: string
   explanation: string
+  type?: 'choice' | 'true-false' | 'input'
+  acceptedAnswers?: string[]
 }
 
 export const missions: Mission[] = [

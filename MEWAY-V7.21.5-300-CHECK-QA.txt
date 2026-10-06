@@ -1,0 +1,302 @@
+MEWAY V7.21.5 — 300 deterministic mission QA checks
+Total checks: 300; failed: 0
+A1	PASS	244 missions
+A1	PASS	nonempty titles
+A1	PASS	nonempty descriptions
+A1	PASS	positive XP
+A1	PASS	tasks present
+A1	PASS	question nonempty
+A1	PASS	answer nonempty
+A1	PASS	no technical IDs
+A1	PASS	choice answer present
+A1	PASS	choice options unique
+A1	PASS	input no options
+A1	PASS	input accepted answer
+A1	PASS	explanation present
+A1	PASS	three interaction types
+A1	PASS	reasonable task count
+A1	PASS	batch 1: complete keys
+A1	PASS	batch 2: complete keys
+A1	PASS	batch 3: complete keys
+A1	PASS	batch 4: complete keys
+A1	PASS	batch 5: complete keys
+A1	PASS	batch 6: complete keys
+A1	PASS	batch 7: complete keys
+A1	PASS	batch 8: complete keys
+A1	PASS	batch 9: complete keys
+A1	PASS	batch 10: complete keys
+A1	PASS	batch 11: complete keys
+A1	PASS	batch 12: complete keys
+A1	PASS	batch 13: complete keys
+A1	PASS	batch 14: complete keys
+A1	PASS	batch 15: complete keys
+A1	PASS	batch 16: complete keys
+A1	PASS	batch 17: complete keys
+A1	PASS	batch 18: complete keys
+A1	PASS	batch 19: complete keys
+A1	PASS	batch 20: complete keys
+A1	PASS	batch 21: complete keys
+A1	PASS	batch 22: complete keys
+A1	PASS	batch 23: complete keys
+A1	PASS	batch 24: complete keys
+A1	PASS	batch 25: complete keys
+A1	PASS	batch 26: complete keys
+A1	PASS	batch 27: complete keys
+A1	PASS	batch 28: complete keys
+A1	PASS	batch 29: complete keys
+A1	PASS	batch 30: complete keys
+A1	PASS	batch 31: complete keys
+A1	PASS	batch 32: complete keys
+A1	PASS	batch 33: complete keys
+A1	PASS	batch 34: complete keys
+A1	PASS	batch 35: complete keys
+A2	PASS	244 missions
+A2	PASS	nonempty titles
+A2	PASS	nonempty descriptions
+A2	PASS	positive XP
+A2	PASS	tasks present
+A2	PASS	question nonempty
+A2	PASS	answer nonempty
+A2	PASS	no technical IDs
+A2	PASS	choice answer present
+A2	PASS	choice options unique
+A2	PASS	input no options
+A2	PASS	input accepted answer
+A2	PASS	explanation present
+A2	PASS	three interaction types
+A2	PASS	mission contains at least one valid task
+A2	PASS	batch 1: complete keys
+A2	PASS	batch 2: complete keys
+A2	PASS	batch 3: complete keys
+A2	PASS	batch 4: complete keys
+A2	PASS	batch 5: complete keys
+A2	PASS	batch 6: complete keys
+A2	PASS	batch 7: complete keys
+A2	PASS	batch 8: complete keys
+A2	PASS	batch 9: complete keys
+A2	PASS	batch 10: complete keys
+A2	PASS	batch 11: complete keys
+A2	PASS	batch 12: complete keys
+A2	PASS	batch 13: complete keys
+A2	PASS	batch 14: complete keys
+A2	PASS	batch 15: complete keys
+A2	PASS	batch 16: complete keys
+A2	PASS	batch 17: complete keys
+A2	PASS	batch 18: complete keys
+A2	PASS	batch 19: complete keys
+A2	PASS	batch 20: complete keys
+A2	PASS	batch 21: complete keys
+A2	PASS	batch 22: complete keys
+A2	PASS	batch 23: complete keys
+A2	PASS	batch 24: complete keys
+A2	PASS	batch 25: complete keys
+A2	PASS	batch 26: complete keys
+A2	PASS	batch 27: complete keys
+A2	PASS	batch 28: complete keys
+A2	PASS	batch 29: complete keys
+A2	PASS	batch 30: complete keys
+A2	PASS	batch 31: complete keys
+A2	PASS	batch 32: complete keys
+A2	PASS	batch 33: complete keys
+A2	PASS	batch 34: complete keys
+A2	PASS	batch 35: complete keys
+B1	PASS	244 missions
+B1	PASS	nonempty titles
+B1	PASS	nonempty descriptions
+B1	PASS	positive XP
+B1	PASS	tasks present
+B1	PASS	question nonempty
+B1	PASS	answer nonempty
+B1	PASS	no technical IDs
+B1	PASS	choice answer present
+B1	PASS	choice options unique
+B1	PASS	input no options
+B1	PASS	input accepted answer
+B1	PASS	explanation present
+B1	PASS	three interaction types
+B1	PASS	mission contains at least one valid task
+B1	PASS	batch 1: complete keys
+B1	PASS	batch 2: complete keys
+B1	PASS	batch 3: complete keys
+B1	PASS	batch 4: complete keys
+B1	PASS	batch 5: complete keys
+B1	PASS	batch 6: complete keys
+B1	PASS	batch 7: complete keys
+B1	PASS	batch 8: complete keys
+B1	PASS	batch 9: complete keys
+B1	PASS	batch 10: complete keys
+B1	PASS	batch 11: complete keys
+B1	PASS	batch 12: complete keys
+B1	PASS	batch 13: complete keys
+B1	PASS	batch 14: complete keys
+B1	PASS	batch 15: complete keys
+B1	PASS	batch 16: complete keys
+B1	PASS	batch 17: complete keys
+B1	PASS	batch 18: complete keys
+B1	PASS	batch 19: complete keys
+B1	PASS	batch 20: complete keys
+B1	PASS	batch 21: complete keys
+B1	PASS	batch 22: complete keys
+B1	PASS	batch 23: complete keys
+B1	PASS	batch 24: complete keys
+B1	PASS	batch 25: complete keys
+B1	PASS	batch 26: complete keys
+B1	PASS	batch 27: complete keys
+B1	PASS	batch 28: complete keys
+B1	PASS	batch 29: complete keys
+B1	PASS	batch 30: complete keys
+B1	PASS	batch 31: complete keys
+B1	PASS	batch 32: complete keys
+B1	PASS	batch 33: complete keys
+B1	PASS	batch 34: complete keys
+B1	PASS	batch 35: complete keys
+B2	PASS	244 missions
+B2	PASS	nonempty titles
+B2	PASS	nonempty descriptions
+B2	PASS	positive XP
+B2	PASS	tasks present
+B2	PASS	question nonempty
+B2	PASS	answer nonempty
+B2	PASS	no technical IDs
+B2	PASS	choice answer present
+B2	PASS	choice options unique
+B2	PASS	input no options
+B2	PASS	input accepted answer
+B2	PASS	explanation present
+B2	PASS	three interaction types
+B2	PASS	reasonable task count
+B2	PASS	batch 1: complete keys
+B2	PASS	batch 2: complete keys
+B2	PASS	batch 3: complete keys
+B2	PASS	batch 4: complete keys
+B2	PASS	batch 5: complete keys
+B2	PASS	batch 6: complete keys
+B2	PASS	batch 7: complete keys
+B2	PASS	batch 8: complete keys
+B2	PASS	batch 9: complete keys
+B2	PASS	batch 10: complete keys
+B2	PASS	batch 11: complete keys
+B2	PASS	batch 12: complete keys
+B2	PASS	batch 13: complete keys
+B2	PASS	batch 14: complete keys
+B2	PASS	batch 15: complete keys
+B2	PASS	batch 16: complete keys
+B2	PASS	batch 17: complete keys
+B2	PASS	batch 18: complete keys
+B2	PASS	batch 19: complete keys
+B2	PASS	batch 20: complete keys
+B2	PASS	batch 21: complete keys
+B2	PASS	batch 22: complete keys
+B2	PASS	batch 23: complete keys
+B2	PASS	batch 24: complete keys
+B2	PASS	batch 25: complete keys
+B2	PASS	batch 26: complete keys
+B2	PASS	batch 27: complete keys
+B2	PASS	batch 28: complete keys
+B2	PASS	batch 29: complete keys
+B2	PASS	batch 30: complete keys
+B2	PASS	batch 31: complete keys
+B2	PASS	batch 32: complete keys
+B2	PASS	batch 33: complete keys
+B2	PASS	batch 34: complete keys
+B2	PASS	batch 35: complete keys
+C1	PASS	244 missions
+C1	PASS	nonempty titles
+C1	PASS	nonempty descriptions
+C1	PASS	positive XP
+C1	PASS	tasks present
+C1	PASS	question nonempty
+C1	PASS	answer nonempty
+C1	PASS	no technical IDs
+C1	PASS	choice answer present
+C1	PASS	choice options unique
+C1	PASS	input no options
+C1	PASS	input accepted answer
+C1	PASS	explanation present
+C1	PASS	three interaction types
+C1	PASS	mission contains at least one valid task
+C1	PASS	batch 1: complete keys
+C1	PASS	batch 2: complete keys
+C1	PASS	batch 3: complete keys
+C1	PASS	batch 4: complete keys
+C1	PASS	batch 5: complete keys
+C1	PASS	batch 6: complete keys
+C1	PASS	batch 7: complete keys
+C1	PASS	batch 8: complete keys
+C1	PASS	batch 9: complete keys
+C1	PASS	batch 10: complete keys
+C1	PASS	batch 11: complete keys
+C1	PASS	batch 12: complete keys
+C1	PASS	batch 13: complete keys
+C1	PASS	batch 14: complete keys
+C1	PASS	batch 15: complete keys
+C1	PASS	batch 16: complete keys
+C1	PASS	batch 17: complete keys
+C1	PASS	batch 18: complete keys
+C1	PASS	batch 19: complete keys
+C1	PASS	batch 20: complete keys
+C1	PASS	batch 21: complete keys
+C1	PASS	batch 22: complete keys
+C1	PASS	batch 23: complete keys
+C1	PASS	batch 24: complete keys
+C1	PASS	batch 25: complete keys
+C1	PASS	batch 26: complete keys
+C1	PASS	batch 27: complete keys
+C1	PASS	batch 28: complete keys
+C1	PASS	batch 29: complete keys
+C1	PASS	batch 30: complete keys
+C1	PASS	batch 31: complete keys
+C1	PASS	batch 32: complete keys
+C1	PASS	batch 33: complete keys
+C1	PASS	batch 34: complete keys
+C1	PASS	batch 35: complete keys
+C2	PASS	244 missions
+C2	PASS	nonempty titles
+C2	PASS	nonempty descriptions
+C2	PASS	positive XP
+C2	PASS	tasks present
+C2	PASS	question nonempty
+C2	PASS	answer nonempty
+C2	PASS	no technical IDs
+C2	PASS	choice answer present
+C2	PASS	choice options unique
+C2	PASS	input no options
+C2	PASS	input accepted answer
+C2	PASS	explanation present
+C2	PASS	three interaction types
+C2	PASS	reasonable task count
+C2	PASS	batch 1: complete keys
+C2	PASS	batch 2: complete keys
+C2	PASS	batch 3: complete keys
+C2	PASS	batch 4: complete keys
+C2	PASS	batch 5: complete keys
+C2	PASS	batch 6: complete keys
+C2	PASS	batch 7: complete keys
+C2	PASS	batch 8: complete keys
+C2	PASS	batch 9: complete keys
+C2	PASS	batch 10: complete keys
+C2	PASS	batch 11: complete keys
+C2	PASS	batch 12: complete keys
+C2	PASS	batch 13: complete keys
+C2	PASS	batch 14: complete keys
+C2	PASS	batch 15: complete keys
+C2	PASS	batch 16: complete keys
+C2	PASS	batch 17: complete keys
+C2	PASS	batch 18: complete keys
+C2	PASS	batch 19: complete keys
+C2	PASS	batch 20: complete keys
+C2	PASS	batch 21: complete keys
+C2	PASS	batch 22: complete keys
+C2	PASS	batch 23: complete keys
+C2	PASS	batch 24: complete keys
+C2	PASS	batch 25: complete keys
+C2	PASS	batch 26: complete keys
+C2	PASS	batch 27: complete keys
+C2	PASS	batch 28: complete keys
+C2	PASS	batch 29: complete keys
+C2	PASS	batch 30: complete keys
+C2	PASS	batch 31: complete keys
+C2	PASS	batch 32: complete keys
+C2	PASS	batch 33: complete keys
+C2	PASS	batch 34: complete keys
+C2	PASS	batch 35: complete keys

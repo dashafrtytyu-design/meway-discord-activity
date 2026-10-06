@@ -1,0 +1,26 @@
+MEWAY V7.21.6 — MATERIAL QA / ZERO GAMES
+
+Bundled games: 0
+Dictionary collections: 114
+Dictionary cards: 1435; normalized English duplicates: 0
+Quizzes: 144; questions: 1152; exact repeated question texts: 0
+Challenges: 144; questions: 1152; exact repeated question texts: 0
+Missions: 1464; tasks: 10487; exact repeated question texts: 0; min tasks/mission: 5
+Structural/answer-key errors after QA: 0
+Challenge levels: {'A1': 24, 'A2': 24, 'B1': 24, 'B2': 24, 'C1': 24, 'C2': 24}
+Quiz levels: {'A1': 24, 'A2': 24, 'B1': 24, 'B2': 24, 'C1': 24, 'C2': 24}
+Mission levels: {'A1': 244, 'A2': 244, 'B1': 244, 'B2': 244, 'C1': 244, 'C2': 244}
+
+Changes in V7.21.6:
+- all bundled/generated games removed; legacy D1 games from before reset are hidden, future admin-created games remain supported;
+- local-only duplicate guard added to dictionary editor; no request is sent while typing/checking; duplicate notice shows level, section/category and translation, and save is blocked until resolved;
+- quiz tasks diversified into EN→RU, RU→EN, correct-pair and incorrect-pair formats;
+- exact repeated visible question texts removed from quizzes, challenges and missions;
+- every generated challenge has goal, instructions, reward and 8 questions;
+- mission sets repaired so every generated mission has at least 5 tasks;
+- restricted/unsafe learner task remnants removed;
+- three clearly malformed UK IPA entries found by audit (family, cat, apple) corrected;
+- weak machine-template explanations in generated quiz/challenge questions replaced where detected.
+
+IMPORTANT QA SCOPE:
+The zero-error figure above is for structural validation and answer-key consistency of the packaged data. It is not a claim that every one of thousands of language sentences has been independently certified by a human lexicographer.

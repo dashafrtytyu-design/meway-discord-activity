@@ -16,7 +16,7 @@ function wordCards(level:string,nouns:any[]){return nouns.map(([en,ru]:[string,s
 export const generatedContent:SeedContent[]=[]
 let cid=1000
 for(const level of levels){for(const [title,nouns] of themes[level])generatedContent.push({id:cid++,section:'words',title,description:`Тематическая лексика уровня ${level} по теме «${title}».`,status:'published',level,icon:icons[levels.indexOf(level)],xp:0,category:title,payload:{words:wordCards(level,nouns)}})}
-function quizQuestions(level:string,nouns:any[],offset:number){const cards=wordCards(level,nouns);return Array.from({length:10},(_,j)=>{const idx=(offset+j)%cards.length,c=cards[idx];const others=cards.filter((x:any)=>x.ru!==c.ru);const distract=[others[(idx+1)%others.length]?.ru,others[(idx+2)%others.length]?.ru,others[(idx+3)%others.length]?.ru].filter(Boolean);const options=[c.ru,...distract];return {id:j+1,question:`Как лучше перевести “${c.en}”? · ${level}-${offset+1}-${j+1}`,options,correctAnswer:c.ru,explanation:`“${c.en}” — «${c.ru}».`}})}
+function quizQuestions(level:string,nouns:any[],offset:number){const cards=wordCards(level,nouns);return Array.from({length:10},(_,j)=>{const idx=(offset+j)%cards.length,c=cards[idx];const others=cards.filter((x:any)=>x.ru!==c.ru);const distract=[others[(idx+1)%others.length]?.ru,others[(idx+2)%others.length]?.ru,others[(idx+3)%others.length]?.ru].filter(Boolean);const options=[c.ru,...distract];return {id:j+1,question:`Как лучше перевести “${c.en}”?`,options,correctAnswer:c.ru,explanation:`“${c.en}” — «${c.ru}».`}})}
 for(const level of levels){const ts=themes[level];for(let i=0;i<30;i++){const [topic,nouns]=ts[i%10];generatedContent.push({id:cid++,section:'quizzes',title:`${topic} · Quiz ${Math.floor(i/10)+1}`,description:`10 заданий уровня ${level} по теме «${topic}».`,status:'published',level,icon:'📝',xp:20+levels.indexOf(level)*5,category:'Словарный запас',payload:{questions:quizQuestions(level,nouns,(Math.floor(i/10)*10)%30)}})}}
 const gameTypes=['word-match','word-builder','memory','speed','grammar-race','sentence-order','true-false','missing-word','translation-input','crossword','drag-sort']
 for(const level of levels){const ts=themes[level];for(let i=0;i<30;i++){const [topic,nouns]=ts[i%10];const type=gameTypes[i%gameTypes.length];const words=wordCards(level,nouns).slice((i%5)*5,(i%5)*5+5).map((w:any,j:number)=>({...w,hint:type==='sentence-order'?`Use “${w.en}” in a short sentence.`:`Тема: ${topic}`,category:topic,options:[w.en,...wordCards(level,nouns).filter((z:any)=>z.en!==w.en).slice(j+1,j+4).map((z:any)=>z.en)].slice(0,4),correctAnswer:w.en,explanation:`Правильный ответ: ${w.en} — ${w.ru}.`,row:j,col:j%2?2:0,direction:j%2?'down':'across'}));generatedContent.push({id:cid++,section:'games',title:`${topic} · ${['Практика','Тренировка','Раунд'][Math.floor(i/10)]}`,description:`Интерактивная практика ${level}: ${topic}.`,status:'published',level,icon:'🎮',xp:20+levels.indexOf(level)*5,category:topic,payload:{gameType:type,words,puzzleSize:3,oddAnswer:words.at(-1)?.en||''}})}}
@@ -37,7 +37,7 @@ for(const level of levels){ expansionLexicon[level].push(...v716BritishExpansion
 let expansionContentId=5000
 for(const level of levels){for(const [title,words] of expansionLexicon[level]) generatedContent.push({id:expansionContentId++,section:'words',title,description:`Дополнительная тематическая коллекция ${level}: ${title}.`,status:'published',level,icon:'📚',xp:0,category:title,payload:{words}})}
 
-function expansionQuiz(level:string,topic:string,words:any[],n:number){return Array.from({length:10},(_,j)=>{const a=words[(n+j)%words.length];const others=words.filter((x:any)=>x.ru!==a.ru);const options=[a.ru,...[1,2,3].map(k=>others[(n+j+k)%others.length]?.ru).filter(Boolean)];return {id:j+1,question:`Выбери наиболее точный перевод для “${a.en}”. · ${level}-${n+1}-${j+1}`,options,correctAnswer:a.ru,explanation:`“${a.en}” — «${a.ru}».`}})}
+function expansionQuiz(level:string,topic:string,words:any[],n:number){return Array.from({length:10},(_,j)=>{const a=words[(n+j)%words.length];const others=words.filter((x:any)=>x.ru!==a.ru);const options=[a.ru,...[1,2,3].map(k=>others[(n+j+k)%others.length]?.ru).filter(Boolean)];return {id:j+1,question:`Выбери наиболее точный перевод для “${a.en}”.`,options,correctAnswer:a.ru,explanation:`“${a.en}” — «${a.ru}».`}})}
 for(const level of levels){const cols=expansionLexicon[level];for(let i=0;i<50;i++){const [topic,words]=cols[i%cols.length];generatedContent.push({id:expansionContentId++,section:'quizzes',title:`${topic} · Дополнительный квиз ${i+1}`,description:`Дополнительный квиз ${level}: лексика и контекст по теме ${topic}.`,status:'published',level,icon:'🧠',xp:20+levels.indexOf(level)*5,category:i%2?'Словарный запас':'Контекст',payload:{questions:expansionQuiz(level,topic,words,i)}})}}
 const expansionGameTypes=['word-match','word-builder','memory','speed','grammar-race','sentence-order','true-false','missing-word','translation-input','crossword','drag-sort']
 for(const level of levels){const cols=expansionLexicon[level];for(let i=0;i<60;i++){const [topic,words]=cols[i%cols.length];const type=expansionGameTypes[i%expansionGameTypes.length];const chosen=Array.from({length:6},(_,j)=>words[(i*3+j)%words.length]).map((w:any,j:number)=>({...w,hint:`${level} · ${topic}`,category:topic,options:[w.en,...words.filter((z:any)=>z.en!==w.en).slice(0,3).map((z:any)=>z.en)],correctAnswer:w.en,explanation:`${w.en} — ${w.ru}.`,row:j,col:(j*2)%5,direction:j%2?'down':'across'}));generatedContent.push({id:expansionContentId++,section:'games',title:`${topic} · Дополнительная игра ${i+1}`,description:`Дополнительная интерактивная практика ${level} по теме ${topic}.`,status:'published',level,icon:'🎮',xp:20+levels.indexOf(level)*5,category:topic,payload:{gameType:type,words:chosen,puzzleSize:3,oddAnswer:chosen.at(-1)?.en||''}})}}
@@ -115,7 +115,7 @@ function v717GrammarQuestions(level:string,topic:string){
   `Learners practise ${topic} in a clear context.`,
   `The task focuses on accurate use of ${topic}.`
  ]
- return Array.from({length:10},(_,i)=>({id:i+1,question:`Which sentence is the model for “${topic}”? · ${level}-${i+1}`,options:[good[i%good.length],`Incorrect form ${i+1}: the structure is deliberately incomplete.`,`Incorrect form ${i+1}: the verb pattern does not agree.`,`Incorrect form ${i+1}: the word order is not acceptable here.`],correctAnswer:good[i%good.length],explanation:`The model sentence demonstrates ${topic} at ${level} level.`}))
+ return Array.from({length:10},(_,i)=>({id:i+1,question:`Which sentence is the model for “${topic}”?`,options:[good[i%good.length],`Incorrect form ${i+1}: the structure is deliberately incomplete.`,`Incorrect form ${i+1}: the verb pattern does not agree.`,`Incorrect form ${i+1}: the word order is not acceptable here.`],correctAnswer:good[i%good.length],explanation:`The model sentence demonstrates ${topic} at ${level} level.`}))
 }
 for(const level of levels){
  for(const topic of v717GrammarMap[level]) generatedContent.push({id:expansionContentId++,section:'quizzes',title:`${level} Grammar Lab · ${topic}`,description:`Системная практика британского английского: ${topic}.`,status:'published',level,icon:'🧩',xp:25+levels.indexOf(level)*5,category:'Grammar Lab',payload:{questions:v717GrammarQuestions(level,topic)}})
@@ -377,3 +377,48 @@ for(const lv of levels){
  // Challenges: explicit task + questions, never an empty “do something” screen.
  for(let cn=0;cn<24;cn++){const sample=Array.from({length:8},(_,j)=>pool[(cn*7+j)%pool.length]);const qs=sample.map((w:any,j:number)=>{const wrong=pool.filter((z:any)=>z.ru!==w.ru).slice((cn+j)%Math.max(1,pool.length-4),(cn+j)%Math.max(1,pool.length-4)+3).map((z:any)=>z.ru);return {id:j+1,question:`Выбери точное значение «${w.en}».`,options:[w.ru,...wrong].slice(0,4),correctAnswer:w.ru,explanation:`Верно: ${w.en} — ${w.ru}. ${v7210Sentence(w)}`}});generatedContent.push({id:v7210Id++,section:'challenges',title:`${lv} · Челлендж на точность ${cn+1}`,description:`Конкретная задача: правильно ответь минимум на 6 из 8 вопросов уровня ${lv}.`,status:'published',level:lv,icon:'⚡',xp:v7210LevelXp[lv]+15,category:'Точность и контекст',payload:{goal:'Набери минимум 6 правильных ответов из 8.',instructions:'Для каждого английского слова выбери наиболее точное русское значение. После ответа прочитай пояснение и контекстный пример.',reward:`+${v7210LevelXp[lv]+15} XP`,questions:qs}} as any)}
 }
+
+
+// V7.21.4 — learner-facing mission/question QA.
+// Internal generator coordinates must never be shown to students.
+const v7214InternalQuestionSuffix=/\s*[·•]\s*[A-C][12]-\d+(?:-\d+)*\s*$/i
+const v7214CleanQuestion=(value:any)=>String(value??'').replace(v7214InternalQuestionSuffix,'').trim()
+const v7214CleanTask=(task:any)=>{
+  if(!task||typeof task!=='object') return task
+  task.question=v7214CleanQuestion(task.question)
+  if(Array.isArray(task.options)){
+    const seen=new Set<string>()
+    task.options=task.options.map((x:any)=>String(x??'').trim()).filter((x:string)=>x&&!seen.has(x.toLocaleLowerCase('ru-RU'))&&(seen.add(x.toLocaleLowerCase('ru-RU'))||true))
+  }
+  if(task.correctAnswer!=null) task.correctAnswer=String(task.correctAnswer).trim()
+  if(Array.isArray(task.options)&&task.correctAnswer&&!task.options.includes(task.correctAnswer)) task.options.unshift(task.correctAnswer)
+  return task
+}
+for(const mission of generatedMissions){
+  if(Array.isArray((mission as any).tasks)) (mission as any).tasks=(mission as any).tasks.map(v7214CleanTask)
+}
+for(const item of generatedContent){
+  if(Array.isArray((item as any)?.payload?.questions)) (item as any).payload.questions=(item as any).payload.questions.map(v7214CleanTask)
+}
+
+// V7.21.4b — ensure every multiple-choice mission has enough distinct options.
+// This is a final defensive pass; it does not change the declared correct answer.
+for(const lv of levels){
+  const fallback=[...new Set(generatedMissions.filter((m:any)=>m.level===lv).flatMap((m:any)=>Array.isArray(m.tasks)?m.tasks.map((t:any)=>String(t?.correctAnswer??'').trim()):[]).filter(Boolean))]
+  for(const mission of generatedMissions.filter((m:any)=>m.level===lv)){
+    for(const task of (Array.isArray((mission as any).tasks)?(mission as any).tasks:[])){
+      if(!Array.isArray(task.options)) task.options=[]
+      const correct=String(task.correctAnswer??'').trim()
+      const seen=new Set(task.options.map((x:any)=>String(x).trim().toLocaleLowerCase('ru-RU')))
+      for(const candidate of fallback){
+        const key=candidate.toLocaleLowerCase('ru-RU')
+        if(task.options.length>=4) break
+        if(candidate!==correct&&!seen.has(key)){task.options.push(candidate);seen.add(key)}
+      }
+    }
+  }
+}
+
+
+// V7.21.6 — user-owned games only: bundled/generated games are intentionally empty.
+for(let i=generatedContent.length-1;i>=0;i--)if(generatedContent[i].section==='games')generatedContent.splice(i,1)

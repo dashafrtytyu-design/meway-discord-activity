@@ -424,3 +424,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{margin:0;min-width
 .puzzleBoard button{position:relative;overflow:hidden;padding:0!important;background:#f7fbff!important}
 .puzzleBoard button>img{position:absolute;max-width:none!important;object-fit:fill;pointer-events:none;user-select:none}
 .darkTheme .puzzleBoard button{background:#123652!important}
+/* V7.21.5 — mission production tasks */
+.missionInputWrap{margin:22px 0 8px}.missionTextInput{width:100%;box-sizing:border-box;border:1.5px solid rgba(36,126,255,.28);border-radius:18px;padding:18px 20px;font:inherit;font-size:18px;font-weight:700;color:var(--text,#12345f);background:rgba(255,255,255,.82);outline:none;transition:.2s}.missionTextInput:focus{border-color:#2487ff;box-shadow:0 0 0 4px rgba(36,135,255,.10)}.darkTheme .missionTextInput{background:rgba(16,34,61,.86);color:#eef7ff}
+/* V7.21.5 — mission production tasks */
+.missionInputWrap{margin:22px 0 8px}.missionTextInput{width:100%;box-sizing:border-box;border:1.5px solid rgba(36,126,255,.28);border-radius:18px;padding:18px 20px;font:inherit;font-size:18px;font-weight:700;color:var(--text,#12345f);background:rgba(255,255,255,.82);outline:none;transition:.2s}.missionTextInput:focus{border-color:#2487ff;box-shadow:0 0 0 4px rgba(36,135,255,.10)}.darkTheme .missionTextInput{background:rgba(16,34,61,.86);color:#eef7ff}
+/* V7.21.6 — local dictionary duplicate guard */
+.localDuplicateWarning{margin-top:8px;padding:10px 12px;border:1px solid rgba(235,87,87,.35);border-radius:12px;background:rgba(235,87,87,.08);display:flex;flex-direction:column;gap:3px;font-size:12px;line-height:1.35}.localDuplicateWarning b{color:#c0392b}.localDuplicateWarning span{opacity:.82}

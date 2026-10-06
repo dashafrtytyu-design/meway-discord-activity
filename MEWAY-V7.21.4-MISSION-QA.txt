@@ -1,0 +1,12 @@
+MEWAY V7.21.4 — MISSION QA
+
+Missions audited: 1464
+Tasks audited: 10464
+By level: {"A1":244,"A2":244,"B1":244,"B2":244,"C1":244,"C2":244}
+Internal ID suffixes remaining in mission questions: 0
+Missions without tasks: 0
+Duplicate answer-option sets: 0
+Correct answers missing from options: 0
+Structural failures after repair: 0
+
+The CSV lists every mission, every question, four displayed options, the declared correct answer, explanation, and QA status.

@@ -1,0 +1,19 @@
+MEWAY V7.21.5 — MISSION DIVERSITY QA
+Missions: 1464
+Tasks: 10464
+EN→RU: 872
+RU→EN: 872
+Верно/неверно: 872
+Правильная пара: 872
+Найди ошибку: 872
+Ввод EN: 872
+Анаграмма: 872
+Пропущенные буквы: 872
+Эквивалент: 872
+Верное утверждение: 872
+Подсказка буквой: 872
+Подсказка длиной: 872
+Structural issues: 0
+Exact duplicate question texts: 4102
+Task design uses 12 recurring mechanics; individual prompts are generated from the project lexicon.
+CEFR orientation: reception, production, interaction/mediation and linguistic competence; no external certification claim.

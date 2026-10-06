@@ -1,4 +1,3 @@
-import { generatedContent, generatedMissions } from './contentSeed'
 import { MEWAY_BUILD_ID } from './buildVersion'
 interface Env {
   ASSETS: Fetcher
@@ -75,7 +74,6 @@ const seed: Mission[] = [
   { id: 3, title: 'Past Simple Challenge', description: 'Потренируй правильные и неправильные глаголы.', category: 'Грамматика', level: 'A2', xp: 35, icon: '⏳', duration: '8 мин', status: 'published', tasks: [
     { id: 1, question: 'Yesterday I ___ to the cinema.', options: ['go','went','gone','going'], correctAnswer: 'went', explanation: 'Went — форма Past Simple неправильного глагола go.' }
   ]},
-  ...generatedMissions as Mission[]
 ]
 
 const PRIVATE_FIELD=/^(admin|adminNotes?|internal|internalNotes?|private|secret|draftData|hiddenData|moderation|ownerOnly)$/i
@@ -96,7 +94,7 @@ let dbReady = false
 // Warm-isolate caches reduce repeated D1 reads and Discord identity lookups.
 const publicCache = new Map<string,{expires:number,data:unknown}>()
 const identityCache = new Map<string,{expires:number,user:DiscordUser}>()
-const PUBLIC_TTL_MS = 30 * 1000
+const PUBLIC_TTL_MS = 10 * 60 * 1000
 const APP_CONTENT_VERSION = MEWAY_BUILD_ID
 type Revisions={missions:string;games:string;quizzes:string;words:string;challenges:string;rewards:string;settings:string}
 const EMPTY_REVISIONS:Revisions={missions:'0',games:'0',quizzes:'0',words:'0',challenges:'0',rewards:'0',settings:'0'}
@@ -155,7 +153,6 @@ const builtInContent: ContentItem[] = [
   {id:301,section:'words',title:'Путешествия',description:'Главные слова для аэропорта, поездки и отеля.',status:'published',level:'A1',icon:'✈️',xp:0,category:'Путешествия',payload:{words:[{ru:'Самолёт',en:'Plane',transcription:'/pleɪn/',image:'',example:'The plane is ready.'},{ru:'Багаж',en:'Luggage',transcription:'/ˈlʌɡ.ɪdʒ/',image:'',example:'My luggage is heavy.'},{ru:'Билет',en:'Ticket',transcription:'/ˈtɪk.ɪt/',image:'',example:'Here is my ticket.'}]}},
   {id:401,section:'challenges',title:'7 дней английского',description:'Выполняй одно короткое задание каждый день.',status:'published',level:'A1',icon:'🔥',xp:100,category:'Серия',payload:{goal:'Не пропустить 7 дней подряд',instructions:'Каждый день открой MEWAY и заверши хотя бы одну миссию или квиз.',reward:'Значок «7 Day Streak» + 100 XP'}},
   {id:501,section:'rewards',title:'First Flight',description:'Твоя первая награда в MEWAY.',status:'published',level:'A1',icon:'🏆',xp:0,category:'Достижения',payload:{goal:'Заверши первую миссию',instructions:'Пройди любую опубликованную миссию до конца.',reward:'Значок First Flight'}},
-  ...generatedContent as ContentItem[]
 ]
 
 
@@ -172,6 +169,23 @@ for(const x of builtInContent){
  else if(x.section==='challenges'){x.xp=v7198Reward(x.level,'challenge',Array.isArray(x.payload?.questions)?x.payload.questions.length:Number(x.payload?.target||7),2);if(x.payload?.reward)x.payload.reward=`+${x.xp} XP`}
 }
 
+let generatedContentCache: ContentItem[] | null = null
+let generatedMissionsCache: Mission[] | null = null
+async function loadGeneratedContent(env:Env):Promise<ContentItem[]> {
+  if(generatedContentCache) return generatedContentCache
+  const r=await env.ASSETS.fetch(new Request('https://meway.local/curriculum-content.json'))
+  if(!r.ok) throw new Error(`curriculum-content.json ${r.status}`)
+  generatedContentCache=await r.json<ContentItem[]>()
+  return generatedContentCache
+}
+async function loadGeneratedMissions(env:Env):Promise<Mission[]> {
+  if(generatedMissionsCache) return generatedMissionsCache
+  const r=await env.ASSETS.fetch(new Request('https://meway.local/curriculum-missions.json'))
+  if(!r.ok) throw new Error(`curriculum-missions.json ${r.status}`)
+  generatedMissionsCache=await r.json<Mission[]>()
+  return generatedMissionsCache
+}
+
 async function listContent(env: Env, section?: string, all = false) {
   await ensureDb(env)
   const key=`merged-content:${section||'all'}:${all?'all':'published'}`
@@ -182,11 +196,13 @@ async function listContent(env: Env, section?: string, all = false) {
   ])
   const deletedIds=new Set((deleted.results||[]).map(x=>Number(x.id)))
   const merged=new Map<number,ContentItem>()
+  const generated=await loadGeneratedContent(env)
   for(const x of builtInContent) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
+  for(const x of generated) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
   for(const r of custom.results||[]){try{const x=JSON.parse(r.data) as ContentItem;if(!deletedIds.has(x.id))merged.set(x.id,x)}catch{}}
   const items=[...merged.values()].sort((a,b)=>b.id-a.id)
   const result=all?items:items.filter(x=>x.status==='published')
-  setQueryCache(key,result,30_000)
+  setQueryCache(key,result,10*60_000)
   return result
 }
 
@@ -225,11 +241,13 @@ async function listMissions(env: Env, all = false) {
   ])
   const deletedIds=new Set((deleted.results||[]).map(x=>Number(x.id)))
   const merged=new Map<number,Mission>()
+  const generated=await loadGeneratedMissions(env)
   for(const m of seed) if(!deletedIds.has(m.id)) merged.set(m.id,m)
+  for(const m of generated) if(!deletedIds.has(m.id)) merged.set(m.id,m)
   for(const r of custom.results||[]){try{const m=JSON.parse(r.data) as Mission;if(!deletedIds.has(m.id))merged.set(m.id,m)}catch{}}
   const items=[...merged.values()].sort((a,b)=>b.id-a.id)
   const result=all?items:items.filter(m=>m.status==='published')
-  setQueryCache(key,result,30_000)
+  setQueryCache(key,result,10*60_000)
   return result
 }
 
@@ -358,7 +376,7 @@ export default {
       await ensureDb(env)
       const rows=await env.DB.prepare('SELECT user_id, data FROM progress').all<{user_id:string;data:string}>()
       const now=Date.now(),d7=now-7*86400000,d30=now-30*86400000;const leaders=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const ev=Array.isArray(d.xpEvents)?d.xpEvents:[];return {name:d.nickname||d.discordGlobalName||d.discordUsername||'Ученик MEWAY',xp:Math.max(0,Number(d.xp)||0),xp7:ev.filter((e:any)=>Date.parse(e.date)>=d7).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),xp30:ev.filter((e:any)=>Date.parse(e.date)>=d30).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),completed:(d.completedMissions||[]).length+(d.completedContent||[]).length,visible:d.leaderboardVisible!==false}}).filter(x=>x.visible).slice(0,50)
-      setQueryCache('leaderboard',leaders,60_000)
+      setQueryCache('leaderboard',leaders,5*60_000)
       return json({ok:true,leaders})
     }
 
@@ -421,7 +439,7 @@ export default {
         await env.DB.prepare('DELETE FROM deleted_content WHERE id = ?').bind(id).run(); await bumpRevision(env,item.section); clearPublic(); clearQueryCache('merged-content:')
         return json({ok:true,item})
       }
-      if (request.method === 'DELETE') { const now=new Date().toISOString(); const row=await env.DB.prepare('SELECT section FROM content WHERE id=?').bind(id).first<{section:string}>(); const builtIn=builtInContent.find(x=>x.id===id); const sec=(row?.section||builtIn?.section||'games') as keyof Revisions; let changes=0; if(builtIn){const results=await env.DB.batch([env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id),env.DB.prepare('INSERT OR REPLACE INTO deleted_content (id,deleted_at) VALUES (?,?)').bind(id,now)]);changes=results[0]?.meta?.changes||0}else{const result=await env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id).run();changes=result.meta?.changes||0} await bumpRevision(env,sec,now); clearPublic(); clearQueryCache('merged-content:'); return json({ok:true,deleted:id,changes}) }
+      if (request.method === 'DELETE') { const now=new Date().toISOString(); const row=await env.DB.prepare('SELECT section FROM content WHERE id=?').bind(id).first<{section:string}>(); const builtIn=builtInContent.find(x=>x.id===id)||(await loadGeneratedContent(env)).find(x=>x.id===id); const sec=(row?.section||builtIn?.section||'games') as keyof Revisions; let changes=0; if(builtIn){const results=await env.DB.batch([env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id),env.DB.prepare('INSERT OR REPLACE INTO deleted_content (id,deleted_at) VALUES (?,?)').bind(id,now)]);changes=results[0]?.meta?.changes||0}else{const result=await env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id).run();changes=result.meta?.changes||0} await bumpRevision(env,sec,now); clearPublic(); clearQueryCache('merged-content:'); return json({ok:true,deleted:id,changes}) }
     }
 
     if (url.pathname === '/api/missions' && request.method === 'GET') {
@@ -464,7 +482,7 @@ export default {
         return json({ ok: true, mission })
       }
       if (request.method === 'DELETE') {
-        const now=new Date().toISOString(),builtIn=seed.some(m=>m.id===id)
+        const now=new Date().toISOString(),builtIn=seed.some(m=>m.id===id)||(await loadGeneratedMissions(env)).some(m=>m.id===id)
         let changes=0
         if(builtIn){const results=await env.DB.batch([env.DB.prepare('DELETE FROM missions WHERE id = ?').bind(id),env.DB.prepare('INSERT OR REPLACE INTO deleted_missions (id,deleted_at) VALUES (?,?)').bind(id,now)]);changes=results[0]?.meta?.changes||0}
         else{const result=await env.DB.prepare('DELETE FROM missions WHERE id = ?').bind(id).run();changes=result.meta?.changes||0}

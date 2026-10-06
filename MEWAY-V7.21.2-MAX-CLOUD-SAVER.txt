@@ -1,0 +1,21 @@
+MEWAY V7.21.2 — MAX CLOUD SAVER
+
+Based on V7.21.1. No curriculum/game/quiz/dictionary/challenge content was removed.
+
+Request reductions:
+- Progress remains immediate in localStorage, while normal server sync is batched to 60 seconds instead of 20 seconds.
+- XP level crossings remain urgent: a level-up flushes immediately so Discord role assignment is not delayed by the normal batch interval.
+- pagehide / visibility-hidden still flush pending progress with keepalive, reducing loss when the Activity closes.
+- Warm-isolate public/settings/content cache increased from 30 seconds to 10 minutes. Admin writes already invalidate these caches immediately.
+- Merged curriculum D1 cache increased from 30 seconds to 10 minutes; admin writes/deletes invalidate it immediately.
+- Leaderboard D1 computation cache increased from 60 seconds to 5 minutes; any progress write invalidates it, so new saved XP causes the next leaderboard read to recompute.
+- Existing persistent encrypted IndexedDB curriculum cache, revision/delta sync, session request de-duplication, static curriculum assets and V7.21.1 lazy Worker curriculum loading are retained.
+- Discord role sync remains event-driven only: it runs on XP level crossing, missing role cache, or a throttled retry after a previous failure. No role polling was added.
+
+Important semantics retained:
+- XP is written to D1 and survives browser/device changes after sync.
+- Local progress is updated immediately before network sync.
+- Six MEWAY XP roles remain the only automatically managed roles.
+- Admin save/delete invalidates relevant caches/revisions.
+- Built-in deletion tombstones remain in D1.
+- Dictionary search, filters, card interactions, games and local images do not create D1 calls by themselves.

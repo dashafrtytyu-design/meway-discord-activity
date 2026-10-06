@@ -20,6 +20,8 @@ export type MewayAuthResult = {
   progress?: Record<string, unknown> | null
   placementCompleted?: boolean
   placementResult?: Record<string, unknown> | null
+  assistantKnowledge?: Array<Record<string, any>>
+  assistantInbox?: any[]
   error?: string
 }
 
@@ -63,6 +65,8 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
       progress?: Record<string, unknown> | null
       placementCompleted?: boolean
       placementResult?: Record<string, unknown> | null
+  assistantKnowledge?: Array<Record<string, any>>
+  assistantInbox?: any[]
       role?: 'admin' | 'student'
       user?: MewayDiscordUser
     }
@@ -102,6 +106,8 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
       progress: data.progress || null,
       placementCompleted: data.placementCompleted === true,
       placementResult: data.placementResult || null,
+      assistantKnowledge: data.assistantKnowledge || [],
+      assistantInbox: data.assistantInbox || [],
     }
   } catch (error) {
     console.error('MEWAY Discord auth:', error)

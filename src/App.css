@@ -414,3 +414,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{margin:0;min-width
 .topicOptionList label:not(.selected) .topicCheck{background:transparent!important;border-color:transparent!important;box-shadow:none!important;color:transparent!important}
 .darkTheme .topicOptionList label:not(.selected) .topicCheck{background:transparent!important;border-color:transparent!important;color:transparent!important}
 .wordRelationsMini{display:grid;gap:5px;margin-top:10px;padding:9px 11px;border-radius:12px;background:rgba(33,130,238,.07);font-size:12px;line-height:1.35;color:#476d94}.wordRelationsMini span{display:block}.wordRelations{display:grid;gap:10px;margin-top:18px}.wordRelations>div{padding:12px 14px;border:1px solid #d8e8f7;border-radius:14px;background:#fff}.wordRelations b,.wordRelations span{display:block}.wordRelations b{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#6f8eac;margin-bottom:5px}.wordRelations span{font-weight:800;color:#1e527e}.darkTheme .wordRelationsMini{background:rgba(70,158,238,.12);color:#c8dff2}.darkTheme .wordRelations>div{background:#173e5d;border-color:#376786}.darkTheme .wordRelations b{color:#a9c6df}.darkTheme .wordRelations span{color:#f1f8ff}
+/* V7.21.0 picker stability: selecting a topic/game must never move the document viewport. */
+.topicControls,.topicPopover,.topicOptionList{overflow-anchor:none}
+.topicOptionList label{scroll-margin:0!important}
+@media(max-width:980px){.topicPopover{max-height:min(72dvh,620px)}.topicOptionList{max-height:min(48dvh,390px)}}
+@media(max-width:600px){.topicPopover{max-height:none}.topicOptionList{max-height:52dvh}.topicTopRow{position:relative}.topicQuick{grid-template-columns:1fr!important}}

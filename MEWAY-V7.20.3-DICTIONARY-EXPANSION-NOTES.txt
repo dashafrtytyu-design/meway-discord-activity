@@ -1,0 +1,17 @@
+MEWAY V7.20.3 — Dictionary expansion / topic selector patch
+
+Implemented now:
+- Topic selector: unselected rows have no star symbol; selected rows show ✦.
+- Existing horizontal topic-name layout retained for desktop/tablet/mobile.
+- Light/dark theme compatibility retained.
+- Local dictionary visuals and full-card viewer retained; no black image background is introduced by the local visual generator.
+- Existing local search/cache/request-saving architecture retained.
+
+Lexicographic quality rule for future expansion:
+- Do not pad a topic to an arbitrary number.
+- Add only entries that genuinely belong to the topic and whose level/meaning/translation/UK pronunciation can be supported.
+- CEFR itself does not prescribe an exhaustive fixed vocabulary per topic. Oxford's learner word lists are CEFR-aligned reference lists, not a licence to copy an entire proprietary dictionary into MEWAY.
+- Synonyms/antonyms/related forms should be labelled as relationships rather than silently counted as equivalent meanings.
+- Accident/emergency-related topics and entries remain excluded per product requirement.
+
+This package does NOT claim that every English word in existence has been imported or independently certified. That claim would not be verifiable.

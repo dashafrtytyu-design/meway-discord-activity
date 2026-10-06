@@ -1,0 +1,20 @@
+MEWAY V7.20.6 — LEXICOGRAPHIC AUDIT
+
+Scope
+- Existing Word Vault entries were normalised and audited.
+- Global English-entry duplicate guard added across A1–C2.
+- Duplicate senses should be represented inside one card rather than as duplicate cards.
+- Existing V7.20.4 prohibited-topic filter remains active.
+- British English remains the house standard.
+- Existing local transparent SVG visual system remains active; no emoji fallback is used for dictionary art.
+
+Reference framework used for verification methodology
+- Oxford Learner's Dictionaries: Oxford 3000 / Oxford 5000, CEFR-aligned core vocabulary.
+- English Vocabulary Profile: CEFR A1–C2 words, meanings, phrases, idioms and collocations.
+- Cambridge Dictionary / Essential British English: British-English sense and pronunciation cross-check reference.
+- FreeDict English–Russian: open bilingual cross-check source.
+
+IMPORTANT QUALITY LIMIT
+This build does NOT claim that all 5,000 desired cards have been individually lexicographically certified. Bulk-copying proprietary dictionary entries is not used. The archive contains the actually audited current corpus and a hard global no-duplicate guard. Any future expansion must pass the same checks before being included.
+
+Counts after global deduplication are recorded in MEWAY-V7.20.6-COUNTS.txt.

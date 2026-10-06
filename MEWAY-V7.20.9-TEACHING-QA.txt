@@ -1,0 +1,12 @@
+MEWAY V7.20.9 — TEACHING QA HARDENING
+
+Changes are limited to the dictionary data layer.
+- Global duplicate guard retained and strengthened: duplicate headwords are merged into the first card as additional senses rather than silently discarded.
+- Empty/malformed dictionary records are removed locally.
+- English/Russian whitespace and IPA delimiters are normalised.
+- Misleading internal wording that called generated material “verified” was removed.
+- No new Worker/D1 request is introduced by these checks.
+- Existing XP, missions, games, admin architecture and Cloud Saver logic are otherwise unchanged.
+
+Publication note:
+This package is QA-hardened, but no claim is made that every IPA/translation/example has been independently certified by a third-party dictionary. Third-party dictionary content is not copied wholesale into MEWAY.

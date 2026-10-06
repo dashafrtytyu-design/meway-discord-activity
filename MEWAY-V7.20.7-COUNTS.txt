@@ -1,0 +1,10 @@
+MEWAY V7.20.7 DICTIONARY COUNTS
+A1: 247 cards / 36 collections
+A2: 257 cards / 35 collections
+B1: 229 cards / 33 collections
+B2: 214 cards / 31 collections
+C1: 237 cards / 35 collections
+C2: 251 cards / 35 collections
+TOTAL: 1435 cards
+UNIQUE NORMALISED ENGLISH ENTRIES: 1435
+DUPLICATES: 0

@@ -1,0 +1,22 @@
+MEWAY V7.20.4 — LEXICOGRAPHIC INTEGRITY PASS
+
+Implemented:
+- unselected topic rows have no star/placeholder symbol; selected rows show ✦ only;
+- generated dictionary visuals use transparent SVG canvas (no black rectangle/background);
+- dictionary word cards support explicit synonyms and antonyms;
+- admin editor can edit synonym and antonym lists;
+- transcription formatting is normalised to /.../ where a transcription exists;
+- duplicate English entries inside one collection are removed;
+- word-level safety filter excludes accident/emergency-related vocabulary requested by the project owner;
+- dictionary remains 0 XP;
+- visuals remain local data-URI SVGs, so card rendering does not require one network request per image.
+
+Important scope statement:
+This build does NOT claim to contain "every English word in the world" or an exhaustive copy of Oxford/Cambridge/British Council. There is no finite authoritative all-words-by-topic CEFR list, and copying proprietary dictionary databases wholesale would not be appropriate. Existing MEWAY entries are preserved and normalised; new relations are only added where explicitly curated in the project patch.
+
+Reference methodology used for external verification:
+- CEFR describes vocabulary range rather than prescribing a finite vocabulary list for each level.
+- Oxford 3000/5000 are CEFR-aligned learner word lists used as a validation reference, not copied wholesale.
+- Cambridge UK pronunciation/IPA is used as a pronunciation reference; proprietary dictionary entries are not copied wholesale.
+
+Final deployment still requires the real project npm build and Cloudflare runtime smoke test.

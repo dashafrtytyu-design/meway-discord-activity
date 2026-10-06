@@ -1,0 +1,28 @@
+MEWAY V7.23.6 — UI STABILITY + BLUE THEME
+
+1. Light theme Rewards / Next level:
+   - restored high-contrast dark navy text for rank, remaining XP and total XP;
+   - progress track/bar remains readable on light surfaces.
+
+2. Stable topic/category interaction:
+   - topic selection preserves the current viewport through React re-render;
+   - no intentional scroll/jump is performed when selecting filters;
+   - mobile quick 3-topic row remains hidden as in V7.23.5.
+
+3. Main navigation:
+   - changing a content section resets an open internal ContentDetail state;
+   - explicit main-section navigation can immediately replace an opened card/detail.
+
+4. Short detail screens:
+   - application/main keep full dynamic viewport height and theme background,
+     preventing an unthemed white strip beneath short content.
+
+5. Third UI theme: BLUE:
+   - local preference only; no Worker/D1 request;
+   - light-blue surfaces + dark navy typography;
+   - styles included for navigation, cards, filters, topic picker, locked content,
+     rewards, profile/settings, admin surfaces, forms and mobile navigation.
+
+Cloud impact: these UI changes add 0 Worker/D1 requests.
+Production build note: npm dependency installation did not finish within the execution
+environment timeout, so a successful production build is not claimed here.

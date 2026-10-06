@@ -54,10 +54,12 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
       ok?: boolean
       error?: string
       accessToken?: string
-  accessLevels?: Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>
+      accessLevels?: Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>
+      revisions?: Record<string,string>
+      appVersion?: string
+      progress?: Record<string, unknown> | null
       role?: 'admin' | 'student'
       user?: MewayDiscordUser
-      accessLevels?: Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>
     }
 
     if (!response.ok || !data.ok || !data.accessToken || !data.user) {

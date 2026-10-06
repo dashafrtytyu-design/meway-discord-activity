@@ -1,2 +1,2 @@
 // Generated automatically before every production build. Do not edit.
-export const MEWAY_BUILD_ID = "7.19.6-502ea78285f84684" as const
+export const MEWAY_BUILD_ID = "7.22.5-f81a24cdab72ae5b" as const

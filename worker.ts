@@ -19,6 +19,21 @@ const LEVEL_ROLES = [
   { xp: 5000, id: '1554470911904714852', name: 'ENGLISH MASTER' },
   { xp: 10000, id: '1555241516363030568', name: 'MASTER ZONE' },
 ] as const
+
+const COURSE_ACCESS_ROLES = {
+  A1: '1556913943338025012', A2: '1556914417462022245', B1: '1556914567693733938',
+  B2: '1556914580851269693', C1: '1556914597192138772', C2: '1556914605039685652',
+} as const
+type CourseLevel = keyof typeof COURSE_ACCESS_ROLES
+const COURSE_LEVELS = Object.keys(COURSE_ACCESS_ROLES) as CourseLevel[]
+async function readDiscordCourseAccess(env:Env,userId:string){
+  if(!env.DISCORD_BOT_TOKEN||!env.DISCORD_GUILD_ID) return [] as CourseLevel[]
+  const r=await fetch(`https://discord.com/api/v10/guilds/${env.DISCORD_GUILD_ID}/members/${userId}`,{headers:{Authorization:`Bot ${env.DISCORD_BOT_TOKEN}`}})
+  if(!r.ok){console.error('Course access role lookup failed',r.status);return [] as CourseLevel[]}
+  const d=await r.json<any>(),roles=new Set<string>(Array.isArray(d.roles)?d.roles:[])
+  return COURSE_LEVELS.filter(level=>roles.has(COURSE_ACCESS_ROLES[level]))
+}
+async function readCourseAccess(env:Env,userId:string,isAdmin=false){if(isAdmin)return [...COURSE_LEVELS];await ensureDb(env);const row=await env.DB.prepare('SELECT levels FROM course_access WHERE user_id=?').bind(userId).first<{levels:string}>();try{return (JSON.parse(row?.levels||'[]') as CourseLevel[]).filter(x=>COURSE_LEVELS.includes(x))}catch{return []}}
 function levelForXp(xp:number){ return [...LEVEL_ROLES].reverse().find(x=>xp>=x.xp) || null }
 function streakForDays(days:unknown){const set=new Set(Array.isArray(days)?days.filter((x):x is string=>typeof x==='string'):[]);let n=0,d=new Date();for(;;){const k=d.toISOString().slice(0,10);if(!set.has(k))break;n++;d.setUTCDate(d.getUTCDate()-1)}return n}
 async function syncDiscordLevelRole(env:Env,userId:string,xp:number){
@@ -123,6 +138,10 @@ async function ensureDb(env: Env) {
     CREATE TABLE IF NOT EXISTS deleted_missions (id INTEGER PRIMARY KEY, deleted_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS deleted_content (id INTEGER PRIMARY KEY, deleted_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS meway_meta (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS course_access (user_id TEXT PRIMARY KEY, levels TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS placement_results (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS placement_history (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, data TEXT NOT NULL, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS placement_config (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, updated_at TEXT NOT NULL);
   `)
   dbReady = true
 }
@@ -268,7 +287,19 @@ export default {
       if (!token.access_token) return json({ ok: false, error: 'Discord did not return an access token.' }, 401)
       const user = await getDiscordUser(token.access_token)
       if (!user) return json({ ok: false, error: 'Could not load Discord user.' }, 401)
-      return json({ ok: true, accessToken: token.access_token, role: user.id === env.ADMIN_DISCORD_ID ? 'admin' : 'student', user: {
+      const appRole=user.id === env.ADMIN_DISCORD_ID ? 'admin' : 'student'
+      // STRICT CLOUD SAVER: the unavoidable Activity auth response also carries
+      // access, revisions and the last saved progress. This avoids separate
+      // /api/access, /api/manifest and /api/progress GETs on normal startup.
+      await ensureDb(env)
+      const [accessLevels,revisions,progressRow]=await Promise.all([
+        readCourseAccess(env,user.id,appRole==='admin'),
+        getRevisions(env),
+        env.DB.prepare('SELECT data FROM progress WHERE user_id = ?').bind(user.id).first<{data:string}>()
+      ])
+      let savedProgress:any=null
+      try{savedProgress=progressRow?.data?JSON.parse(progressRow.data):null}catch{}
+      return json({ ok: true, accessToken: token.access_token, role: appRole, accessLevels, revisions, appVersion:APP_CONTENT_VERSION, progress:savedProgress, courseRoleIds: COURSE_ACCESS_ROLES, user: {
         id: user.id, username: user.username, globalName: user.global_name ?? null, avatar: user.avatar ?? null
       }})
     }
@@ -374,15 +405,54 @@ export default {
       const studentsCached=getQueryCache<any[]>('students')
       if(studentsCached)return json({ok:true,students:studentsCached})
       await ensureDb(env)
-      const [rows,missions,items]=await Promise.all([
+      const [rows,missions,items,accessRows,placementRows,placementHistoryRows]=await Promise.all([
         env.DB.prepare('SELECT user_id, data, updated_at FROM progress ORDER BY updated_at DESC').all<{user_id:string;data:string;updated_at:string}>(),
-        listMissions(env,true),listContent(env,undefined,true)
+        listMissions(env,true),listContent(env,undefined,true),
+        env.DB.prepare('SELECT user_id,levels FROM course_access').all<{user_id:string;levels:string}>(),
+        env.DB.prepare('SELECT user_id,data FROM placement_results').all<{user_id:string;data:string}>(),
+        env.DB.prepare('SELECT user_id,data,created_at FROM placement_history ORDER BY created_at ASC').all<{user_id:string;data:string;created_at:string}>()
       ])
+      const historyMap=new Map<string,any[]>();for(const r of placementHistoryRows.results||[]){let x:any=null;try{x=JSON.parse(r.data)}catch{};if(x){const a=historyMap.get(r.user_id)||[];a.push(x);historyMap.set(r.user_id,a)}};const accessMap=new Map((accessRows.results||[]).map(r=>{let x:CourseLevel[]=[];try{x=JSON.parse(r.levels)}catch{}return [r.user_id,x] as const}));const placementMap=new Map((placementRows.results||[]).map(r=>{let x:any=null;try{x=JSON.parse(r.data)}catch{}return [r.user_id,x] as const}))
       const missionNames=new Map(missions.map(x=>[x.id,x.title]))
       const contentNames=new Map(items.map(x=>[x.id,x.title]))
-      const students=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const xp=Math.max(0,Number(d.xp)||0);const lvl=levelForXp(xp);const answers=Math.max(0,Number(d.answerCount)||0),correct=Math.max(0,Number(d.correctAnswers)||0);const stats=d.sectionStats||{};const weakTopics=Object.entries(stats).map(([name,v]:any)=>({name,total:Number(v.total)||0,correct:Number(v.correct)||0,accuracy:v.total?Math.round(v.correct/v.total*100):0})).filter((x:any)=>x.total>=2).sort((a:any,b:any)=>a.accuracy-b.accuracy).slice(0,4);const fav=Object.entries(stats).sort((a:any,b:any)=>(Number(b[1]?.total)||0)-(Number(a[1]?.total)||0))[0]?.[0]||'—';const days=Array.isArray(d.activityDays)?d.activityDays:[];const cutoff7=Date.now()-7*86400000,cutoff30=Date.now()-30*86400000;return {name:d.nickname||d.discordGlobalName||d.discordUsername||`Discord ${r.user_id}`,discordUsername:d.discordUsername||'',xp,level:lvl?.name||'До BEGINNER',mistakes:Math.max(0,Number(d.mistakes)||0),correctAnswers:correct,answerCount:answers,accuracy:answers?Math.round(correct/answers*100):0,favoriteSection:fav,active7:days.filter((x:string)=>Date.parse(x)>=cutoff7).length,active30:days.filter((x:string)=>Date.parse(x)>=cutoff30).length,weakTopics,firstSeen:d.firstSeen||r.updated_at,lastSeen:d.lastSeen||r.updated_at,completedMissions:(d.completedMissions||[]).map((id:number)=>({id,title:missionNames.get(id)||`Миссия #${id}`})),completedContent:(d.completedContent||[]).map((id:number)=>({id,title:contentNames.get(id)||`Материал #${id}`})),events:Array.isArray(d.events)?d.events.slice(-20):[]}})
+      const students=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const xp=Math.max(0,Number(d.xp)||0);const lvl=levelForXp(xp);const answers=Math.max(0,Number(d.answerCount)||0),correct=Math.max(0,Number(d.correctAnswers)||0);const stats=d.sectionStats||{};const weakTopics=Object.entries(stats).map(([name,v]:any)=>({name,total:Number(v.total)||0,correct:Number(v.correct)||0,accuracy:v.total?Math.round(v.correct/v.total*100):0})).filter((x:any)=>x.total>=2).sort((a:any,b:any)=>a.accuracy-b.accuracy).slice(0,4);const fav=Object.entries(stats).sort((a:any,b:any)=>(Number(b[1]?.total)||0)-(Number(a[1]?.total)||0))[0]?.[0]||'—';const days=Array.isArray(d.activityDays)?d.activityDays:[];const cutoff7=Date.now()-7*86400000,cutoff30=Date.now()-30*86400000;return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||`Discord ${r.user_id}`,discordUsername:d.discordUsername||'',discordGlobalName:d.discordGlobalName||'',accessLevels:accessMap.get(r.user_id)||[],placement:placementMap.get(r.user_id)||null,placementHistory:historyMap.get(r.user_id)||[],xp,level:lvl?.name||'До BEGINNER',mistakes:Math.max(0,Number(d.mistakes)||0),correctAnswers:correct,answerCount:answers,accuracy:answers?Math.round(correct/answers*100):0,favoriteSection:fav,active7:days.filter((x:string)=>Date.parse(x)>=cutoff7).length,active30:days.filter((x:string)=>Date.parse(x)>=cutoff30).length,weakTopics,firstSeen:d.firstSeen||r.updated_at,lastSeen:d.lastSeen||r.updated_at,completedMissions:(d.completedMissions||[]).map((id:number)=>({id,title:missionNames.get(id)||`Миссия #${id}`})),completedContent:(d.completedContent||[]).map((id:number)=>({id,title:contentNames.get(id)||`Материал #${id}`})),events:Array.isArray(d.events)?d.events.slice(-20):[]}})
       setQueryCache('students',students,30_000)
       return json({ok:true,students})
+    }
+
+    const accessMatch=url.pathname.match(/^\/api\/admin\/students\/(\d+)\/access$/)
+    if(accessMatch&&request.method==='PUT'){const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403);await ensureDb(env);const body=await request.json<any>().catch(()=>({}));const levels=(Array.isArray(body.levels)?body.levels:[]).filter((x:any)=>COURSE_LEVELS.includes(x));await env.DB.prepare('INSERT OR REPLACE INTO course_access (user_id,levels,updated_at) VALUES (?,?,?)').bind(accessMatch[1],JSON.stringify(levels),new Date().toISOString()).run();clearQueryCache('students');return json({ok:true,levels})}
+
+    if (url.pathname === '/api/admin/export' && request.method === 'GET') {
+      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403)
+      await ensureDb(env);const scope=url.searchParams.get('scope')==='full'?'full':'changes'
+      const [cm,cc,dm,dc,settings,progress,courseAccess,placementResults,placementHistory,placementConfig]=await Promise.all([
+        env.DB.prepare('SELECT id,data,updated_at FROM missions').all<any>(),env.DB.prepare('SELECT id,section,data,updated_at FROM content').all<any>(),
+        env.DB.prepare('SELECT id,deleted_at FROM deleted_missions').all<any>(),env.DB.prepare('SELECT id,deleted_at FROM deleted_content').all<any>(),
+        env.DB.prepare('SELECT data,updated_at FROM settings WHERE id=1').first<any>(),env.DB.prepare('SELECT user_id,data,updated_at FROM progress').all<any>(),env.DB.prepare('SELECT user_id,levels,updated_at FROM course_access').all<any>(),env.DB.prepare('SELECT user_id,data,updated_at FROM placement_results').all<any>(),env.DB.prepare('SELECT user_id,data,created_at FROM placement_history').all<any>(),env.DB.prepare('SELECT data,updated_at FROM placement_config WHERE id=1').first<any>()])
+      const changes={missions:cm.results||[],content:cc.results||[],deletedMissions:dm.results||[],deletedContent:dc.results||[],settings:settings||null,progress:scope==='full'?(progress.results||[]):[],courseAccess:courseAccess.results||[],placementResults:placementResults.results||[],placementHistory:placementHistory.results||[],placementConfig:placementConfig||null}
+      const backup:any={format:'MEWAY-BACKUP-1',scope,createdAt:new Date().toISOString(),build:APP_CONTENT_VERSION,courseRoleIds:COURSE_ACCESS_ROLES,changes}
+      if(scope==='full'){backup.full={missions:await listMissions(env,true),content:await listContent(env,undefined,true),settings:await getSettings(env)}}
+      return json({ok:true,backup})
+    }
+
+    if (url.pathname === '/api/admin/import' && request.method === 'POST') {
+      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403)
+      const body=await request.json<any>().catch(()=>null);const b=body?.backup
+      if(!b||b.format!=='MEWAY-BACKUP-1')return json({ok:false,error:'Unsupported MEWAY backup file.'},400)
+      await ensureDb(env);const now=new Date().toISOString(),ch=b.changes||{}
+      const stmts:any[]=[]
+      for(const r of ch.missions||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO missions (id,data,updated_at) VALUES (?,?,?)').bind(Number(r.id),String(r.data),String(r.updated_at||now)))
+      for(const r of ch.content||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO content (id,section,data,updated_at) VALUES (?,?,?,?)').bind(Number(r.id),String(r.section),String(r.data),String(r.updated_at||now)))
+      for(const r of ch.deletedMissions||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO deleted_missions (id,deleted_at) VALUES (?,?)').bind(Number(r.id),String(r.deleted_at||now)))
+      for(const r of ch.deletedContent||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO deleted_content (id,deleted_at) VALUES (?,?)').bind(Number(r.id),String(r.deleted_at||now)))
+      for(const r of ch.progress||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO progress (user_id,data,updated_at) VALUES (?,?,?)').bind(String(r.user_id),String(r.data),String(r.updated_at||now)));for(const r of ch.courseAccess||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO course_access (user_id,levels,updated_at) VALUES (?,?,?)').bind(String(r.user_id),String(r.levels),String(r.updated_at||now)));for(const r of ch.placementHistory||[])stmts.push(env.DB.prepare('INSERT INTO placement_history (user_id,data,created_at) VALUES (?,?,?)').bind(String(r.user_id),String(r.data),String(r.created_at||now)));if(ch.placementConfig?.data)stmts.push(env.DB.prepare('INSERT OR REPLACE INTO placement_config (id,data,updated_at) VALUES (1,?,?)').bind(String(ch.placementConfig.data),String(ch.placementConfig.updated_at||now)));for(const r of ch.placementResults||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO placement_results (user_id,data,updated_at) VALUES (?,?,?)').bind(String(r.user_id),String(r.data),String(r.updated_at||now)))
+      if(ch.settings?.data)stmts.push(env.DB.prepare('INSERT OR REPLACE INTO settings (id,data,updated_at) VALUES (1,?,?)').bind(String(ch.settings.data),String(ch.settings.updated_at||now)))
+      // A full backup can restore the complete visible curriculum even if the original static bundle later changes.
+      if(b.scope==='full'&&b.full){for(const m of b.full.missions||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO missions (id,data,updated_at) VALUES (?,?,?)').bind(Number(m.id),JSON.stringify(m),now));for(const x of b.full.content||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO content (id,section,data,updated_at) VALUES (?,?,?,?)').bind(Number(x.id),String(x.section),JSON.stringify(x),now))}
+      for(let i=0;i<stmts.length;i+=50)await env.DB.batch(stmts.slice(i,i+50))
+      for(const k of ['missions','games','quizzes','words','challenges','rewards','settings'] as (keyof Revisions)[])await bumpRevision(env,k,now)
+      clearPublic();clearQueryCache();return json({ok:true,restored:stmts.length})
     }
 
     if (url.pathname === '/api/admin/bootstrap' && request.method === 'GET') {

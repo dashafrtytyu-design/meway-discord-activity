@@ -13,6 +13,10 @@ export type MewayAuthResult = {
   role: 'admin' | 'student' | null
   user: MewayDiscordUser | null
   accessToken?: string
+  accessLevels?: Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>
+  revisions?: Record<string,string>
+  appVersion?: string
+  progress?: Record<string, unknown> | null
   error?: string
 }
 
@@ -50,8 +54,10 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
       ok?: boolean
       error?: string
       accessToken?: string
+  accessLevels?: Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>
       role?: 'admin' | 'student'
       user?: MewayDiscordUser
+      accessLevels?: Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>
     }
 
     if (!response.ok || !data.ok || !data.accessToken || !data.user) {
@@ -66,6 +72,10 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
       role: data.role ?? 'student',
       user: data.user,
       accessToken: data.accessToken,
+      accessLevels: data.accessLevels || [],
+      revisions: data.revisions || {},
+      appVersion: data.appVersion || '',
+      progress: data.progress || null,
     }
   } catch (error) {
     console.error('MEWAY Discord auth:', error)

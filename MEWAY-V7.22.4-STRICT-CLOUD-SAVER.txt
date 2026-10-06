@@ -1,0 +1,32 @@
+MEWAY V7.22.4 — STRICT CLOUD SAVER
+
+PRINCIPLE
+Everything that can be calculated, filtered, displayed or accumulated locally stays local.
+Cloud/D1 is used only for authentication, required synchronization after a known revision change, explicit admin actions, and important save events.
+
+STUDENT NETWORK MODEL
+1. Discord Activity startup: one unavoidable /api/auth/discord request.
+   The same response now includes A1-C2 access, content revisions, app version and last saved progress.
+   This replaces separate startup GETs to /api/access, /api/manifest and /api/progress.
+2. Cached curriculum: IndexedDB is the primary local source.
+   If the revision received during auth is unchanged, no content sync request is made.
+   Only a changed resource revision causes a delta sync for that resource.
+3. Progress: ordinary answers are localStorage-only.
+   There is NO 30/60-second timer, NO pagehide flush, NO visibilitychange flush.
+4. Important progress save events: completing a mission/material, claiming a daily reward,
+   explicit profile save, explicit leaderboard privacy change. Pending local answer statistics are folded into that one save.
+5. Placement Test: all answers/scoring are local; one result save after completion.
+6. Locked A1-C2 clicks: zero access-check requests. Access comes from the normal auth response.
+7. Search/filter/navigation/theme: local only.
+8. Admin: D1 requests happen when the admin explicitly opens server-backed admin data or presses Save/Import/Export/delete/create actions.
+
+REMOVED
+- automatic /api/manifest request on normal startup
+- separate /api/progress GET on normal startup
+- /api/access endpoint and client refresh function
+- 60-second progress flush timer
+- pagehide/visibilitychange progress flushes
+- background access polling
+
+NOTE
+Remote changes cannot become known to an already-open offline/local UI without some network event. MEWAY therefore learns new A1-C2 access on the next normal Discord Activity authentication, not by polling. Content revision information is piggybacked on that same authentication request.

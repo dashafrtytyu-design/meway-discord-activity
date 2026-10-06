@@ -206,8 +206,8 @@ function AdminLivePrototype({item,onPatch,onPayload}:{item:any;onPatch:(k:string
  const patchWords=(next:any[])=>onPayload?.('words',next), patchQuestions=(next:any[])=>isMission?onPatch('tasks',next):onPayload?.('questions',next);
  const updateWord=(i:number,patch:any)=>{const a=[...words];a[i]={...(a[i]||{}),...patch};patchWords(a)};
  const updateQuestion=(i:number,patch:any)=>{const a=[...questions];a[i]={...(a[i]||{id:Date.now()+i,options:[]}),...patch};patchQuestions(a)};
- const addWord=()=>patchWords([...words,{ru:'Новое слово',en:'word',transcription:'',image:'',example:'',hint:'',category:'Категория',options:['Вариант 1','Вариант 2'],correctAnswer:'word',explanation:'',row:0,col:0,direction:'across'}]);
- const addQuestion=()=>patchQuestions([...questions,{id:Date.now(),question:'Новый вопрос',options:['Вариант 1','Вариант 2'],correctAnswer:'Вариант 1',explanation:''}]);
+ const addWord=()=>patchWords([...words,{ru:'',en:'',transcription:'',image:'',example:'',hint:'',category:'',options:[],correctAnswer:'',explanation:'',row:0,col:0,direction:'across'}]);
+ const addQuestion=()=>patchQuestions([...questions,{id:Date.now(),question:'',options:[],correctAnswer:'',explanation:''}]);
  const moveWord=(i:number,dir:-1|1)=>{const j=i+dir;if(j<0||j>=words.length)return;const a=[...words];[a[i],a[j]]=[a[j],a[i]];patchWords(a)};
  const moveQuestion=(i:number,dir:-1|1)=>{const j=i+dir;if(j<0||j>=questions.length)return;const a=[...questions];[a[i],a[j]]=[a[j],a[i]];patchQuestions(a)};
  const uploadImage=(i:number,file?:File)=>{if(!file)return;const r=new FileReader();r.onload=()=>updateWord(i,{image:String(r.result||'')});r.readAsDataURL(file)};

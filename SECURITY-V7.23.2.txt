@@ -1,0 +1,9 @@
+MEWAY V7.23.2 — production security/size hardening
+
+- node_modules stays developer-only and is excluded from deployment/source ZIP by .gitignore.
+- D1 is server-side only through the Cloudflare Worker DB binding. No database credentials are placed in the React client.
+- DISCORD_CLIENT_SECRET and ADMIN_DISCORD_ID remain Cloudflare environment variables; do not put them in VITE_* variables.
+- Every /api/admin/* route is protected server-side with requireAdmin(), which validates the Discord bearer token and exact ADMIN_DISCORD_ID.
+- Hiding the Admin UI is not treated as security; server authorization is the security boundary.
+- Production build now runs scripts/verify-production.mjs after Vite. It fails if known server-only files or secret-like values are found in dist and reports exact dist size.
+- dist is the user-facing payload; node_modules is never downloaded by MEWAY students.

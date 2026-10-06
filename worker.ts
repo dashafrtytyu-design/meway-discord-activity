@@ -1,4 +1,5 @@
 import { MEWAY_BUILD_ID } from './buildVersion'
+import { placementVariants, PLACEMENT_RETAKE_DAYS } from './src/placement'
 interface Env {
   ASSETS: Fetcher
   DB: D1Database
@@ -292,14 +293,19 @@ export default {
       // access, revisions and the last saved progress. This avoids separate
       // /api/access, /api/manifest and /api/progress GETs on normal startup.
       await ensureDb(env)
-      const [accessLevels,revisions,progressRow]=await Promise.all([
+      const [accessLevels,revisions,progressRow,placementRow]=await Promise.all([
         readCourseAccess(env,user.id,appRole==='admin'),
         getRevisions(env),
-        env.DB.prepare('SELECT data FROM progress WHERE user_id = ?').bind(user.id).first<{data:string}>()
+        env.DB.prepare('SELECT data FROM progress WHERE user_id = ?').bind(user.id).first<{data:string}>(),
+        env.DB.prepare('SELECT data, updated_at FROM placement_results WHERE user_id = ?').bind(user.id).first<{data:string;updated_at:string}>()
       ])
-      let savedProgress:any=null
+      let savedProgress:any=null, savedPlacement:any=null
       try{savedProgress=progressRow?.data?JSON.parse(progressRow.data):null}catch{}
-      return json({ ok: true, accessToken: token.access_token, role: appRole, accessLevels, revisions, appVersion:APP_CONTENT_VERSION, progress:savedProgress, courseRoleIds: COURSE_ACCESS_ROLES, user: {
+      try{savedPlacement=placementRow?.data?JSON.parse(placementRow.data):null}catch{}
+      // SAFE CACHE RECOVERY: this same unavoidable auth response is the single
+      // recovery bootstrap after browser/site storage is cleared. No extra D1
+      // recovery endpoint/request is required.
+      return json({ ok: true, accessToken: token.access_token, role: appRole, accessLevels, revisions, appVersion:APP_CONTENT_VERSION, progress:savedProgress, placementCompleted:!!placementRow, placementResult:savedPlacement, courseRoleIds: COURSE_ACCESS_ROLES, user: {
         id: user.id, username: user.username, globalName: user.global_name ?? null, avatar: user.avatar ?? null
       }})
     }
@@ -355,6 +361,44 @@ export default {
         clearQueryCache('students')
         return json({ok:true,progress:safe,roleSync:roleSync?{ok:roleSync.ok,configured:roleSync.configured,role:roleSync.role||null,roleId:roleSync.roleId||null,status:roleSync.status||null,error:roleSync.error||null}:null})
       }
+    }
+
+    if (url.pathname === '/api/placement-config' && request.method === 'GET') {
+      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      await ensureDb(env)
+      // CLOUD-SAVER: variant selection needs only the last counted result, not the full audit history.
+      // Full placement_history remains intact and is read only from the admin Students audit screen.
+      const [cfgRow,lastRow]=await Promise.all([
+        (async()=>{const hit=cachedPublic('placement-config') as {data?:string}|null;if(hit)return hit;const row=await env.DB.prepare('SELECT data FROM placement_config WHERE id=1').first<{data:string}>();setPublic('placement-config',row||{});return row})(),
+        env.DB.prepare('SELECT data,updated_at FROM placement_results WHERE user_id=?').bind(user.id).first<{data:string;updated_at:string}>()
+      ])
+      let variants:any=placementVariants;try{const parsed=cfgRow?.data?JSON.parse(cfgRow.data):null;if(parsed?.variants)variants=parsed.variants;else if(Array.isArray(parsed?.questions))variants={...placementVariants,1:parsed.questions}}catch{}
+      let last:any=null;try{last=lastRow?.data?{...JSON.parse(lastRow.data),createdAt:lastRow.updated_at}:null}catch{}
+      const now=Date.now(),gap=PLACEMENT_RETAKE_DAYS*86400000
+      let variant=1,eligible=true,attempt=1
+      if(last){const previousAttempt=Math.max(1,Number(last.attempt)||1),elapsed=now-Date.parse(last.completedAt||last.createdAt||'');eligible=elapsed>=gap;if(!eligible){variant=Math.max(1,Math.min(5,Number(last.variant)||1));attempt=previousAttempt}else if(previousAttempt<5){variant=previousAttempt+1;attempt=previousAttempt+1}else{attempt=previousAttempt+1;const lastV=Number(last.variant)||5;const pool=[1,2,3,4,5].filter(v=>v!==lastV);let h=0;for(const c of user.id)h=(h*31+c.charCodeAt(0))>>>0;variant=pool[(h+Math.floor(now/gap))%pool.length]}}
+      const questions=(variants[String(variant)]||variants[variant]||placementVariants[variant]||placementVariants[1])
+      return json({ok:true,questions,variant,attempt,eligible,retakeDays:PLACEMENT_RETAKE_DAYS,lastCompletedAt:last?.completedAt||last?.createdAt||null})
+    }
+
+    if (url.pathname === '/api/placement' && request.method === 'POST') {
+      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      await ensureDb(env);const body=await request.json<any>().catch(()=>null);if(!body||!body.level)return json({ok:false,error:'Invalid placement result.'},400)
+      const lastRow=await env.DB.prepare('SELECT data,updated_at FROM placement_results WHERE user_id=?').bind(user.id).first<{data:string;updated_at:string}>()
+      let last:any=null;try{last=lastRow?.data?{...JSON.parse(lastRow.data),createdAt:lastRow.updated_at}:null}catch{}
+      const now=new Date().toISOString(),gap=PLACEMENT_RETAKE_DAYS*86400000,previousAttempt=Math.max(0,Number(last?.attempt)||0)
+      const eligible=!last||(Date.now()-Date.parse(last.completedAt||last.createdAt||''))>=gap;const variant=Math.max(1,Math.min(5,Number(body.variant)||1));const attempt=previousAttempt+(eligible?1:0)
+      const record={...body,variant,attempt,counted:eligible,completedAt:now,daysSincePrevious:last?Math.floor((Date.now()-Date.parse(last.completedAt||last.createdAt||''))/86400000):null,previousLevel:last?.level||null}
+      const statements=[env.DB.prepare('INSERT INTO placement_history (user_id,data,created_at) VALUES (?,?,?)').bind(user.id,JSON.stringify(record),now)]
+      if(eligible)statements.push(env.DB.prepare('INSERT OR REPLACE INTO placement_results (user_id,data,updated_at) VALUES (?,?,?)').bind(user.id,JSON.stringify(record),now))
+      await env.DB.batch(statements)
+      clearQueryCache('students');return json({ok:true,counted:eligible,attempt,variant,result:record})
+    }
+
+    if (url.pathname === '/api/admin/placement-config') {
+      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403);await ensureDb(env)
+      if(request.method==='GET'){const row=await env.DB.prepare('SELECT data FROM placement_config WHERE id=1').first<{data:string}>();let config:any={variants:placementVariants};try{if(row?.data)config={...config,...JSON.parse(row.data)}}catch{};return json({ok:true,...config})}
+      if(request.method==='PUT'){const body=await request.json<any>().catch(()=>null);if(!body)return json({ok:false,error:'Invalid config.'},400);const variants=body.variants||{1:body.questions};for(let v=1;v<=5;v++){const qs=variants[v]||variants[String(v)];if(!Array.isArray(qs)||qs.length!==48)return json({ok:false,error:`Variant ${v} must contain exactly 48 questions.`},400)}const now=new Date().toISOString();await env.DB.prepare('INSERT OR REPLACE INTO placement_config (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify({variants}),now).run();clearPublic();return json({ok:true,variants})}
     }
 
     if (url.pathname === '/api/settings' && request.method === 'GET') {

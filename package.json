@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-build-version.mjs && tsc -b && vite build",
+    "build": "node scripts/generate-build-version.mjs && tsc -b && vite build && npm run verify:production",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify:production": "node scripts/verify-production.mjs"
   },
   "dependencies": {
     "@discord/embedded-app-sdk": "^2.5.0",

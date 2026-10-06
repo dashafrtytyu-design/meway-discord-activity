@@ -1,3 +1,4 @@
+import { cacheSet } from './persistentCache'
 export const DISCORD_CLIENT_ID = '1555208386742587444'
 
 export type MewayDiscordUser = {
@@ -17,6 +18,8 @@ export type MewayAuthResult = {
   revisions?: Record<string,string>
   appVersion?: string
   progress?: Record<string, unknown> | null
+  placementCompleted?: boolean
+  placementResult?: Record<string, unknown> | null
   error?: string
 }
 
@@ -58,6 +61,8 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
       revisions?: Record<string,string>
       appVersion?: string
       progress?: Record<string, unknown> | null
+      placementCompleted?: boolean
+      placementResult?: Record<string, unknown> | null
       role?: 'admin' | 'student'
       user?: MewayDiscordUser
     }
@@ -67,6 +72,23 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
     }
 
     await discordSdk.commands.authenticate({ access_token: data.accessToken })
+
+    // SAFE CACHE RECOVERY — no additional network request. The authenticated
+    // bootstrap is persisted locally as an encrypted per-user recovery snapshot.
+    // If site storage was cleared, the same Discord account receives its D1-backed
+    // state here and MEWAY immediately rebuilds the local working copy.
+    const recovery = {
+      userId: data.user.id, role: data.role ?? 'student',
+      accessLevels: data.accessLevels || [], revisions: data.revisions || {},
+      progress: data.progress || null, placementCompleted: data.placementCompleted === true,
+      placementResult: data.placementResult || null, recoveredAt: Date.now(),
+    }
+    try {
+      await cacheSet(`recovery:${data.user.id}`, { data: recovery, revision: JSON.stringify(data.revisions || {}), appVersion: data.appVersion || '', savedAt: Date.now() })
+      localStorage.setItem('meway-recovery-user', data.user.id)
+      if (data.progress && !localStorage.getItem('meway-progress')) localStorage.setItem('meway-progress', JSON.stringify(data.progress))
+      if (data.placementResult && !localStorage.getItem('meway-placement-result')) localStorage.setItem('meway-placement-result', JSON.stringify(data.placementResult))
+    } catch {}
 
     return {
       connected: true,
@@ -78,6 +100,8 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
       revisions: data.revisions || {},
       appVersion: data.appVersion || '',
       progress: data.progress || null,
+      placementCompleted: data.placementCompleted === true,
+      placementResult: data.placementResult || null,
     }
   } catch (error) {
     console.error('MEWAY Discord auth:', error)

@@ -9,6 +9,73 @@ export const placementQuestions:PlacementQuestion[]=[
 [41,'C2','Vocabulary','Nuance','“Equivocal” most nearly describes a statement that is ___.',['ambiguous or open to more than one interpretation','perfectly transparent','strongly emotional','grammatically incorrect'],'ambiguous or open to more than one interpretation'],[42,'C2','Reading & phrasing','Implied meaning','“His praise was faint enough to sound like criticism.” suggests the praise was ___.',['unenthusiastic','overwhelming','unrelated','ungrammatical'],'unenthusiastic'],[43,'C2','Grammar','Advanced inversion','Had I known, I ___ differently.',['would act','would have acted','acted','had acted'],'would have acted'],[44,'C2','Vocabulary','Idiomatic meaning','If an issue is “a bone of contention”, it is ___.',['a cause of disagreement','easy to solve','irrelevant','secretly agreed'],'a cause of disagreement'],[45,'C2','Reading & phrasing','Style','Which version is the most concise without changing the meaning?',['Owing to the fact that he was late, he missed it.','Because he was late, he missed it.','Being late was the fact for missing it.','He missed it, owing that he was late.'],'Because he was late, he missed it.'],[46,'C2','Vocabulary','Connotation','“Disingenuous” most nearly means ___.',['not candid or sincere','generous to a fault','highly imaginative','unusually precise'],'not candid or sincere'],[47,'C2','Grammar','Subjunctive/formal','The committee recommended that the policy ___ revised.',['is','be','was being','will be'],'be'],[48,'C2','Reading & phrasing','Nuanced stance','Which sentence best signals qualified agreement?',['I broadly agree, although the conclusion requires some qualification.','I agree completely and without reservation.','I disagree with every point.','The conclusion is meaningless.'],'I broadly agree, although the conclusion requires some qualification.']
 ].map(([id,level,domain,topic,q,options,answer])=>({id:id as number,level:level as PlacementLevel,domain:domain as any,topic:topic as string,q:q as string,options:options as string[],answer:answer as string}))
 
+
+
+// Five original MEWAY forms. Form 1 is the established baseline above; forms 2–5
+// keep the same 8-items-per-band blueprint while changing contexts and wording.
+const VDATA=[
+ {name:'Maya',place:'library',thing:'orange',job:'designer',travel:'boarding pass',adj:'quiet',verb:'read',past:'visited'},
+ {name:'Leo',place:'station',thing:'umbrella',job:'engineer',travel:'passport',adj:'busy',verb:'cook',past:'watched'},
+ {name:'Nora',place:'hotel',thing:'email',job:'teacher',travel:'ticket',adj:'bright',verb:'study',past:'played'},
+ {name:'Sam',place:'airport',thing:'sandwich',job:'photographer',travel:'luggage',adj:'modern',verb:'work',past:'cleaned'},
+] as const
+function generatedForm(form:number):PlacementQuestion[]{
+ const d=VDATA[form-2]||VDATA[0], id0=(form-1)*1000;let id=id0
+ const lead=form===2?'Choose the best answer for this situation: ':form===3?'Complete the following item accurately: ':form===4?'Select the option that makes this example correct: ':'Which answer best completes this language-use item? ';const q=(level:PlacementLevel,domain:PlacementQuestion['domain'],topic:string,text:string,options:string[],answer:string):PlacementQuestion=>({id:++id,level,domain,topic,q:lead+text,options,answer})
+ return [
+ q('A1','Grammar','be',`${d.name} ___ from Canada.`,['am','is','are','be'],'is'),
+ q('A1','Grammar','Present Simple',`My friends ___ English after school.`,['practises','practice','practicing','practiced'],'practice'),
+ q('A1','Grammar','Articles',`I have ___ ${d.thing}.`,['a','an','the','any'],/^[aeiou]/i.test(d.thing)?'an':'a'),
+ q('A1','Vocabulary','Places',`You can borrow books at a ___.`,['library','bakery','garage','stadium'],'library'),
+ q('A1','Grammar','Plural',`One person, two ___.`,['persons','people','peoples','person'],'people'),
+ q('A1','Reading & phrasing','Everyday English',`“Thank you very much.” — “___”`,['You’re welcome.','I’m twelve.','See yesterday.','I can blue.'],`You’re welcome.`),
+ q('A1','Vocabulary','Time',`Quarter past nine is ___.`,['9:15','9:30','8:45','10:15'],'9:15'),
+ q('A1','Grammar','can',`___ you help me, please?`,['Can','Are','Do can','Can to'],'Can'),
+ q('A2','Grammar','Past Simple',`Last Saturday we ___ a new café.`,['try','tried','are trying','have try'],'tried'),
+ q('A2','Grammar','Comparatives',`The blue suitcase is ___ than the black one.`,['light','lighter','lightest','more light'],'lighter'),
+ q('A2','Grammar','Present Continuous',`Look! The bus ___.`,['comes','is coming','came','come'],'is coming'),
+ q('A2','Vocabulary','Travel',`At the airport, you usually show your ___ at the gate.`,['boarding pass','menu','invoice','recipe'],'boarding pass'),
+ q('A2','Grammar','some/any',`Are there ___ clean towels in the room?`,['some','any','much','a'],'any'),
+ q('A2','Reading & phrasing','Requests',`Where would you most likely say “Could I check in, please?”`,['At a hotel reception','At a pharmacy','In a classroom','At a cinema screen'],'At a hotel reception'),
+ q('A2','Grammar','Future plans',`${d.name} ___ the dentist tomorrow; the appointment is booked.`,['sees','is seeing','saw','has seen'],'is seeing'),
+ q('A2','Vocabulary','Everyday actions',`If your phone battery is empty, you need to ___ it.`,['charge','lend','pack','post'],'charge'),
+ q('B1','Grammar','Present Perfect',`We ___ each other since primary school.`,['know','knew','have known','are knowing'],'have known'),
+ q('B1','Grammar','First conditional',`If I finish early, I ___ you a message.`,['send','will send','sent','would send'],'will send'),
+ q('B1','Grammar','Past Continuous',`While they ___ home, it started to snow.`,['walked','were walking','have walked','walk'],'were walking'),
+ q('B1','Vocabulary','Work',`Someone responsible for hiring staff is an ___.`,['employer','applicant','customer','passenger'],'employer'),
+ q('B1','Reading & phrasing','Opinion',`Which phrase disagrees politely?`,['I’m not sure I see it the same way.','That’s nonsense.','You clearly know nothing.','Absolutely not, end of story.'],`I’m not sure I see it the same way.`),
+ q('B1','Grammar','Passive',`These computers ___ in Japan.`,['make','are made','made','are making'],'are made'),
+ q('B1','Vocabulary','Phrasal verbs',`If a meeting is “put off”, it is ___.`,['postponed','started early','made public','cancelled forever'],'postponed'),
+ q('B1','Grammar','Relative clauses',`That’s the café ___ we first met.`,['who','where','whose','which person'],'where'),
+ q('B2','Grammar','Second conditional',`If she ___ closer, she would walk to work.`,['lives','lived','would live','has lived'],'lived'),
+ q('B2','Grammar','Reported speech',`“I can’t come,” he said. He said that he ___ come.`,['can’t','couldn’t','won’t','doesn’t'],'couldn’t'),
+ q('B2','Vocabulary','Collocation',`Choose the natural collocation.`,['raise awareness','lift awareness','grow awareness up','do awareness'],'raise awareness'),
+ q('B2','Reading & phrasing','Register',`Which opening best suits a formal complaint?`,['I am writing regarding a problem with my order.','Hey, your order was bad.','Listen, fix this.','What on earth happened?'],'I am writing regarding a problem with my order.'),
+ q('B2','Grammar','Modal deduction',`Her coat is still here, so she ___ have left yet.`,['can’t','must','should to','ought'],'can’t'),
+ q('B2','Vocabulary','Meaning in context',`If evidence is “compelling”, it is ___.`,['strong and convincing','easy to ignore','completely unrelated','secret'],'strong and convincing'),
+ q('B2','Grammar','Third conditional',`If you had told me, I ___ you.`,['help','would help','would have helped','had helped'],'would have helped'),
+ q('B2','Reading & phrasing','Paraphrase',`“She succeeded in spite of the difficulties.” means ___.`,['She succeeded although it was difficult.','She failed because it was difficult.','The difficulties disappeared first.','She avoided every difficulty.'],'She succeeded although it was difficult.'),
+ q('C1','Vocabulary','Precision',`The instructions were sufficiently ___ for everyone to follow without assistance.`,['explicit','scarce','tentative','arbitrary'],'explicit'),
+ q('C1','Grammar','Inversion',`Only after the meeting ___ the scale of the problem.`,['we understood','did we understand','we did understand','understood we'],'did we understand'),
+ q('C1','Reading & phrasing','Hedging',`Which sentence expresses a carefully qualified conclusion?`,['The data appear to support this interpretation.','The data prove this beyond all doubt.','Everyone knows this is true.','No alternative is possible.'],'The data appear to support this interpretation.'),
+ q('C1','Vocabulary','Collocation',`Choose the standard collocation.`,['pose a threat','make a threatness','put a threatening','do a threat'],'pose a threat'),
+ q('C1','Grammar','Participle clause',`___ all the available evidence, the panel postponed its decision.`,['Having reviewed','Reviewed','Have review','To reviewing'],'Having reviewed'),
+ q('C1','Vocabulary','Nuance',`“Substantiate” most nearly means ___.`,['support with evidence','make less important','hide deliberately','repeat word for word'],'support with evidence'),
+ q('C1','Reading & phrasing','Register',`Which sentence offers the most measured formal criticism?`,['The analysis does not fully account for regional differences.','The analysis is terrible.','This makes absolutely no sense.','Only an idiot would accept this.'],'The analysis does not fully account for regional differences.'),
+ q('C1','Grammar','Cleft sentence',`What I found most surprising ___ the lack of evidence.`,['was','were','be','has'],'was'),
+ q('C2','Vocabulary','Nuance',`A “perfunctory” apology is one that is ___.`,['done with little care or sincerity','deeply emotional and detailed','legally binding','impossible to understand'],'done with little care or sincerity'),
+ q('C2','Reading & phrasing','Implied meaning',`“She stopped short of endorsing the proposal.” implies that she ___.`,['did not fully support it','strongly promoted it','wrote the proposal herself','refused to discuss it'],'did not fully support it'),
+ q('C2','Grammar','Advanced inversion',`Were the situation to worsen, we ___ the plan.`,['would reconsider','reconsidered','will have reconsidered','had reconsidered'],'would reconsider'),
+ q('C2','Vocabulary','Idiomatic meaning',`If someone “moves the goalposts”, they ___.`,['change the conditions unfairly during a process','finish earlier than expected','explain a rule clearly','accept a compromise'],'change the conditions unfairly during a process'),
+ q('C2','Reading & phrasing','Style',`Which sentence is the most concise and idiomatic?`,['At this point in time, we are unable to proceed.','We cannot proceed yet.','We are unable for proceeding currently now.','Proceeding is unable at this time point.'],'We cannot proceed yet.'),
+ q('C2','Vocabulary','Connotation',`“Specious” most nearly describes an argument that is ___.`,['apparently convincing but actually misleading','carefully proven and reliable','brief but irrelevant','openly humorous'],'apparently convincing but actually misleading'),
+ q('C2','Grammar','Subjunctive/formal',`It is essential that every applicant ___ the declaration.`,['sign','signs','signed','will sign'],'sign'),
+ q('C2','Reading & phrasing','Nuanced stance',`Which sentence expresses a nuanced reservation?`,['The approach has merit, though its long-term effects remain uncertain.','The approach is unquestionably perfect.','The approach is worthless in every respect.','There is nothing further to consider.'],'The approach has merit, though its long-term effects remain uncertain.')
+ ]
+}
+export const placementVariants:Record<number,PlacementQuestion[]>={1:placementQuestions,2:generatedForm(2),3:generatedForm(3),4:generatedForm(4),5:generatedForm(5)}
+export const PLACEMENT_VARIANT_COUNT=5
+export const PLACEMENT_RETAKE_DAYS=10
 export type PlacementResult={level:PlacementLevel;score:number;total:number;percent:number;breakdown:Record<PlacementLevel,{correct:number;total:number;percent:number}>;domainBreakdown:Record<string,{correct:number;total:number;percent:number}>;weakTopics:Array<{topic:string;correct:number;total:number;percent:number}>;mistakes:Array<any>;recommendation:string;completedAt:string}
 export function evaluatePlacement(questions:PlacementQuestion[],answers:Record<number,string>):PlacementResult{
  const levels:PlacementLevel[]=['A1','A2','B1','B2','C1','C2'];const breakdown:any={},domains:any={},topics:any={};let score=0

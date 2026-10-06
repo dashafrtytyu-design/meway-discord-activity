@@ -573,3 +573,103 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{margin:0;min-width
 
 /* Never expose an unthemed page strip beneath short detail screens. */
 .app>main{background:transparent;min-height:100dvh}
+
+
+/* ===== MEWAY V7.23.7 — BLUE THEME DEVICE PARITY =====
+   Final blue-theme layer intentionally comes after responsive rules so it
+   applies equally on phone, tablet and desktop. Light/dark rules untouched. */
+.app.blueTheme{
+  --blue-page:#d8efff;
+  --blue-surface:#edf8ff;
+  --blue-surface-strong:#c9eaff;
+  --blue-surface-deep:#afdfff;
+  --blue-border:#83c8ef;
+  --blue-text:#092d4f;
+  --blue-muted:#315c7c;
+  --blue-accent:#087fc5;
+  --blue-accent-deep:#075f9d;
+  color:var(--blue-text);
+  background:
+    radial-gradient(circle at 15% 0%,rgba(85,190,247,.28),transparent 32rem),
+    linear-gradient(180deg,#c9eaff 0%,#e8f7ff 45%,#d8efff 100%);
+  min-height:100dvh;
+}
+.app.blueTheme,
+.app.blueTheme main,
+.app.blueTheme .main,
+.app.blueTheme .content,
+.app.blueTheme .page,
+.app.blueTheme .screen,
+.app.blueTheme .appContent{
+  color:var(--blue-text);
+}
+.app.blueTheme :is(h1,h2,h3,h4,h5,h6,strong,b,label,.title,.name,.profileName,.levelName,.xpValue,.streakValue,.statValue){
+  color:var(--blue-text);
+}
+.app.blueTheme :is(p,small,.muted,.subtitle,.description,.hint,.meta,.caption,.secondary,.profileMeta,.profileStats,.profileStat,.xpText,.daysText){
+  color:var(--blue-muted);
+  opacity:1;
+}
+.app.blueTheme :is(.card,.panel,.sectionCard,.profileCard,.rewardCard,.achievementCard,.nextLevelCard,.settingsCard,.adminCard,.topicCard,.materialCard,.missionCard,.quizCard,.gameCard,.dictionaryCard,.challengeCard,.lockedCard,.modalContent,.sheetContent){
+  background:linear-gradient(145deg,rgba(245,251,255,.98),rgba(207,237,255,.96));
+  border-color:var(--blue-border);
+  color:var(--blue-text);
+  box-shadow:0 10px 28px rgba(13,91,139,.11);
+}
+.app.blueTheme :is(input,textarea,select,.searchInput,.selectTopics,.filterButton,.topicPicker,.categoryButton){
+  background:rgba(239,249,255,.96);
+  color:var(--blue-text);
+  border-color:var(--blue-border);
+}
+.app.blueTheme :is(.active,.selected,[aria-current="page"],.navItem.active,.bottomNavItem.active,.tab.active,.levelBtn.active){
+  color:var(--blue-accent-deep);
+}
+.app.blueTheme :is(.profileCard,.profileHero) :is(.levelName,.profileLevel,.xpValue,.profileXp,.daysText,.profileDays,.muted,small){
+  color:var(--blue-text)!important;
+  opacity:1!important;
+}
+.app.blueTheme :is(.bottomNav,.mobileNav,.sideNav,.sidebar,.topbar,.headerBar){
+  background:rgba(195,231,252,.94);
+  border-color:rgba(68,155,208,.35);
+  color:var(--blue-text);
+  backdrop-filter:blur(18px);
+}
+.app.blueTheme :is(.bottomNav,.mobileNav,.sideNav,.sidebar) :is(span,b,small){
+  color:var(--blue-text);
+}
+.app.blueTheme :is(.lockedNotice,.lockNotice,.accessNotice){
+  background:rgba(197,231,251,.92);
+  color:var(--blue-text);
+  border-color:#79bfe8;
+}
+/* Mobile: keep only one active-navigation marker. The pseudo-element is the
+   single source of truth; suppress legacy top/outline marker. */
+@media (max-width:600px){
+  .app :is(.bottomNavItem,.mobileNavItem,.bottomNav .navItem).active{
+    outline:0!important;
+    box-shadow:none!important;
+    border-top-color:transparent!important;
+  }
+  .app :is(.bottomNavItem,.mobileNavItem,.bottomNav .navItem).active::before{
+    content:none!important;
+    display:none!important;
+  }
+  .app :is(.bottomNavItem,.mobileNavItem,.bottomNav .navItem).active::after{
+    top:auto!important;
+    bottom:3px!important;
+  }
+}
+
+/* MEWAY V7.23.8 — blue-theme profile stat contrast only.
+   Intentionally scoped to .blueTheme; Light/Dark are untouched. */
+.app.blueTheme .profileHero > div > p{
+  color:#123f63!important;
+  opacity:1!important;
+  -webkit-text-fill-color:#123f63!important;
+  text-shadow:none!important;
+}
+.app.blueTheme .profileHero > div > p *{
+  color:#123f63!important;
+  opacity:1!important;
+  -webkit-text-fill-color:#123f63!important;
+}

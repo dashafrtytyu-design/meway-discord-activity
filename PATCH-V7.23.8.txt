@@ -1,0 +1,7 @@
+MEWAY V7.23.8 — BLUE PROFILE CONTRAST
+Only blue-theme profile stat line changed.
+- Level / XP / streak-days use opaque dark navy (#123f63).
+- Applies at every viewport width (phone/tablet/desktop).
+- Light and Dark themes untouched.
+- No Worker/D1/database/content/XP logic changes.
+- 0 additional cloud requests.

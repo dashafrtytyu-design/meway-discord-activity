@@ -47,6 +47,22 @@ async function notifyAssistantUnknown(env:Env,user:DiscordUser,question:string){
   }catch(error){console.error('Assistant Discord alert error',error);return {ok:false,configured:true}}
 }
 
+async function notifyAssistantSupport(env:Env,user:DiscordUser,message:string){
+  if(!env.DISCORD_BOT_TOKEN) return {ok:false,configured:false}
+  const safeMessage=message.trim().slice(0,1800)
+  const userName=String(user.global_name||user.username||'Ученик').slice(0,80)
+  const content=[
+    `<@${env.ADMIN_DISCORD_ID}> 🛟 **MEWAY Support — новое сообщение**`,
+    `**Ученик:** ${userName} (Discord ID: ${user.id})`,
+    `**Сообщение:** ${safeMessage}`,
+    `Ответьте в **MEWAY → Assistant → Assistant Studio**.`
+  ].join('\n')
+  try{
+    const r=await fetch(`https://discord.com/api/v10/channels/${ASSISTANT_ALERT_CHANNEL_ID}/messages`,{method:'POST',headers:{Authorization:`Bot ${env.DISCORD_BOT_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify({content,allowed_mentions:{users:[env.ADMIN_DISCORD_ID]}})})
+    return {ok:r.ok,configured:true,status:r.status}
+  }catch{return {ok:false,configured:true}}
+}
+
 const COURSE_ACCESS_ROLES = {
   A1: '1556913943338025012', A2: '1556914417462022245', B1: '1556914567693733938',
   B2: '1556914580851269693', C1: '1556914597192138772', C2: '1556914605039685652',
@@ -392,6 +408,19 @@ export default {
       // The D1 queue remains the source of truth even if Discord is temporarily unavailable.
       const discordAlert=Number(duplicate?.n||0)>0?{ok:true,deduplicated:true}:await notifyAssistantUnknown(env,user,question)
       return json({ok:true,queued:true,discordAlert:discordAlert.ok,deduplicated:Number(duplicate?.n||0)>0})
+    }
+
+    if (url.pathname === '/api/assistant/support' && request.method === 'POST') {
+      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      await ensureDb(env);const body=await request.json<any>().catch(()=>null);const message=String(body?.message||'').trim().slice(0,1800)
+      if(!message)return json({ok:false,error:'Message required.'},400)
+      const now=new Date().toISOString(),userName=String(user.global_name||user.username||'Ученик').slice(0,80)
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO assistant_messages (user_id,sender,kind,text,created_at) VALUES (?,'student','support',?,?)").bind(user.id,message,now),
+        env.DB.prepare("INSERT INTO assistant_threads (user_id,user_name,last_question,status,updated_at) VALUES (?,?,?,'open',?) ON CONFLICT(user_id) DO UPDATE SET user_name=excluded.user_name,last_question=excluded.last_question,status='open',updated_at=excluded.updated_at").bind(user.id,userName,message,now)
+      ])
+      const discordAlert=await notifyAssistantSupport(env,user,message)
+      return json({ok:true,message:{user_id:user.id,sender:'student',kind:'support',text:message,created_at:now},discordAlert:discordAlert.ok})
     }
 
     if (url.pathname === '/api/admin/assistant/reply' && request.method === 'POST') {

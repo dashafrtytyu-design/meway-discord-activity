@@ -972,3 +972,57 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
  html.mewayKeyboardOpen .assistantComposer input{display:block!important;visibility:visible!important;opacity:1!important;height:48px!important;min-height:48px!important}
  html.mewayKeyboardOpen .supportModeBar{display:none!important}
 }
+
+/* V7.31.15 — mobile Assistant fits the visible phone area without page scrolling */
+@media(max-width:720px){
+  /* In normal mobile mode the whole Assistant card (messages + Support bar + composer)
+     must fit above MEWAY bottom navigation. Messages scroll inside the card instead. */
+  html:not(.mewayKeyboardOpen) .assistantShell{
+    height:calc(100dvh - 238px)!important;
+    min-height:360px!important;
+    max-height:calc(100dvh - 238px)!important;
+    margin:0!important;
+    overflow:hidden!important;
+  }
+  html:not(.mewayKeyboardOpen) .assistantChat{
+    height:100%!important;
+    min-height:0!important;
+    display:flex!important;
+    flex-direction:column!important;
+    overflow:hidden!important;
+  }
+  html:not(.mewayKeyboardOpen) .assistantQuick{flex:0 0 auto!important}
+  html:not(.mewayKeyboardOpen) .assistantMessages{
+    flex:1 1 0!important;
+    min-height:0!important;
+    height:auto!important;
+    max-height:none!important;
+    overflow-y:auto!important;
+    overscroll-behavior:contain!important;
+    padding:10px 12px!important;
+  }
+  html:not(.mewayKeyboardOpen) .supportModeBar{flex:0 0 auto!important}
+  html:not(.mewayKeyboardOpen) .assistantComposer{
+    flex:0 0 auto!important;
+    position:relative!important;
+    left:auto!important;right:auto!important;bottom:auto!important;
+    margin:0!important;
+    padding:8px!important;
+  }
+
+  /* Keyboard mode keeps using VisualViewport: bottom navigation/support helper disappear,
+     while the message area and text field resize to the actually visible keyboard-safe area. */
+  html.mewayKeyboardOpen .assistantShell{
+    height:var(--meway-vv-height,100dvh)!important;
+    max-height:var(--meway-vv-height,100dvh)!important;
+  }
+  html.mewayKeyboardOpen .assistantMessages{overflow-y:auto!important}
+  html.mewayKeyboardOpen .assistantComposer{margin-top:auto!important}
+}
+@media(max-width:390px){
+  html:not(.mewayKeyboardOpen) .assistantShell{
+    height:calc(100dvh - 220px)!important;
+    max-height:calc(100dvh - 220px)!important;
+    min-height:330px!important;
+  }
+}

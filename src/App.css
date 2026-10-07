@@ -855,3 +855,46 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
 /* V7.31.2 — Beta Studio mirrors the real MEWAY shell */
 .siteReplica{display:grid;grid-template-columns:190px minmax(720px,1fr);min-width:930px;min-height:600px;border:1px solid #b8d8ee;border-radius:22px;overflow:hidden;background:#dff3ff;box-shadow:0 18px 55px #164d7620}.replicaSide{padding:18px 12px;background:#d5efff;border-right:1px solid #b8d8ee;display:flex;flex-direction:column;gap:7px}.replicaBrand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px}.replicaBrand img{width:50px;height:50px;object-fit:contain}.replicaBrand b{display:block;font-size:22px;color:#0c3458}.replicaBrand small{color:#55738f}.replicaSide button{border:0;border-radius:14px;padding:11px 12px;text-align:left;background:transparent;color:#24577f;font-weight:900;cursor:pointer}.replicaSide button.active{background:#b9e3fb;color:#0870c9}.replicaMain{min-width:0;background:linear-gradient(145deg,#d9f2ff,#eefaff)}.replicaTop{height:72px;padding:15px 24px;display:flex;align-items:center;justify-content:space-between;color:#0c3458;border-bottom:1px solid #c4e1f3}.replicaTop span{display:block;color:#168dff;font-size:11px;font-weight:900;letter-spacing:2px}.replicaTop b{display:block}.replicaPage{position:relative;padding:18px 26px 30px}.betaRibbon{display:inline-flex;margin-bottom:10px;padding:7px 11px;border-radius:999px;background:#fff3c8;color:#725300;font-size:11px;font-weight:900;letter-spacing:.5px}.replicaEditable{position:relative;width:100%;border:2px solid transparent;text-align:left;cursor:pointer;transition:.16s ease;transform-origin:center}.replicaEditable:hover{border-color:#168dff}.replicaEditable.selected{border-color:#168dff!important;box-shadow:0 0 0 4px #168dff20,0 15px 35px #164d7622}.replicaHero{min-height:245px;border-radius:28px;padding:34px 38px;background:linear-gradient(120deg,#0d4c96,#168dff);color:#fff;overflow:hidden}.replicaHero>img{position:absolute;right:25px;bottom:-6px;width:190px;height:150px;object-fit:contain}.replicaHero>i{display:none}.replicaHero>div{position:relative;z-index:1;max-width:66%}.replicaHero small,.replicaWide small,.replicaCard small{display:block;font-size:11px;font-weight:900;letter-spacing:2px;opacity:.8}.replicaHero b{display:block;margin:14px 0;font-size:40px;line-height:1.05}.replicaHero p{font-size:16px;line-height:1.55;margin:0}.replicaWide{margin-top:14px;min-height:120px;border-radius:22px;padding:20px 24px;background:#f5fbff;color:#0c3458;display:flex;align-items:center;gap:18px}.replicaWide i,.replicaCard i{font-style:normal;font-size:30px}.replicaWide b,.replicaCard b{display:block;font-size:23px;margin:4px 0}.replicaWide p,.replicaCard p{margin:0;color:inherit;opacity:.65}.replicaCard{width:calc(50% - 8px);display:inline-flex;vertical-align:top;margin:14px 12px 0 0;min-height:120px;border-radius:22px;padding:18px;background:#f5fbff;color:#0c3458;align-items:center;gap:14px}.replicaCards{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin-top:14px}.replicaCards article{min-height:105px;padding:18px;border-radius:20px;background:#f5fbff;color:#0c3458}.replicaCards span{font-size:10px;font-weight:900;letter-spacing:1.5px;color:#55738f}.replicaCards b{display:block;font-size:20px;margin:9px 0}.replicaCards p{margin:0;color:#55738f}.darkTheme .siteReplica{border-color:#31516e;background:#0b1e31}.darkTheme .replicaSide{background:#102a43;border-color:#31516e}.darkTheme .replicaBrand b,.darkTheme .replicaTop{color:#f4f8ff}.darkTheme .replicaBrand small{color:#bfd0e2}.darkTheme .replicaSide button{color:#d9e9f7}.darkTheme .replicaSide button.active{background:#194a70;color:#fff}.darkTheme .replicaMain{background:linear-gradient(145deg,#0d2236,#102b45)}.darkTheme .replicaTop{border-color:#31516e}.darkTheme .replicaWide,.darkTheme .replicaCard,.darkTheme .replicaCards article{background:#15334e;color:#f4f8ff}.darkTheme .replicaCards span,.darkTheme .replicaCards p{color:#bfd0e2}
 @media(max-width:720px){.siteReplica{grid-template-columns:125px minmax(620px,1fr);min-width:760px}.replicaSide{padding:12px 7px}.replicaBrand div{display:none}.replicaSide button{font-size:12px;padding:9px 7px}.replicaHero b{font-size:30px}.replicaHero>img{width:140px}.replicaCards{grid-template-columns:1fr 1fr}.replicaCards article:first-child{grid-column:1/-1}}
+
+
+/* V7.31.7 — overlay stacking + surface-aware contrast */
+/* Topic/game picker must always float above cards and transformed content. */
+.topicControls{position:relative;z-index:120!important;isolation:isolate}
+.topicControls:has(.topicPopover){z-index:10020!important}
+.topicPopover{z-index:10030!important;isolation:isolate;box-shadow:0 28px 80px rgba(3,28,55,.32)!important}
+.filterStack,.cards,.contentGrid,.wordGrid,.missionCard,.contentCard,.wordCard{position:relative;z-index:1}
+@media(max-width:720px){.topicControls:has(.topicPopover){z-index:10020!important}.topicPopover{z-index:10030!important}}
+
+/* Contrast follows the SURFACE, not the global theme.
+   Dark surface -> light copy. Light surface -> dark copy. */
+.smartHomeHero,.profileHero,.pilotPassport{
+  color:#f4fbff!important;
+}
+.smartHomeHero :is(h1,h2,h3,h4,b,strong),
+.profileHero :is(h1,h2,h3,h4,b,strong),
+.pilotPassport :is(h1,h2,h3,h4,b,strong){color:#f4fbff!important}
+.smartHomeHero :is(p,small),.profileHero :is(p,small),.pilotPassport :is(p,small){color:#d7ecff!important;opacity:1!important}
+.smartHomeHero .glass{color:#fff!important}
+
+/* Blue theme turns these surfaces pale, therefore their copy must be dark. */
+.blueTheme .profileHero,.blueTheme .pilotPassport{
+  color:#0a3157!important;
+}
+.blueTheme .profileHero :is(h1,h2,h3,h4,b,strong),
+.blueTheme .pilotPassport :is(h1,h2,h3,h4,b,strong){color:#0a3157!important}
+.blueTheme .profileHero :is(p,small),.blueTheme .pilotPassport :is(p,small){color:#456c90!important}
+
+/* Dark theme: intentionally light cards keep dark readable copy. */
+.darkTheme .dailyMission{background:#cfe7fb!important;color:#0a3157!important;border-color:#9fc9e8!important}
+.darkTheme .dailyMission :is(h1,h2,h3,h4,b,strong){color:#0a3157!important}
+.darkTheme .dailyMission :is(p,small){color:#456c90!important;opacity:1!important}
+.darkTheme .dailyMission .dailyReward b{color:#096fc9!important}
+.darkTheme .flightMapHead>b{background:#f4f9ff!important;color:#123b61!important;border-color:#d4e8fb!important}
+
+/* Dark surfaces in dark theme remain light. */
+.darkTheme .flightMap,.darkTheme .smartHomeHero,.darkTheme .profileHero,.darkTheme .pilotPassport{color:#f2f9ff!important}
+.darkTheme .flightMap :is(h1,h2,h3,h4),.darkTheme .smartHomeHero :is(h1,h2,h3,h4),.darkTheme .profileHero :is(h1,h2,h3,h4),.darkTheme .pilotPassport :is(h1,h2,h3,h4){color:#f2f9ff!important}
+.darkTheme .flightMap :is(p,small):not(.flightMapHead>b small){color:#bed3e6}
+
+/* Light controls/pills always carry dark text, even inside a dark parent. */
+:is(.darkTheme,.blueTheme,.app) :is(.flightMapHead>b,.profileHero .primary){color:#0b4b82!important}

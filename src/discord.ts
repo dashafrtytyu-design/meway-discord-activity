@@ -1,5 +1,9 @@
 import { cacheGet, cacheSet } from './persistentCache'
 export const DISCORD_CLIENT_ID = '1555208386742587444'
+// UI-only admin recognition for local-first cached sessions.
+// Security does NOT rely on this value: every /api/admin/* action is still
+// protected server-side by requireAdmin() + env.ADMIN_DISCORD_ID.
+const LOCAL_ADMIN_DISCORD_ID = '715131938368651294'
 
 export type MewayDiscordUser = {
   id: string
@@ -54,6 +58,20 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
         const auth = cached?.data
         if (auth?.authenticated && auth.accessToken && auth.user?.id === lastUserId) {
           await discordSdk.commands.authenticate({ access_token: auth.accessToken })
+          // Restore the Admin UI locally even if an older cached bootstrap was
+          // accidentally saved as "student". This performs ZERO Worker/D1 reads.
+          // Server-side admin actions remain protected by requireAdmin().
+          if (auth.user.id === LOCAL_ADMIN_DISCORD_ID && auth.role !== 'admin') {
+            auth.role = 'admin'
+            try {
+              await cacheSet(`auth-bootstrap:${lastUserId}`, {
+                data: auth,
+                revision: JSON.stringify(auth.revisions || {}),
+                appVersion: auth.appVersion || '',
+                savedAt: Date.now(),
+              })
+            } catch {}
+          }
           // V7.31.5 LOCAL-FIRST: never query D1 just because the Activity was reopened.
           // A tiny cacheable content-signal may be checked by the browser, but it is served
           // from Cloudflare/browser cache and does not read student/progress/content tables.
@@ -124,7 +142,7 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
     // If site storage was cleared, the same Discord account receives its D1-backed
     // state here and MEWAY immediately rebuilds the local working copy.
     const authResult: MewayAuthResult = {
-      connected: true, authenticated: true, role: data.role ?? 'student', user: data.user,
+      connected: true, authenticated: true, role: data.user.id === LOCAL_ADMIN_DISCORD_ID ? 'admin' : (data.role ?? 'student'), user: data.user,
       accessToken: data.accessToken, accessLevels: data.accessLevels || [], revisions: data.revisions || {},
       appVersion: data.appVersion || '', progress: data.progress || null,
       placementCompleted: data.placementCompleted === true, placementResult: data.placementResult || null,

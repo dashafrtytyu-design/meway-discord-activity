@@ -1,2 +1,0 @@
-
-V7.6.3: responsive motion/premium interaction layer only; no Worker/D1/API logic changed.

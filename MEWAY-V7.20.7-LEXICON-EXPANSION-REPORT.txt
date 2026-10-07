@@ -1,9 +1,0 @@
-MEWAY V7.20.7 LEXICON EXPANSION
-
-Added candidate records before global dedupe: 105
-Collections added: 13
-Final V7.20.6 global duplicate guard remains enabled.
-No existing game/mission/XP/Admin architecture was intentionally changed.
-The user-requested accident/emergency exclusion remains enabled.
-
-Important QA note: Oxford/Cambridge/British Council were used as external methodological checks, not bulk-copied. This batch is independently authored.

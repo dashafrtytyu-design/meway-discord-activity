@@ -1,9 +1,0 @@
-MEWAY V7.19.1 DEPLOY HOTFIX
-
-Fixed Cloudflare Worker deployment error:
-ReferenceError: LEVELS is not defined (contentSeed.ts).
-
-Cause: the curriculum file defines the CEFR level array as `levels`, but the V7.19 extension referenced `LEVELS` once.
-Fix: changed that reference to `levels`.
-
-No UI/design/content data was intentionally changed by this hotfix.

@@ -1,9 +1,0 @@
-MEWAY V7.6.11 — DARK REWARDS + SPACING
-- Dark theme only.
-- Rewards progress panel changed from white to dark MEWAY blue with readable text.
-- Unlocked and locked achievement cards changed from white/grey to distinct dark-blue states.
-- Forced readable contrast for reward titles, descriptions, labels, XP and icons.
-- Added spacing between large page banners and the first filter/tab row (missions/rating/etc.).
-- Responsive for desktop/tablet/mobile.
-- Light theme untouched.
-- No API, D1, Discord or Worker logic changes; zero additional Cloudflare requests.

@@ -1,9 +1,0 @@
-MEWAY V7.23.7 — BLUE THEME PARITY
-
-UI-only patch over V7.23.6.
-- Blue theme now has a final responsive-independent palette layer and therefore applies to phone, tablet and desktop.
-- Blue theme is visually more distinct from Light: stronger sky-blue page/surfaces, blue borders and navy accents.
-- Blue-theme typography is explicitly dark/navy, including profile level, XP, days and muted metadata.
-- Mobile active navigation uses one bottom indicator; the legacy upper/outline marker is suppressed.
-- Light and Dark theme declarations, Worker, D1, XP, permissions, content and Placement logic were not modified.
-- Adds 0 Worker/D1 requests.

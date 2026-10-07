@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "meway-discord-activity",
+  "compatibility_date": "2026-10-01",
+  "main": "worker.ts",
+  "keep_vars": true,
+
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "vars": {
+    "DISCORD_CLIENT_ID": "1555208386742587444",
+    "ADMIN_DISCORD_ID": "715131938368651294",
+    "DISCORD_GUILD_ID": "1554179282513829998"
+  },
+
+  "secrets": {
+    "required": ["DISCORD_CLIENT_SECRET", "DISCORD_BOT_TOKEN"]
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "meway-content"
+    }
+  ]
+}

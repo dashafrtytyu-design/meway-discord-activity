@@ -1026,3 +1026,10 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
     min-height:330px!important;
   }
 }
+
+/* V7.31.16 — keyboard owns the bottom of the phone: MEWAY nav disappears only while typing */
+@media(max-width:720px){
+  html.mewayKeyboardOpen .app>aside{display:none!important;visibility:hidden!important;pointer-events:none!important}
+  html.mewayKeyboardOpen .app>main{padding-bottom:0!important}
+  html:not(.mewayKeyboardOpen) .app>aside{visibility:visible!important;pointer-events:auto!important}
+}

@@ -844,31 +844,72 @@ export default {
       }
     }
 
-    if (url.pathname === '/api/admin/content') {
+    // A lightweight verification route resolves uncertain outcomes after network timeouts.
+    const contentVerify = url.pathname.match(/^\/api\/admin\/content\/(\d+)\/verify$/)
+    if (contentVerify && request.method === 'GET') {
       const admin = await requireAdmin(request, env)
-      if (!admin) return json({ ok: false, error: 'Admin access required.' }, 403)
-      if (request.method === 'GET') { const section=url.searchParams.get('section')||undefined; return json({ ok: true, items: await listContent(env, section, true) }) }
-      if (request.method === 'POST') {
-        const bodyText=await request.text(); if(bodyText.length>8_000_000)return json({ok:false,error:'Материал слишком большой для D1. Уменьши фотографии (до 1024 px) и повтори.'},413); const item=JSON.parse(bodyText) as ContentItem; if(!['games','quizzes','words','challenges','rewards'].includes(item.section)||!['draft','published','archived'].includes(item.status))return json({ok:false,error:'Неверный раздел или статус материала'},400); item.id = Date.now()
-        await ensureDb(env)
-        await env.DB.prepare('INSERT INTO content (id, section, data, updated_at) VALUES (?, ?, ?, ?)').bind(item.id,item.section,JSON.stringify(item),new Date().toISOString()).run()
-        await env.DB.prepare('DELETE FROM deleted_content WHERE id = ?').bind(item.id).run(); let syncWarning=''; try { await bumpRevision(env,item.section) } catch(e) { syncWarning='Материал сохранён, но уведомление об обновлении не отправлено'; console.error('content revision after POST',e) } clearPublic(); clearQueryCache('merged-content:')
-        return json({ok:true,item,syncWarning},201)
-      }
+      if (!admin) return json({ok:false,code:'ADMIN_REQUIRED',error:'Требуются права администратора'},403)
+      await ensureDb(env)
+      const id=Number(contentVerify[1])
+      const row=await env.DB.prepare('SELECT data FROM content WHERE id=?').bind(id).first<{data:string}>()
+      if (!row) return json({ok:false,code:'CONTENT_NOT_FOUND',error:'Материал не найден в D1'},404)
+      const item=JSON.parse(row.data) as ContentItem
+      return json({ok:true,item})
     }
 
-    const contentMatch = url.pathname.match(/^\/api\/admin\/content\/(\d+)$/)
-    if (contentMatch) {
-      const admin = await requireAdmin(request, env)
-      if (!admin) return json({ok:false,error:'Admin access required.'},403)
-      const id=Number(contentMatch[1]); await ensureDb(env)
-      if (request.method === 'PUT') {
-        const bodyText=await request.text(); if(bodyText.length>8_000_000)return json({ok:false,error:'Материал слишком большой для D1. Уменьши фотографии (до 1024 px) и повтори.'},413); const item=JSON.parse(bodyText) as ContentItem; if(!['games','quizzes','words','challenges','rewards'].includes(item.section)||!['draft','published','archived'].includes(item.status))return json({ok:false,error:'Неверный раздел или статус материала'},400); item.id=id
-        await env.DB.prepare('INSERT OR REPLACE INTO content (id, section, data, updated_at) VALUES (?, ?, ?, ?)').bind(id,item.section,JSON.stringify(item),new Date().toISOString()).run()
-        await env.DB.prepare('DELETE FROM deleted_content WHERE id = ?').bind(id).run(); let syncWarning=''; try { await bumpRevision(env,item.section) } catch(e) { syncWarning='Материал сохранён, но уведомление об обновлении не отправлено'; console.error('content revision after PUT',e) } clearPublic(); clearQueryCache('merged-content:')
-        return json({ok:true,item,syncWarning})
+    if (url.pathname === '/api/admin/content' || /^\/api\/admin\/content\/\d+$/.test(url.pathname)) {
+      const admin=await requireAdmin(request,env)
+      if (!admin) return json({ok:false,code:'ADMIN_REQUIRED',error:'Требуются права администратора'},403)
+      const match=url.pathname.match(/^\/api\/admin\/content\/(\d+)$/)
+      if (!match && request.method==='GET') {
+        const section=url.searchParams.get('section')||undefined
+        return json({ok:true,items:await listContent(env,section,true)})
       }
-      if (request.method === 'DELETE') { const now=new Date().toISOString(); const row=await env.DB.prepare('SELECT section FROM content WHERE id=?').bind(id).first<{section:string}>(); const builtIn=builtInContent.find(x=>x.id===id)||(await loadGeneratedContent(env)).find(x=>x.id===id); const sec=(row?.section||builtIn?.section||'games') as keyof Revisions; let changes=0; if(builtIn){const results=await env.DB.batch([env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id),env.DB.prepare('INSERT OR REPLACE INTO deleted_content (id,deleted_at) VALUES (?,?)').bind(id,now)]);changes=results[0]?.meta?.changes||0}else{const result=await env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id).run();changes=result.meta?.changes||0} await bumpRevision(env,sec,now); clearPublic(); clearQueryCache('merged-content:'); return json({ok:true,deleted:id,changes}) }
+      if ((request.method==='POST'&&!match)||(request.method==='PUT'&&match)) {
+        const requestId=crypto.randomUUID()
+        try {
+          const bodyText=await request.text()
+          if (bodyText.length>7_000_000) return json({ok:false,code:'CONTENT_TOO_LARGE',requestId,error:'Размер материала превышает безопасный предел. Уменьши изображения.'},413)
+          let item:ContentItem
+          try {item=JSON.parse(bodyText) as ContentItem} catch {return json({ok:false,code:'INVALID_JSON',requestId,error:'Неверный формат JSON'},400)}
+          if (!item || typeof item!=='object'||!['games','quizzes','words','challenges','rewards'].includes(item.section)||!['draft','published','archived'].includes(item.status)||typeof item.title!=='string') return json({ok:false,code:'INVALID_CONTENT',requestId,error:'Неверный раздел, название или статус'},400)
+          const id=match?Number(match[1]):Number(item.id)||Date.now()
+          if(!Number.isSafeInteger(id)||id<=0)return json({ok:false,code:'INVALID_ID',requestId,error:'Неверный идентификатор'},400)
+          item.id=id
+          await ensureDb(env)
+          const data=JSON.stringify(item)
+          if (data.length>7_000_000) return json({ok:false,code:'CONTENT_TOO_LARGE',requestId,error:'Слишком большой материал для D1'},413)
+          const now=new Date().toISOString()
+          if (!match) {
+            // Client-chosen stable ID makes POST safe to retry after a lost response.
+            const existing=await env.DB.prepare('SELECT data FROM content WHERE id=?').bind(id).first<{data:string}>()
+            if(existing){const previous=JSON.parse(existing.data) as ContentItem;return json({ok:true,item:previous,alreadySaved:true,requestId},200)}
+            await env.DB.prepare('INSERT OR IGNORE INTO content (id,section,data,updated_at) VALUES (?,?,?,?)').bind(id,item.section,data,now).run()
+          } else {
+            await env.DB.prepare('INSERT INTO content (id,section,data,updated_at) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET section=excluded.section,data=excluded.data,updated_at=excluded.updated_at').bind(id,item.section,data,now).run()
+          }
+          const verified=await env.DB.prepare('SELECT data FROM content WHERE id=?').bind(id).first<{data:string}>()
+          if(!verified)return json({ok:false,code:'D1_WRITE_NOT_VERIFIED',requestId,error:'D1 не подтвердила сохранение'},503)
+          const saved=JSON.parse(verified.data) as ContentItem
+          let syncWarning=''
+          try {await env.DB.prepare('DELETE FROM deleted_content WHERE id=?').bind(id).run();await bumpRevision(env,item.section)}
+          catch(e){syncWarning='Материал записан в D1, но обновление каталога требует проверки';console.error('content sync warning',requestId,e)}
+          clearPublic();clearQueryCache('merged-content:')
+          return json({ok:true,item:saved,requestId,syncWarning},match?200:201)
+        }catch(e){console.error('content write failure',requestId,e);return json({ok:false,code:'CONTENT_WRITE_FAILED',requestId,error:'Сбой сохранения в D1. Проверь привязку базы и журналы Worker.'},500)}
+      }
+      if(match&&request.method==='DELETE'){
+        const id=Number(match[1]);await ensureDb(env)
+        const now=new Date().toISOString(),row=await env.DB.prepare('SELECT section FROM content WHERE id=?').bind(id).first<{section:string}>()
+        const builtIn=builtInContent.find(x=>x.id===id)||(await loadGeneratedContent(env)).find(x=>x.id===id)
+        const sec=(row?.section||builtIn?.section||'games') as keyof Revisions
+        let changes=0
+        if(builtIn){const results=await env.DB.batch([env.DB.prepare('DELETE FROM content WHERE id=?').bind(id),env.DB.prepare('INSERT OR REPLACE INTO deleted_content (id,deleted_at) VALUES (?,?)').bind(id,now)]);changes=results[0]?.meta?.changes||0}
+        else{const result=await env.DB.prepare('DELETE FROM content WHERE id=?').bind(id).run();changes=result.meta?.changes||0}
+        try{await bumpRevision(env,sec,now)}catch(e){console.error('delete revision warning',e)}
+        clearPublic();clearQueryCache('merged-content:')
+        return json({ok:true,deleted:id,changes})
+      }
     }
 
     if (url.pathname === '/api/missions' && request.method === 'GET') {

@@ -87,7 +87,7 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
               }
               const revision=signal.revision||''
               const previous=localStorage.getItem(`meway-progress-revision:${lastUserId}`)||''
-              if(signal.ok&&(signal.needsRecovery||revision!==previous)){
+              if(signal.ok&&(signal.needsRecovery||(revision!==''&&revision!==previous))){
                 const r=await fetch('/api/progress',{headers:{Authorization:`Bearer ${auth.accessToken}`},cache:'no-store'})
                 if(r.ok){const d=await r.json() as {ok?:boolean;progress?:Record<string,unknown>};if(d.ok&&d.progress){
                   auth.progress=d.progress

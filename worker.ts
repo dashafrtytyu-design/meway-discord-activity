@@ -687,10 +687,10 @@ export default {
     }
     if (url.pathname === '/api/progress-signal' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
-      if(!env.ACCESS_SIGNALS)return json({ok:true,revision:null,needsRecovery:false,levels:null,signalAvailable:false})
-      const [signal,access]=await Promise.all([env.ACCESS_SIGNALS.get(progressSignalKey(user.id),'json') as Promise<{revision?:string}|null>,env.ACCESS_SIGNALS.get(accessSignalKey(user.id),'json') as Promise<{levels?:string[]}|null>])
+      if(!env.ACCESS_SIGNALS){const levels=await readCourseAccess(env,user.id);return json({ok:true,revision:null,needsRecovery:false,levels,signalAvailable:false})}
+      let signal:{revision?:string}|null=null;let access:{levels?:string[]}|null=null;try{[signal,access]=await Promise.all([env.ACCESS_SIGNALS.get(progressSignalKey(user.id),'json') as Promise<{revision?:string}|null>,env.ACCESS_SIGNALS.get(accessSignalKey(user.id),'json') as Promise<{levels?:string[]}|null>])}catch{const levels=await readCourseAccess(env,user.id);return json({ok:true,revision:null,needsRecovery:false,levels,signalAvailable:false})}
       // Missing signal is NOT evidence that a cached profile is fresh.
-      return json({ok:true,revision:signal?.revision||null,needsRecovery:!signal,levels:access?.levels||null})
+      return json({ok:true,revision:signal?.revision||null,needsRecovery:!signal,levels:access?.levels||await readCourseAccess(env,user.id),signalAvailable:true})
     }
     if (url.pathname === '/api/content-signal' && request.method === 'GET') {
       // V7.31.5: reopening MEWAY must not query D1 for update checks.

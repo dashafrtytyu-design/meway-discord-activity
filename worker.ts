@@ -869,7 +869,7 @@ export default {
         const requestId=crypto.randomUUID()
         try {
           const bodyText=await request.text()
-          if (bodyText.length>7_000_000) return json({ok:false,code:'CONTENT_TOO_LARGE',requestId,error:'Размер материала превышает безопасный предел. Уменьши изображения.'},413)
+          if (bodyText.length>12_000_000) return json({ok:false,code:'CONTENT_TOO_LARGE',requestId,error:'Размер материала превышает безопасный предел. Уменьши изображения.'},413)
           let item:ContentItem
           try {item=JSON.parse(bodyText) as ContentItem} catch {return json({ok:false,code:'INVALID_JSON',requestId,error:'Неверный формат JSON'},400)}
           if (!item || typeof item!=='object'||!['games','quizzes','words','challenges','rewards'].includes(item.section)||!['draft','published','archived'].includes(item.status)||typeof item.title!=='string') return json({ok:false,code:'INVALID_CONTENT',requestId,error:'Неверный раздел, название или статус'},400)
@@ -878,7 +878,7 @@ export default {
           item.id=id
           await ensureDb(env)
           const data=JSON.stringify(item)
-          if (data.length>7_000_000) return json({ok:false,code:'CONTENT_TOO_LARGE',requestId,error:'Слишком большой материал для D1'},413)
+          if (data.length>12_000_000) return json({ok:false,code:'CONTENT_TOO_LARGE',requestId,error:'Слишком большой материал для D1'},413)
           const now=new Date().toISOString()
           if (!match) {
             // Client-chosen stable ID makes POST safe to retry after a lost response.

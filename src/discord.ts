@@ -72,6 +72,32 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
               })
             } catch {}
           }
+          // Cross-device progress invalidation: a single lightweight KV read.
+          // No D1 request if the revision matches the last confirmed snapshot.
+          try {
+            const response=await fetch('/api/progress-signal',{headers:{Authorization:`Bearer ${auth.accessToken}`},cache:'no-store'})
+            if(response.ok){
+              const signal=await response.json() as {ok?:boolean;revision?:string|null;needsRecovery?:boolean;levels?:Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>|null}
+              if(Array.isArray(signal.levels)&&auth.role!=='admin'){
+                const incoming=signal.levels.filter(x=>['A1','A2','B1','B2','C1','C2'].includes(x)) as Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>
+                if(JSON.stringify([...incoming].sort())!==JSON.stringify([...(auth.accessLevels||[])].sort())){
+                  auth.accessLevels=incoming
+                  await cacheSet(`auth-bootstrap:${lastUserId}`,{data:auth,revision:JSON.stringify(auth.revisions||{}),appVersion:auth.appVersion||'',savedAt:Date.now()})
+                }
+              }
+              const revision=signal.revision||''
+              const previous=localStorage.getItem(`meway-progress-revision:${lastUserId}`)||''
+              if(signal.ok&&(signal.needsRecovery||revision!==previous)){
+                const r=await fetch('/api/progress',{headers:{Authorization:`Bearer ${auth.accessToken}`},cache:'no-store'})
+                if(r.ok){const d=await r.json() as {ok?:boolean;progress?:Record<string,unknown>};if(d.ok&&d.progress){
+                  auth.progress=d.progress
+                  localStorage.setItem('meway-progress',JSON.stringify(d.progress))
+                  if(revision)localStorage.setItem(`meway-progress-revision:${lastUserId}`,revision)
+                  await cacheSet(`auth-bootstrap:${lastUserId}`,{data:auth,revision:JSON.stringify(auth.revisions||{}),appVersion:auth.appVersion||'',savedAt:Date.now()})
+                }}
+              }
+            }
+          }catch{}
           // V7.31.5 LOCAL-FIRST: never query D1 just because the Activity was reopened.
           // A tiny cacheable content-signal may be checked by the browser, but it is served
           // from Cloudflare/browser cache and does not read student/progress/content tables.

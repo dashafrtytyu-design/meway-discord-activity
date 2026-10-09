@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+const part=app.slice(app.indexOf('function MewayAssistant('),app.indexOf('function QuickPalette('));
+test('Assistant opening has no network effect',()=>{assert.doesNotMatch(part,/useEffect\(\(\)=>\{\s*if\(!auth\.accessToken\)return;\s*let alive/);assert.match(part,/const refreshSupport=async\(\)=>/)});
+test('Assistant does not auto-escalate unknown questions',()=>{assert.doesNotMatch(part,/fetch\('\/api\/assistant\/escalate'/);assert.match(part,/Пока не нашёл ответ в локальной базе/)});
+test('Support messages remain server persisted',()=>assert.match(part,/fetch\('\/api\/assistant\/support'/));
+test('Support replies fetched only from explicit control',()=>{assert.equal((part.match(/fetch\('\/api\/assistant\/bootstrap'/g)||[]).length,1);assert.match(part,/onClick=\{\(\)=>void refreshSupport\(\)\}/)});
+test('IndexedDB XP outbox retained',()=>{const xp=readFileSync(new URL('../src/xpOutbox.ts',import.meta.url),'utf8');assert.match(xp,/indexedDB\.open/);assert.match(xp,/acknowledgeXpClaim/)});

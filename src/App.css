@@ -1033,3 +1033,24 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
   html.mewayKeyboardOpen .app>main{padding-bottom:0!important}
   html:not(.mewayKeyboardOpen) .app>aside{visibility:visible!important;pointer-events:auto!important}
 }
+
+/* Accessible responsive level progress: scoped to the home route only. */
+.mewayLevelRoute .mewayLevelSwitcher{display:flex;align-items:center;justify-content:center;gap:clamp(12px,3vw,30px);margin:18px 0 12px;min-width:0}
+.mewayLevelRoute .mewayLevelSwitcher>div{display:flex;flex-direction:column;align-items:center;min-width:120px;gap:4px}
+.mewayLevelRoute .mewayLevelSwitcher strong{font-size:clamp(23px,4vw,34px);color:var(--ui-light-text,#082d52)}
+.mewayLevelRoute .mewayLevelSwitcher small{font-size:12px;color:var(--ui-light-muted,#55738f);text-align:center}
+.mewayLevelRoute .mewayLevelSwitcher button{width:48px;height:48px;border-radius:14px;border:1px solid #8da6bf;background:#fff;color:#082d52;font-size:32px;cursor:pointer;touch-action:manipulation}
+.mewayLevelRoute .mewayLevelSwitcher button:disabled{opacity:.35;cursor:not-allowed}
+.mewayLevelRoute .mewayLevelDots{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 16px}
+.mewayLevelRoute .mewayLevelDots button{min-width:42px;min-height:42px;padding:8px;border-radius:12px;border:1px solid #8da6bf;background:#fff;color:#082d52;font-weight:700;cursor:pointer}
+.mewayLevelRoute .mewayLevelDots button.active{background:#075ba6;color:#fff;border-color:#075ba6}
+.mewayLevelRoute .mewayLevelComplete{margin-top:16px;padding:18px;border-radius:16px;background:#eaf5ff;color:#082d52;border:1px solid #a7d0ee}
+.mewayLevelRoute .mewayLevelComplete p{color:#254c70;margin:8px 0}
+.mewayLevelRoute .mewayLevelComplete button{padding:12px 16px;border:0;border-radius:12px;background:#075ba6;color:white;font-weight:700;cursor:pointer;min-height:44px}
+.mewayLevelRoute .routeStages{min-width:0}.mewayLevelRoute .routeStages article{min-width:0;overflow-wrap:anywhere}
+.darkTheme .mewayLevelRoute .mewayLevelSwitcher strong,.darkTheme .mewayLevelRoute .mewayLevelSwitcher small{color:#f4f8ff}
+.darkTheme .mewayLevelRoute .mewayLevelComplete{background:#122d4c;color:#f4f8ff;border-color:#456989}
+.darkTheme .mewayLevelRoute .mewayLevelComplete p{color:#d7e9fa}
+.darkTheme .mewayLevelRoute .mewayLevelSwitcher button,.darkTheme .mewayLevelRoute .mewayLevelDots button:not(.active){background:#183552;color:#f4f8ff;border-color:#6c8bac}
+@media(max-width:600px){.mewayLevelRoute .routeStages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mewayLevelRoute .routeStages article{width:auto}.mewayLevelRoute .routeTitle{flex-wrap:wrap}.mewayLevelRoute .mewayLevelSwitcher button{flex-shrink:0}}
+@media(max-width:360px){.mewayLevelRoute .routeStages{grid-template-columns:minmax(0,1fr)}.mewayLevelRoute .mewayLevelDots button{min-width:38px}}

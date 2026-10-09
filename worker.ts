@@ -852,8 +852,8 @@ export default {
         const item = await request.json<ContentItem>(); item.id = Date.now()
         await ensureDb(env)
         await env.DB.prepare('INSERT INTO content (id, section, data, updated_at) VALUES (?, ?, ?, ?)').bind(item.id,item.section,JSON.stringify(item),new Date().toISOString()).run()
-        await env.DB.prepare('DELETE FROM deleted_content WHERE id = ?').bind(item.id).run(); await bumpRevision(env,item.section); clearPublic(); clearQueryCache('merged-content:')
-        return json({ok:true,item},201)
+        await env.DB.prepare('DELETE FROM deleted_content WHERE id = ?').bind(item.id).run(); let syncWarning=''; try { await bumpRevision(env,item.section) } catch(e) { syncWarning='Материал сохранён, но уведомление об обновлении не отправлено'; console.error('content revision after POST',e) } clearPublic(); clearQueryCache('merged-content:')
+        return json({ok:true,item,syncWarning},201)
       }
     }
 
@@ -865,8 +865,8 @@ export default {
       if (request.method === 'PUT') {
         const item=await request.json<ContentItem>(); item.id=id
         await env.DB.prepare('INSERT OR REPLACE INTO content (id, section, data, updated_at) VALUES (?, ?, ?, ?)').bind(id,item.section,JSON.stringify(item),new Date().toISOString()).run()
-        await env.DB.prepare('DELETE FROM deleted_content WHERE id = ?').bind(id).run(); await bumpRevision(env,item.section); clearPublic(); clearQueryCache('merged-content:')
-        return json({ok:true,item})
+        await env.DB.prepare('DELETE FROM deleted_content WHERE id = ?').bind(id).run(); let syncWarning=''; try { await bumpRevision(env,item.section) } catch(e) { syncWarning='Материал сохранён, но уведомление об обновлении не отправлено'; console.error('content revision after PUT',e) } clearPublic(); clearQueryCache('merged-content:')
+        return json({ok:true,item,syncWarning})
       }
       if (request.method === 'DELETE') { const now=new Date().toISOString(); const row=await env.DB.prepare('SELECT section FROM content WHERE id=?').bind(id).first<{section:string}>(); const builtIn=builtInContent.find(x=>x.id===id)||(await loadGeneratedContent(env)).find(x=>x.id===id); const sec=(row?.section||builtIn?.section||'games') as keyof Revisions; let changes=0; if(builtIn){const results=await env.DB.batch([env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id),env.DB.prepare('INSERT OR REPLACE INTO deleted_content (id,deleted_at) VALUES (?,?)').bind(id,now)]);changes=results[0]?.meta?.changes||0}else{const result=await env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id).run();changes=result.meta?.changes||0} await bumpRevision(env,sec,now); clearPublic(); clearQueryCache('merged-content:'); return json({ok:true,deleted:id,changes}) }
     }

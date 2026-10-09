@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';
+const worker=readFileSync(new URL('../worker.ts',import.meta.url),'utf8');
+const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+test('XP ledger has per-user operation and per-item uniqueness',()=>{assert.match(worker,/PRIMARY KEY\(user_id,operation_id\)/);assert.match(worker,/idx_xp_once_per_item ON xp_operations\(user_id,kind,item_id\)/)});
+test('mission claims use authoritative server-side task transcript',()=>{assert.match(worker,/const tasks=kind==='mission'\?item.tasks/);assert.match(worker,/Verified answer transcript required for XP/)});
+test('daily claims require D1-confirmed activities',()=>{assert.match(worker,/SELECT COUNT\(\*\) AS n FROM xp_operations/);assert.match(worker,/Daily goal is not yet confirmed by the server/)});
+test('daily UI does not award XP locally',()=>{const daily=app.match(/ const claimDaily=\(\)=>\{[^\n]+/);assert.ok(daily);assert.doesNotMatch(daily[0],/setXp\(/);assert.match(daily[0],/addXpClaim\(xpUserId/)});
+test('offline queue remains until server confirms progress',()=>{assert.match(app,/if\(!result\?\.ok \|\| !result\?\.progress\)/);assert.match(app,/await acknowledgeXpClaim\(xpUserId,claim.operationId\)/)});
+test('only six known XP Discord roles are managed',()=>{const block=worker.split('const LEVEL_ROLES = [')[1].split('] as const')[0];assert.equal((block.match(/\{ xp:/g)||[]).length,6);assert.match(worker,/for\(const role of LEVEL_ROLES\)/)});
+test('role failures are stored for retry',()=>{assert.match(worker,/CREATE TABLE IF NOT EXISTS xp_role_outbox/);assert.match(worker,/UPDATE xp_role_outbox SET attempts=attempts\+1/)});

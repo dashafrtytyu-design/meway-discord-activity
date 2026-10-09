@@ -692,28 +692,13 @@ export default {
       // Missing signal is NOT evidence that a cached profile is fresh.
       return json({ok:true,revision:signal?.revision||null,needsRecovery:!signal,levels:access?.levels||await readCourseAccess(env,user.id),signalAvailable:true})
     }
-    if (url.pathname === '/api/content-signal' && request.method === 'GET') {
-      // V7.31.5: reopening MEWAY must not query D1 for update checks.
-      // The signal is populated when an admin actually changes content/settings.
-      // A cache miss may rebuild the tiny signal once, then subsequent opens reuse it.
-      const cache=await caches.open('meway-content-signal-v1')
-      const cacheKey=new Request(CONTENT_SIGNAL_CACHE_KEY)
-      const hit=await cache.match(cacheKey)
-      if(hit)return new Response(hit.body,{status:hit.status,headers:{...Object.fromEntries(hit.headers),'Cache-Control':'public, max-age=3600, stale-while-revalidate=86400'}})
+    if ((url.pathname === '/api/content-signal' || url.pathname === '/api/manifest') && request.method === 'GET') {
+      // One small authoritative revision read on Activity entry. Never serve a stale
+      // edge/browser signal after an administrator publishes or edits content.
       const revisions=await getRevisions(env)
-      await publishContentSignal(revisions)
-      return new Response(JSON.stringify({ok:true,appVersion:APP_CONTENT_VERSION,revisions}),{headers:{'Content-Type':'application/json; charset=UTF-8','Cache-Control':'public, max-age=3600, stale-while-revalidate=86400'}})
-    }
-
-    if (url.pathname === '/api/manifest' && request.method === 'GET') {
-      // Compatibility alias. It uses the same cached signal path and is no longer
-      // part of the student's periodic startup flow.
-      const cache=await caches.open('meway-content-signal-v1')
-      const cacheKey=new Request(CONTENT_SIGNAL_CACHE_KEY)
-      const hit=await cache.match(cacheKey)
-      if(hit)return hit
-      const revisions=await getRevisions(env);await publishContentSignal(revisions)
-      return new Response(JSON.stringify({ok:true,appVersion:APP_CONTENT_VERSION,revisions}),{headers:{'Content-Type':'application/json; charset=UTF-8','Cache-Control':'public, max-age=3600, stale-while-revalidate=86400'}})
+      return new Response(JSON.stringify({ok:true,appVersion:APP_CONTENT_VERSION,revisions}),{
+        headers:{'Content-Type':'application/json; charset=UTF-8','Cache-Control':'no-store, max-age=0','Vary':'Authorization'}
+      })
     }
 
     if (url.pathname === '/api/sync' && request.method === 'GET') {

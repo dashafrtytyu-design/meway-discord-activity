@@ -105,7 +105,7 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
           try {
             const signal = await fetch('/api/content-signal', {
               headers: { Accept: 'application/json' },
-              cache: 'default',
+              cache: 'no-store',
             }).then(r => r.ok ? r.json() : null) as any
             if (signal?.ok && signal.revisions) {
               const changed = Object.keys(signal.revisions).some(k => String(signal.revisions[k] || '0') !== String(auth.revisions?.[k] || '0'))

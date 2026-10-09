@@ -216,8 +216,9 @@ async function publishProgressSignal(env:Env,id:string){
 }
 
 async function publishAccessSignal(env:Env,id:string,levels:string[],updatedAt:string){
-  if(!env.ACCESS_SIGNALS)throw new Error('ACCESS_SIGNALS KV binding is not configured')
-  await env.ACCESS_SIGNALS.put(accessSignalKey(id),JSON.stringify({levels,updatedAt}))
+  if(!env.ACCESS_SIGNALS)return false
+  try{await env.ACCESS_SIGNALS.put(accessSignalKey(id),JSON.stringify({levels,updatedAt}));return true}
+  catch(error){console.error('Access KV signal failed; D1 grant remains saved',error);return false}
 }
 const CONTENT_SIGNAL_CACHE_KEY='https://meway.local/__content-signal-v1'
 async function publishContentSignal(revisions:Revisions){
@@ -679,14 +680,14 @@ export default {
 
     if (url.pathname === '/api/access-signal' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
-      if(!env.ACCESS_SIGNALS)return json({ok:false,error:'ACCESS_SIGNALS KV binding is not configured'},503)
+      if(!env.ACCESS_SIGNALS)return json({ok:true,changed:false,levels:null,signalAvailable:false})
       // One KV read, zero D1 reads. Missing signal means no changes since bootstrap.
       const value=await env.ACCESS_SIGNALS.get(accessSignalKey(user.id),'json') as {levels?:string[];updatedAt?:string}|null
       return json({ok:true,changed:!!value,levels:value?.levels,updatedAt:value?.updatedAt||''})
     }
     if (url.pathname === '/api/progress-signal' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
-      if(!env.ACCESS_SIGNALS)return json({ok:false,error:'Signal service unavailable'},503)
+      if(!env.ACCESS_SIGNALS)return json({ok:true,revision:null,needsRecovery:false,levels:null,signalAvailable:false})
       const [signal,access]=await Promise.all([env.ACCESS_SIGNALS.get(progressSignalKey(user.id),'json') as Promise<{revision?:string}|null>,env.ACCESS_SIGNALS.get(accessSignalKey(user.id),'json') as Promise<{levels?:string[]}|null>])
       // Missing signal is NOT evidence that a cached profile is fresh.
       return json({ok:true,revision:signal?.revision||null,needsRecovery:!signal,levels:access?.levels||null})
@@ -769,7 +770,7 @@ export default {
     }
 
     const accessMatch=url.pathname.match(/^\/api\/admin\/students\/(\d+)\/access$/)
-    if(accessMatch&&request.method==='PUT'){const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403);await ensureDb(env);const body=await request.json<any>().catch(()=>({}));const incoming=(Array.isArray(body.levels)?body.levels:[]).filter((x:any)=>COURSE_LEVELS.includes(x));const existing=await readCourseAccess(env,accessMatch[1]);const levels=Array.from(new Set(body.replace===true?incoming:[...existing,...incoming]));const updatedAt=new Date().toISOString();await env.DB.prepare('INSERT OR REPLACE INTO course_access (user_id,levels,updated_at) VALUES (?,?,?)').bind(accessMatch[1],JSON.stringify(levels),updatedAt).run();await publishAccessSignal(env,accessMatch[1],levels,updatedAt);clearQueryCache('students');return json({ok:true,levels})}
+    if(accessMatch&&request.method==='PUT'){const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403);await ensureDb(env);const body=await request.json<any>().catch(()=>({}));const incoming=(Array.isArray(body.levels)?body.levels:[]).filter((x:any)=>COURSE_LEVELS.includes(x));const existing=await readCourseAccess(env,accessMatch[1]);const levels=Array.from(new Set(body.replace===true?incoming:[...existing,...incoming]));const updatedAt=new Date().toISOString();await env.DB.prepare('INSERT OR REPLACE INTO course_access (user_id,levels,updated_at) VALUES (?,?,?)').bind(accessMatch[1],JSON.stringify(levels),updatedAt).run();const signalPublished=await publishAccessSignal(env,accessMatch[1],levels,updatedAt);clearQueryCache('students');return json({ok:true,levels,signalPublished,warning:signalPublished?null:'Доступ сохранён в D1. KV не настроен или временно недоступен: ученику потребуется повторная авторизация для обновления доступа.'})}
 
     // Admin-only incident viewer: never polls and never records student activity by itself.
     if(url.pathname==='/api/admin/incidents'&&request.method==='GET'){

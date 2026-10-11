@@ -1054,3 +1054,13 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
 .darkTheme .mewayLevelRoute .mewayLevelSwitcher button,.darkTheme .mewayLevelRoute .mewayLevelDots button:not(.active){background:#183552;color:#f4f8ff;border-color:#6c8bac}
 @media(max-width:600px){.mewayLevelRoute .routeStages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mewayLevelRoute .routeStages article{width:auto}.mewayLevelRoute .routeTitle{flex-wrap:wrap}.mewayLevelRoute .mewayLevelSwitcher button{flex-shrink:0}}
 @media(max-width:360px){.mewayLevelRoute .routeStages{grid-template-columns:minmax(0,1fr)}.mewayLevelRoute .mewayLevelDots button{min-width:38px}}
+
+/* Editable Drag & Sort categories; no additional network requests. */
+.vpSortGuide{color:#dbeafe;font-size:14px;line-height:1.5;margin:10px 0}.vpSortCategoryEditor{display:grid;gap:10px;background:#eff7ff;border-radius:16px;padding:14px;margin:14px 0;color:#11345a}.vpSortCategoryRow{display:flex;align-items:center;gap:8px;min-width:0}.vpSortCategoryRow .vpInline{flex:1;min-width:0;color:#11345a;background:#fff}.vpSortCategoryRow button{flex-shrink:0;border:1px solid #bfd9f2;border-radius:10px;background:white;color:#174a79;padding:10px}.vpBuckets b{color:#eaf6ff;overflow-wrap:anywhere}.vpSortCategoryEditor .vpAddMini{justify-self:start}@media(max-width:600px){.vpSortCategoryRow{flex-wrap:wrap}.vpSortCategoryRow .vpInline{flex-basis:100%}}
+
+/* Editor field wrappers avoid nested labels and preserve form layout. */
+.editorField{display:flex;flex-direction:column;gap:8px;min-width:0}.editorFieldLabel{font-weight:700}.editorField input,.editorField select,.editorField textarea{min-width:0;max-width:100%}
+.formGrid .editorField{font-size:11px;font-weight:800;color:#5f7da4}
+.formGrid .editorField.wide{grid-column:1/-1}
+.darkTheme .formGrid .editorField{color:#a9bfd6}
+@media(max-width:700px){.formGrid .editorField.wide{grid-column:auto}}

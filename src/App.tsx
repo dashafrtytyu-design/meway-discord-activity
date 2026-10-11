@@ -162,14 +162,13 @@ export default function App({discordAuth,authReady}:Props){
  const xpUserId=discordAuth.user?.id||'anonymous'
  const xpSending=useRef(false)
  const xpRetryRequested=useRef(false)
- const [xpSyncStatus,setXpSyncStatus]=useState<'synced'|'pending'|'offline'>('synced')
  const [xpSyncError,setXpSyncError]=useState('')
  const [xpPendingCount,setXpPendingCount]=useState(0)
  const [xpNoticeDismissed,setXpNoticeDismissed]=useState(false)
  const flushXpQueue=async()=>{
    if(xpSending.current){xpRetryRequested.current=true;return}
    if(!discordAuth.accessToken||xpUserId==='anonymous')return
-   if(!navigator.onLine){setXpSyncStatus('offline');return}
+   if(!navigator.onLine){return}
    xpSending.current=true
    try{
      // Drain newly queued operations too, without a polling timer.
@@ -178,7 +177,7 @@ export default function App({discordAuth,authReady}:Props){
        xpRetryRequested.current=false
        const queue=await listXpClaims(xpUserId)
        setXpPendingCount(queue.length)
-       if(!queue.length){setXpSyncStatus('synced');setXpSyncError('');break}
+       if(!queue.length){setXpSyncError('');break}
        for(const claim of queue){
          let response:Response
          try{response=await fetch('/api/xp/claim',{method:'POST',headers:{Authorization:`Bearer ${discordAuth.accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({...claim,completed:claim.completed??(claim.kind==='content'&&!claim.answers?.length)})})}
@@ -199,19 +198,19 @@ export default function App({discordAuth,authReady}:Props){
        }
        const remaining=await listXpClaims(xpUserId)
        setXpPendingCount(remaining.length)
-       setXpSyncStatus(remaining.length?'pending':'synced')
+       
        if(!remaining.length)break
        // Stop on a failed request; retry only on a user action or reconnect.
        if(failed)break
      }while(xpRetryRequested.current)
-   }catch{setXpSyncError('Не удалось прочитать или синхронизировать очередь XP.');setXpSyncStatus(navigator.onLine?'pending':'offline')}
+   }catch{setXpSyncError('Не удалось прочитать или синхронизировать очередь XP.');}
    finally{xpSending.current=false}
  }
- useEffect(()=>{const retry=()=>{void flushXpQueue()};window.addEventListener('online',retry);if(discordAuth.accessToken&&xpUserId!=='anonymous'){void listXpClaims(xpUserId).then(queue=>{setXpPendingCount(queue.length);setXpSyncStatus(queue.length?'pending':'synced');if(queue.length)void flushXpQueue()}).catch(()=>setXpSyncError('Не удалось прочитать локальную очередь XP.'))}return()=>window.removeEventListener('online',retry)},[discordAuth.accessToken,xpUserId])
+ useEffect(()=>{const retry=()=>{void flushXpQueue()};window.addEventListener('online',retry);if(discordAuth.accessToken&&xpUserId!=='anonymous'){void listXpClaims(xpUserId).then(queue=>{setXpPendingCount(queue.length);if(queue.length)void flushXpQueue()}).catch(()=>setXpSyncError('Не удалось прочитать локальную очередь XP.'))}return()=>window.removeEventListener('online',retry)},[discordAuth.accessToken,xpUserId])
  const enqueueXp=async(kind:'mission'|'content',itemId:number,answers?:string[])=>{
    const claim:XpClaim={operationId:`claim_${kind}_${itemId}_${crypto.randomUUID().replace(/-/g,'')}`,kind,itemId:String(itemId),answers,completed:true}
    const saved=await addXpClaim(xpUserId,claim)
-   setXpSyncStatus('pending');if(saved){setXpPendingCount(n=>n+1);void flushXpQueue()}else {setXpSyncError('Не удалось сохранить XP на устройстве. Проверь доступность хранилища.');ux.addNotice('Не удалось сохранить очередь XP на устройстве');setNotices(ux.notices())}
+   if(saved){setXpPendingCount(n=>n+1);void flushXpQueue()}else {setXpSyncError('Не удалось сохранить XP на устройстве. Проверь доступность хранилища.');ux.addNotice('Не удалось сохранить очередь XP на устройстве');setNotices(ux.notices())}
  }
  const pendingProgress=useRef<any|null>(null),sendingProgress=useRef(false)
  const flushProgress=()=>{if(!discordAuth.accessToken||sendingProgress.current||!pendingProgress.current)return;const data=pendingProgress.current;pendingProgress.current=null;sendingProgress.current=true;fetch('/api/progress',{method:'PUT',headers:{Authorization:`Bearer ${discordAuth.accessToken}`,'Content-Type':'application/json'},body:JSON.stringify(data)}).then(r=>{if(!r.ok)throw new Error(String(r.status))}).catch(()=>{pendingProgress.current={...data,...pendingProgress.current}}).finally(()=>{sendingProgress.current=false})}
@@ -223,7 +222,7 @@ export default function App({discordAuth,authReady}:Props){
  const completeMission=(m:Mission,answers:string[]=[])=>{if(completed.includes(m.id))return;const c=[...completed,m.id],nx=xp,today=new Date().toISOString().slice(0,10),dm=dailyAnswerDate===today?dailyMissionCount+1:1;setCompleted(c);setXp(nx);setDailyMissionCount(dm);ux.addNotice(`Миссия «${m.title}» завершена · XP ожидают подтверждения сервера`);setNotices(ux.notices());persist({dailyMissionCount:dm,dailyAnswerDate:today});enqueueXp('mission',m.id,answers)}
  const completeContent=(x:Content,answers:string[]=[])=>{if(completedContent.includes(x.id))return;const c=[...completedContent,x.id],nx=xp,today=new Date().toISOString().slice(0,10),dc=dailyAnswerDate===today?dailyContentCount+1:1;setCompletedContent(c);setXp(nx);setDailyContentCount(dc);ux.addNotice(`${sectionNames[x.section]}: «${x.title}» завершено · XP ожидают подтверждения сервера`);setNotices(ux.notices());persist({dailyContentCount:dc,dailyAnswerDate:today});enqueueXp('content',x.id,answers)}
  const updateProfile=(n:string,a:string)=>{setNickname(n);setAvatar(a);persist({nickname:n,avatar:a},true)}
- const claimDaily=()=>{const today=new Date().toISOString().slice(0,10),value=settings.daily.metric==='missions'?dailyMissionCount:settings.daily.metric==='materials'?dailyContentCount:dailyAnswers;if(dailyAnswerDate!==today||value<settings.daily.target||dailyClaimDate===today)return;void addXpClaim(xpUserId,{operationId:`daily_${today}_${crypto.randomUUID().replace(/-/g,'')}`,kind:'daily',itemId:today}).then(saved=>{if(saved)void flushXpQueue();else {ux.addNotice('Не удалось сохранить очередь XP на устройстве');setNotices(ux.notices())}});setXpSyncStatus('pending');ux.addNotice('Ежедневная награда ожидает подтверждения сервера');setNotices(ux.notices())}
+ const claimDaily=()=>{const today=new Date().toISOString().slice(0,10),value=settings.daily.metric==='missions'?dailyMissionCount:settings.daily.metric==='materials'?dailyContentCount:dailyAnswers;if(dailyAnswerDate!==today||value<settings.daily.target||dailyClaimDate===today)return;void addXpClaim(xpUserId,{operationId:`daily_${today}_${crypto.randomUUID().replace(/-/g,'')}`,kind:'daily',itemId:today}).then(saved=>{if(saved)void flushXpQueue();else {ux.addNotice('Не удалось сохранить очередь XP на устройстве');setNotices(ux.notices())}});ux.addNotice('Ежедневная награда ожидает подтверждения сервера');setNotices(ux.notices())}
  const toggleLeaderboard=(v:boolean)=>{setLeaderboardVisible(v);persist({leaderboardVisible:v},true)}
  const navGuard=useRef<{page:Page;at:number}|null>(null)
  const open=(p:Page)=>{const now=performance.now();ux.touchRecent(p,'section');if(navGuard.current?.page===p&&now-navGuard.current.at<280)return;navGuard.current={page:p,at:now};setSelected(null);setPage(p);if(p==='Миссии')void loadMissions(true);requestAnimationFrame(()=>window.scrollTo({top:0,left:0,behavior:'auto'}))}

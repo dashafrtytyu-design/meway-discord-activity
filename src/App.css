@@ -1073,3 +1073,10 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
 .sortZone .sortPlacedWord{appearance:none;background:#fff;border:1px solid #c7e1f4;border-radius:12px;padding:8px 10px;color:#174a73;font:inherit;font-weight:800;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
 .sortZone .sortPlacedWord:hover,.sortZone .sortPlacedWord:focus-visible{outline:2px solid #168cff;outline-offset:2px}
 .darkTheme .sortZone .sortPlacedWord{background:#173e5d;border-color:#376786;color:#eef8ff}
+
+/* Puzzle verification: show incorrectly positioned tiles only after Finish */
+.puzzleBoard button.puzzleWrong{outline:4px solid #e53935;outline-offset:-4px;z-index:1}
+.puzzleBoard button.puzzleCorrect{outline:3px solid #22a46a;outline-offset:-3px}
+.vpPreviewToggle{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 20px;background:#edf7ff;border:1px solid #a9d7ff;border-radius:16px;margin-bottom:12px}
+.vpPreviewToggle button{border:0;border-radius:12px;background:#176ec7;color:#fff;font-weight:700;padding:12px 16px;cursor:pointer}
+.vpPreviewToggle small{color:#345c83;flex:1;min-width:200px}

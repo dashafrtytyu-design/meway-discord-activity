@@ -1069,3 +1069,7 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
 .xpSyncNotice{position:fixed;z-index:1500;right:12px;bottom:12px;top:auto;left:auto;transform:none;max-width:min(420px,calc(100vw - 24px));padding:9px 11px;border:1px solid var(--border,#c9d8e8);border-radius:12px;background:var(--surface,#fff);color:var(--ui-dark-text,#173755);box-shadow:0 4px 20px #102f4a24;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;overflow-wrap:anywhere}
 .xpSyncNotice span{flex:1;min-width:0;max-height:64px;overflow:auto}.xpSyncNotice button{cursor:pointer;flex-shrink:0;padding:5px 8px;border-radius:8px;border:1px solid #bed6ed;background:#edf6ff;color:#163e69;font-size:12px}
 @media(max-width:560px){.xpSyncNotice{right:8px;bottom:8px;max-width:calc(100vw - 16px);font-size:11px;padding:6px}.xpSyncNotice button{padding:4px}}
+/* Drag & Sort: placed words can be moved to another zone or returned to the bank. */
+.sortZone .sortPlacedWord{appearance:none;background:#fff;border:1px solid #c7e1f4;border-radius:12px;padding:8px 10px;color:#174a73;font:inherit;font-weight:800;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
+.sortZone .sortPlacedWord:hover,.sortZone .sortPlacedWord:focus-visible{outline:2px solid #168cff;outline-offset:2px}
+.darkTheme .sortZone .sortPlacedWord{background:#173e5d;border-color:#376786;color:#eef8ff}

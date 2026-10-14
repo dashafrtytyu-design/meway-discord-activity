@@ -103,17 +103,44 @@ let curriculumAccessToken=''
 function studentHeaders():Record<string,string>{return curriculumAccessToken?{Authorization:`Bearer ${curriculumAccessToken}`}:{}}
 function getManifest(){return Promise.resolve(authManifest)}
 function mergeDelta<T extends {id:number}>(base:T[],changed:T[],deleted:number[]){const gone=new Set(deleted||[]),m=new Map(base.filter(x=>!gone.has(x.id)).map(x=>[x.id,x]));for(const x of changed||[])if(!gone.has(x.id))m.set(x.id,x);return [...m.values()].sort((a,b)=>b.id-a.id)}
+// Keep the last verified server snapshot if a request fails. Never replace it with demo data.
+async function requestContentJson(url:string):Promise<any>{
+ let response:Response
+ try{response=await fetch(url,{headers:studentHeaders(),cache:'no-store'})}
+ catch{throw new Error('Нет соединения с MEWAY Worker. Проверь интернет и попробуй снова; серверные материалы не удалены.')}
+ let payload:any=null
+ try{payload=await response.json()}catch{}
+ if(response.status===401)throw new Error('Discord-сессия не подтверждена (401). Полностью закрой MEWAY в Discord и открой заново. Не очищай D1.')
+ if(response.status===403)throw new Error('Нет разрешения на загрузку материалов (403). Проверь Discord-авторизацию и доступ.')
+ if(!response.ok||payload?.ok!==true)throw new Error(`Не удалось получить материалы (${response.status}). Проверь привязку D1 к опубликованному Worker и его логи; сохранённые данные не удалялись. Встроенные демонстрационные карточки не подставляются.`)
+ return payload
+}
 async function loadPublicContent(section:Section){
  const mem=publicContentCache.get(section);if(mem)return mem
  const key=`content:${section}`,saved=await cacheGet<Content[]>(key),manifest=await getManifest()
  if(saved){
    let data=saved.data
-   if(manifest&&saved.revision!==manifest.revisions[section]){const d=await fetch(`/api/sync?resource=${encodeURIComponent(section)}&since=${encodeURIComponent(saved.revision||'0')}`,{headers:studentHeaders()}).then(r=>r.json()).catch(()=>null);if(d?.ok&&Array.isArray(d.changed)&&Array.isArray(d.deleted)){const merged=mergeDelta(data,d.changed,d.deleted).filter(x=>x.status==='published');if(!(section==='words'&&saved.data.length>0&&merged.length===0)){data=merged;await cacheSet(key,{data,revision:d.revision||manifest.revisions[section],appVersion:manifest.appVersion,savedAt:Date.now()})}}}
-   
+   if(manifest&&saved.revision!==manifest.revisions[section]){
+     try{
+       const d=await requestContentJson(`/api/sync?resource=${encodeURIComponent(section)}&since=${encodeURIComponent(saved.revision||'0')}`)
+       if(Array.isArray(d.changed)&&Array.isArray(d.deleted)){
+         const merged=mergeDelta(data,d.changed,d.deleted).filter(x=>x.status==='published')
+         // A zero-result delta is never grounds for discarding an existing word collection.
+         if(!(section==='words'&&saved.data.length>0&&merged.length===0)){
+           data=merged
+           await cacheSet(key,{data,revision:d.revision||manifest.revisions[section],appVersion:manifest.appVersion,savedAt:Date.now()})
+         }
+       }
+     }catch(error){console.warn('MEWAY: retained last verified cached content after sync failure',section,error)}
+   }
    publicContentCache.set(section,data);return data
  }
- const d=await fetch(`/api/content?section=${encodeURIComponent(section)}`,{headers:studentHeaders()}).then(r=>r.json()).catch(()=>null);if(!d?.ok){throw new Error(`Не удалось получить материалы «${section}» из D1. Встроенные демонстрационные карточки не подставляются вместо ваших материалов.`)}const data=(d.items as Content[])||[]
- if(d?.ok){const m=manifest||await getManifest();await cacheSet(key,{data,revision:m?.revisions?.[section]||'0',appVersion:m?.appVersion||MEWAY_BUILD_ID,savedAt:Date.now()})}publicContentCache.set(section,data);return data
+ const d=await requestContentJson(`/api/content?section=${encodeURIComponent(section)}`)
+ if(!Array.isArray(d.items))throw new Error('Сервер вернул некорректный список материалов. Кеш не заменён.')
+ const data=d.items as Content[]
+ const m=manifest||await getManifest()
+ await cacheSet(key,{data,revision:m?.revisions?.[section]||'0',appVersion:m?.appVersion||MEWAY_BUILD_ID,savedAt:Date.now()})
+ publicContentCache.set(section,data);return data
 }
 function clearPublicContentCache(section?:Section){if(section){publicContentCache.delete(section);void cacheDelete(`content:${section}`)}else{publicContentCache.clear();for(const s of ['games','quizzes','words','challenges','rewards'] as Section[])void cacheDelete(`content:${s}`)}}
 function invalidateAdminCaches(){adminBootstrapCache=null;adminBootstrapPromise=null;adminStudentsCache=null;adminSectionCache.clear();adminSectionPromises.clear();}

@@ -410,6 +410,16 @@ export default {
 
 
 
+    // On-demand diagnostics only: never grants permissions or mutates D1.
+    if (url.pathname === '/api/auth/whoami' && request.method === 'GET') {
+      const user = await requireUser(request)
+      if (!user) return json({ok:false,error:'Discord session expired'},401)
+      const adminId = String(env.ADMIN_DISCORD_ID || '').trim()
+      return json({ok:true,userId:user.id,role:user.id===adminId?'admin':'student',
+        adminConfigured:Boolean(adminId),dbConfigured:Boolean(env.DB),
+        guildConfigured:Boolean(env.DISCORD_GUILD_ID)})
+    }
+
     if (url.pathname === '/api/assistant/bootstrap' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
       await ensureDb(env)
@@ -728,11 +738,11 @@ export default {
     if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
       const cached=getQueryCache<any[]>('leaderboard')
-      if(cached)return json({ok:true,leaders:cached})
+      if(cached?.length)return json({ok:true,leaders:cached})
       await ensureDb(env)
       const rows=await env.DB.prepare('SELECT user_id, data FROM progress').all<{user_id:string;data:string}>()
-      const now=Date.now(),d7=now-7*86400000,d30=now-30*86400000;const leaders=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const ev=Array.isArray(d.xpEvents)?d.xpEvents:[];return {name:d.nickname||d.discordGlobalName||d.discordUsername||'Ученик MEWAY',avatar:String(d.avatar||'').slice(0,750000),xp:Math.max(0,Number(d.xp)||0),xp7:ev.filter((e:any)=>Date.parse(e.date)>=d7).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),xp30:ev.filter((e:any)=>Date.parse(e.date)>=d30).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),completed:(d.completedMissions||[]).length+(d.completedContent||[]).length,visible:d.leaderboardVisible!==false}}).filter(x=>x.visible).slice(0,50)
-      setQueryCache('leaderboard',leaders,5*60_000)
+      const now=Date.now(),d7=now-7*86400000,d30=now-30*86400000;const leaders=(rows.results||[]).map(r=>{let d:any={};try{d=JSON.parse(r.data||'{}')}catch{}const ev=Array.isArray(d.xpEvents)?d.xpEvents:[];return {name:d.nickname||d.discordGlobalName||d.discordUsername||'Ученик MEWAY',avatar:String(d.avatar||'').slice(0,750000),xp:Math.max(0,Number(d.xp)||0),xp7:ev.filter((e:any)=>Date.parse(e.date)>=d7).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),xp30:ev.filter((e:any)=>Date.parse(e.date)>=d30).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),completed:(d.completedMissions||[]).length+(d.completedContent||[]).length,visible:d.leaderboardVisible!==false}}).filter(x=>x.visible).slice(0,50)
+      if(leaders.length)setQueryCache('leaderboard',leaders,5*60_000)
       return json({ok:true,leaders})
     }
 

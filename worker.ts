@@ -863,7 +863,10 @@ export default {
       const match=url.pathname.match(/^\/api\/admin\/content\/(\d+)$/)
       if (!match && request.method==='GET') {
         const section=url.searchParams.get('section')||undefined
-        return json({ok:true,items:await listContent(env,section,true)})
+        const allItems=await listContent(env,section,true)
+        const offset=Math.max(0,Math.min(1000000,Number(url.searchParams.get('offset'))||0))
+        const limit=Math.max(1,Math.min(30,Number(url.searchParams.get('limit'))||6))
+        return json({ok:true,items:allItems.slice(offset,offset+limit),total:allItems.length,offset,limit})
       }
       if ((request.method==='POST'&&!match)||(request.method==='PUT'&&match)) {
         const requestId=crypto.randomUUID()

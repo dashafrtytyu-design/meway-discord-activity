@@ -1,9 +1,6 @@
 import { cacheGet, cacheSet } from './persistentCache'
 export const DISCORD_CLIENT_ID = '1555208386742587444'
-// UI-only admin recognition for local-first cached sessions.
-// Security does NOT rely on this value: every /api/admin/* action is still
-// protected server-side by requireAdmin() + env.ADMIN_DISCORD_ID.
-const LOCAL_ADMIN_DISCORD_ID = '715131938368651294'
+// Admin role is authoritative on the Worker; never infer it from a hardcoded ID.
 
 export type MewayDiscordUser = {
   id: string
@@ -58,26 +55,20 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
         const auth = cached?.data
         if (auth?.authenticated && auth.accessToken && auth.user?.id === lastUserId) {
           await discordSdk.commands.authenticate({ access_token: auth.accessToken })
-          // Restore the Admin UI locally even if an older cached bootstrap was
-          // accidentally saved as "student". This performs ZERO Worker/D1 reads.
-          // Server-side admin actions remain protected by requireAdmin().
-          if (auth.user.id === LOCAL_ADMIN_DISCORD_ID && auth.role !== 'admin') {
-            auth.role = 'admin'
-            try {
-              await cacheSet(`auth-bootstrap:${lastUserId}`, {
-                data: auth,
-                revision: JSON.stringify(auth.revisions || {}),
-                appVersion: auth.appVersion || '',
-                savedAt: Date.now(),
-              })
-            } catch {}
-          }
           // Cross-device progress invalidation: a single lightweight KV read.
           // No D1 request if the revision matches the last confirmed snapshot.
           try {
             const response=await fetch('/api/progress-signal',{headers:{Authorization:`Bearer ${auth.accessToken}`},cache:'no-store'})
-            if(response.ok){
-              const signal=await response.json() as {ok?:boolean;revision?:string|null;needsRecovery?:boolean;levels?:Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>|null}
+            if(!response.ok) throw new Error('Server role verification failed')
+            {
+              const signal=await response.json() as {ok?:boolean;revision?:string|null;needsRecovery?:boolean;role?:'admin'|'student';levels?:Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>|null}
+              // Refresh cached role from the same existing signal request.
+              // Never grant admin privileges locally when the server disagrees.
+              if(!signal.ok || (signal.role!=='admin' && signal.role!=='student')) throw new Error('Server role is missing')
+              if(auth.role!==signal.role){
+                auth.role=signal.role
+                await cacheSet(`auth-bootstrap:${lastUserId}`,{data:auth,revision:JSON.stringify(auth.revisions||{}),appVersion:auth.appVersion||'',savedAt:Date.now()})
+              }
               if(Array.isArray(signal.levels)&&auth.role!=='admin'){
                 const incoming=signal.levels.filter(x=>['A1','A2','B1','B2','C1','C2'].includes(x)) as Array<'A1'|'A2'|'B1'|'B2'|'C1'|'C2'>
                 if(JSON.stringify([...incoming].sort())!==JSON.stringify([...(auth.accessLevels||[])].sort())){
@@ -97,7 +88,7 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
                 }}
               }
             }
-          }catch{}
+          }catch{throw new Error('Cached session could not be verified by the server')}
           // V7.31.5 LOCAL-FIRST: never query D1 just because the Activity was reopened.
           // A tiny cacheable content-signal may be checked by the browser, but it is served
           // from Cloudflare/browser cache and does not read student/progress/content tables.
@@ -109,8 +100,7 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
             }).then(r => r.ok ? r.json() : null) as any
             if (signal?.ok && signal.revisions) {
               const changed = Object.keys(signal.revisions).some(k => String(signal.revisions[k] || '0') !== String(auth.revisions?.[k] || '0'))
-              const appChanged = Boolean(signal.appVersion && signal.appVersion !== auth.appVersion)
-              if (changed || appChanged) {
+              if (changed) {
                 const next={...auth,revisions:signal.revisions,appVersion:signal.appVersion||auth.appVersion}
                 await cacheSet(`auth-bootstrap:${lastUserId}`,{data:next,revision:JSON.stringify(signal.revisions),appVersion:signal.appVersion||auth.appVersion||'',savedAt:Date.now()})
                 return next
@@ -168,7 +158,7 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
     // If site storage was cleared, the same Discord account receives its D1-backed
     // state here and MEWAY immediately rebuilds the local working copy.
     const authResult: MewayAuthResult = {
-      connected: true, authenticated: true, role: data.user.id === LOCAL_ADMIN_DISCORD_ID ? 'admin' : (data.role ?? 'student'), user: data.user,
+      connected: true, authenticated: true, role: data.role === 'admin' ? 'admin' : 'student', user: data.user,
       accessToken: data.accessToken, accessLevels: data.accessLevels || [], revisions: data.revisions || {},
       appVersion: data.appVersion || '', progress: data.progress || null,
       placementCompleted: data.placementCompleted === true, placementResult: data.placementResult || null,

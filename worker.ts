@@ -883,7 +883,7 @@ export default {
           if (!match) {
             // Client-chosen stable ID makes POST safe to retry after a lost response.
             const existing=await env.DB.prepare('SELECT data FROM content WHERE id=?').bind(id).first<{data:string}>()
-            if(existing){const previous=JSON.parse(existing.data) as ContentItem;return json({ok:true,item:previous,alreadySaved:true,requestId},200)}
+            if(existing){const previous=JSON.parse(existing.data) as ContentItem;if(JSON.stringify(previous)!==data)return json({ok:false,code:'CONTENT_ID_CONFLICT',requestId,error:'Этот идентификатор уже занят другим материалом. Обнови список и создай новый материал.'},409);return json({ok:true,item:previous,alreadySaved:true,requestId},200)}
             await env.DB.prepare('INSERT OR IGNORE INTO content (id,section,data,updated_at) VALUES (?,?,?,?)').bind(id,item.section,data,now).run()
           } else {
             await env.DB.prepare('INSERT INTO content (id,section,data,updated_at) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET section=excluded.section,data=excluded.data,updated_at=excluded.updated_at').bind(id,item.section,data,now).run()

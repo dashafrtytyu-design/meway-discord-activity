@@ -181,6 +181,9 @@ async function ensureDb(env: Env) {
     CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS deleted_missions (id INTEGER PRIMARY KEY, deleted_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS deleted_content (id INTEGER PRIMARY KEY, deleted_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS content_history (history_id INTEGER PRIMARY KEY AUTOINCREMENT, content_id INTEGER NOT NULL, section TEXT NOT NULL, data TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS mission_history (history_id INTEGER PRIMARY KEY AUTOINCREMENT, mission_id INTEGER NOT NULL, data TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS idx_content_history_id ON content_history(content_id,history_id DESC);
     CREATE TABLE IF NOT EXISTS meway_meta (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS course_access (user_id TEXT PRIMARY KEY, levels TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS placement_results (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL);
@@ -281,9 +284,9 @@ async function listContent(env: Env, section?: string, all = false) {
   const deletedIds=new Set((deleted.results||[]).map(x=>Number(x.id)))
   const merged=new Map<number,ContentItem>()
   const generated=await loadGeneratedContent(env)
-  for(const x of builtInContent) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
-  for(const x of generated) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
-  for(const r of custom.results||[]){try{const x=JSON.parse(r.data) as ContentItem;/* V7.21.6: all games that existed before this reset are intentionally hidden. New admin-created games after the reset remain supported. */if(x.section==='games'&&String((r as any).updated_at||'')<'2026-10-06T04:00:00.000Z')continue;if(!deletedIds.has(x.id))merged.set(x.id,x)}catch{}}
+  for(const x of builtInContent) if(x.section!=='words'&&(!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
+  for(const x of generated) if(x.section!=='words'&&(!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
+  for(const r of custom.results||[]){try{const x=JSON.parse(r.data) as ContentItem;/* Never hide persisted server materials based on deployment date. */if(!deletedIds.has(x.id))merged.set(x.id,{...x,_serverVersion:r.updated_at} as ContentItem)}catch{}}
   const items=[...merged.values()].sort((a,b)=>b.id-a.id)
   const result=all?items:items.filter(x=>x.status==='published')
   setQueryCache(key,result,10*60_000)
@@ -320,7 +323,7 @@ async function listMissions(env: Env, all = false) {
   const key=`merged-missions:${all?'all':'published'}`
   const hit=getQueryCache<Mission[]>(key); if(hit) return hit
   const [custom,deleted]=await Promise.all([
-    env.DB.prepare('SELECT data FROM missions').all<{data:string}>(),
+    env.DB.prepare('SELECT data,updated_at FROM missions').all<{data:string;updated_at:string}>(),
     env.DB.prepare('SELECT id FROM deleted_missions').all<{id:number}>()
   ])
   const deletedIds=new Set((deleted.results||[]).map(x=>Number(x.id)))
@@ -328,7 +331,7 @@ async function listMissions(env: Env, all = false) {
   const generated=await loadGeneratedMissions(env)
   for(const m of seed) if(!deletedIds.has(m.id)) merged.set(m.id,m)
   for(const m of generated) if(!deletedIds.has(m.id)) merged.set(m.id,m)
-  for(const r of custom.results||[]){try{const m=JSON.parse(r.data) as Mission;if(!deletedIds.has(m.id))merged.set(m.id,m)}catch{}}
+  for(const r of custom.results||[]){try{const m=JSON.parse(r.data) as Mission;if(!deletedIds.has(m.id))merged.set(m.id,{...m,_serverVersion:r.updated_at} as Mission)}catch{}}
   const items=[...merged.values()].sort((a,b)=>b.id-a.id)
   const result=all?items:items.filter(m=>m.status==='published')
   setQueryCache(key,result,10*60_000)
@@ -807,23 +810,40 @@ export default {
       return json({ok:true,backup})
     }
 
+    // Non-destructive recovery: import only missing server rows. Existing content, XP,
+    // settings and tombstones are NEVER overwritten by a backup uploaded from a browser.
     if (url.pathname === '/api/admin/import' && request.method === 'POST') {
       const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403)
       const body=await request.json<any>().catch(()=>null);const b=body?.backup
-      if(!b||b.format!=='MEWAY-BACKUP-1')return json({ok:false,error:'Unsupported MEWAY backup file.'},400)
-      await ensureDb(env);const now=new Date().toISOString(),ch=b.changes||{}
-      const stmts:any[]=[]
-      for(const r of ch.missions||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO missions (id,data,updated_at) VALUES (?,?,?)').bind(Number(r.id),String(r.data),String(r.updated_at||now)))
-      for(const r of ch.content||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO content (id,section,data,updated_at) VALUES (?,?,?,?)').bind(Number(r.id),String(r.section),String(r.data),String(r.updated_at||now)))
-      for(const r of ch.deletedMissions||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO deleted_missions (id,deleted_at) VALUES (?,?)').bind(Number(r.id),String(r.deleted_at||now)))
-      for(const r of ch.deletedContent||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO deleted_content (id,deleted_at) VALUES (?,?)').bind(Number(r.id),String(r.deleted_at||now)))
-      for(const r of ch.progress||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO progress (user_id,data,updated_at) VALUES (?,?,?)').bind(String(r.user_id),String(r.data),String(r.updated_at||now)));for(const r of ch.courseAccess||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO course_access (user_id,levels,updated_at) VALUES (?,?,?)').bind(String(r.user_id),String(r.levels),String(r.updated_at||now)));for(const r of ch.placementHistory||[])stmts.push(env.DB.prepare('INSERT INTO placement_history (user_id,data,created_at) VALUES (?,?,?)').bind(String(r.user_id),String(r.data),String(r.created_at||now)));if(ch.placementConfig?.data)stmts.push(env.DB.prepare('INSERT OR REPLACE INTO placement_config (id,data,updated_at) VALUES (1,?,?)').bind(String(ch.placementConfig.data),String(ch.placementConfig.updated_at||now)));for(const r of ch.placementResults||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO placement_results (user_id,data,updated_at) VALUES (?,?,?)').bind(String(r.user_id),String(r.data),String(r.updated_at||now)))
-      if(ch.settings?.data)stmts.push(env.DB.prepare('INSERT OR REPLACE INTO settings (id,data,updated_at) VALUES (1,?,?)').bind(String(ch.settings.data),String(ch.settings.updated_at||now)))
-      // A full backup can restore the complete visible curriculum even if the original static bundle later changes.
-      if(b.scope==='full'&&b.full){for(const m of b.full.missions||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO missions (id,data,updated_at) VALUES (?,?,?)').bind(Number(m.id),JSON.stringify(m),now));for(const x of b.full.content||[])stmts.push(env.DB.prepare('INSERT OR REPLACE INTO content (id,section,data,updated_at) VALUES (?,?,?,?)').bind(Number(x.id),String(x.section),JSON.stringify(x),now))}
-      for(let i=0;i<stmts.length;i+=50)await env.DB.batch(stmts.slice(i,i+50))
-      for(const k of ['missions','games','quizzes','words','challenges','rewards','settings'] as (keyof Revisions)[])await bumpRevision(env,k,now)
-      clearPublic();clearQueryCache();return json({ok:true,restored:stmts.length})
+      if(!b||b.format!=='MEWAY-BACKUP-1'||!b.changes)return json({ok:false,error:'Unsupported MEWAY backup file.'},400)
+      await ensureDb(env)
+      const now=new Date().toISOString(),ch=b.changes
+      let restored=0,skipped=0
+      // Restore raw D1 rows first. Full curriculum is not reimported automatically:
+      // it contains bundled examples that must never replace admin-authored content.
+      const restore=async(table:'content'|'missions',rows:any[])=>{
+        for(const row of rows){
+          const id=Number(row?.id)
+          if(!Number.isSafeInteger(id)||id<=0||typeof row?.data!=='string'){skipped++;continue}
+          let item:any;try{item=JSON.parse(row.data)}catch{skipped++;continue}
+          if(!item||Number(item.id)!==id){skipped++;continue}
+          if(table==='content'&&(!['games','quizzes','words','challenges','rewards'].includes(row.section)||item.section!==row.section)){skipped++;continue}
+          const tombstoneTable=table==='content'?'deleted_content':'deleted_missions'
+          const tombstone=await env.DB.prepare(`SELECT id FROM ${tombstoneTable} WHERE id=?`).bind(id).first()
+          if(tombstone){skipped++;continue}
+          const result=table==='content'
+            ?await env.DB.prepare('INSERT OR IGNORE INTO content(id,section,data,updated_at) VALUES(?,?,?,?)').bind(id,row.section,row.data,String(row.updated_at||now)).run()
+            :await env.DB.prepare('INSERT OR IGNORE INTO missions(id,data,updated_at) VALUES(?,?,?)').bind(id,row.data,String(row.updated_at||now)).run()
+          if(result.meta?.changes)restored++;else skipped++
+        }
+      }
+      await restore('missions',Array.isArray(ch.missions)?ch.missions:[])
+      await restore('content',Array.isArray(ch.content)?ch.content:[])
+      // Never import progress, access, settings, or deletion markers through this
+      // content-recovery action: doing so could overwrite unrelated live data.
+      for(const k of ['missions','games','quizzes','words','challenges','rewards'] as (keyof Revisions)[])await bumpRevision(env,k,now)
+      clearPublic();clearQueryCache()
+      return json({ok:true,restored,skipped,mode:'restore_missing_only',warning:'Existing records, deletion markers, XP and settings were not modified.'})
     }
 
     if (url.pathname === '/api/admin/bootstrap' && request.method === 'GET') {
@@ -857,6 +877,66 @@ export default {
       return json({ok:true,item})
     }
 
+    if (/^\/api\/admin\/content-history\/\d+$/.test(url.pathname)) {
+      const admin=await requireAdmin(request,env)
+      if(!admin)return json({ok:false,code:'ADMIN_REQUIRED'},403)
+      await ensureDb(env)
+      const id=Number(url.pathname.split('/').pop())
+      if(request.method==='GET'){
+        const history=await env.DB.prepare('SELECT history_id,content_id,section,action,created_at FROM content_history WHERE content_id=? ORDER BY history_id DESC LIMIT 100').bind(id).all()
+        return json({ok:true,history:history.results||[]})
+      }
+      if(request.method==='POST'){
+        const expected=request.headers.get('If-Unmodified-Since-MEWAY')
+        if(!expected)return json({ok:false,code:'CONTENT_VERSION_REQUIRED',error:'Для восстановления требуется текущая версия материала'},428)
+        const body=await request.json<{historyId:number}>().catch(()=>null)
+        if(!Number.isSafeInteger(body?.historyId))return json({ok:false,code:'INVALID_HISTORY_ID'},400)
+        const row=await env.DB.prepare('SELECT section,data FROM content_history WHERE content_id=? AND history_id=?').bind(id,body!.historyId).first<{section:string;data:string}>()
+        if(!row)return json({ok:false,code:'HISTORY_NOT_FOUND'},404)
+        const current=await env.DB.prepare('SELECT section,data,updated_at FROM content WHERE id=?').bind(id).first<{section:string;data:string;updated_at:string}>()
+        if(!current)return json({ok:false,code:'CONTENT_NOT_FOUND',error:'Материал отсутствует. Для восстановления удалённого материала необходим отдельный безопасный сценарий.'},404)
+        if(current.updated_at!==expected)return json({ok:false,code:'CONTENT_VERSION_CONFLICT',error:'Материал уже изменён другим администратором'},409)
+        const now=new Date().toISOString()+'#'+crypto.randomUUID()
+        // Both operations are one transactional D1 batch. The UPDATE is a compare-and-swap:
+        // an outdated restore cannot overwrite a newer material even if it races the read.
+        const result=await env.DB.batch([
+          env.DB.prepare('INSERT INTO content_history(content_id,section,data,action,created_at) SELECT id,section,data,?,? FROM content WHERE id=? AND updated_at=?').bind('before_restore',now,id,expected),
+          env.DB.prepare('UPDATE content SET section=?,data=?,updated_at=? WHERE id=? AND updated_at=?').bind(row.section,row.data,now,id,expected)
+        ])
+        if(!result[1]?.meta?.changes)return json({ok:false,code:'CONTENT_VERSION_CONFLICT',error:'Версия изменилась во время восстановления'},409)
+        try{await bumpRevision(env,row.section)}catch(e){console.error('restore revision warning',e)}
+        clearPublic();clearQueryCache('merged-content:')
+        return json({ok:true,item:{...JSON.parse(row.data),_serverVersion:now},restoredFrom:body!.historyId})
+      }
+      return json({ok:false,code:'METHOD_NOT_ALLOWED'},405)
+    }
+
+    if (url.pathname === '/api/admin/content-health' && request.method === 'GET') {
+      const admin=await requireAdmin(request,env)
+      if(!admin)return json({ok:false,code:'ADMIN_REQUIRED',error:'Admin access required.'},403)
+      await ensureDb(env)
+      const [rows,deleted]=await Promise.all([
+        env.DB.prepare('SELECT id,section,data,updated_at FROM content WHERE section=?').bind('words').all<{id:number;section:string;data:string;updated_at:string}>(),
+        env.DB.prepare('SELECT id FROM deleted_content').all<{id:number}>()
+      ])
+      const tombstones=new Set((deleted.results||[]).map(x=>Number(x.id)))
+      const levels:Record<string,{records:number;words:number;images:number}>={}
+      let unreadable=0,hidden=0
+      for(const row of rows.results||[]){
+        if(tombstones.has(row.id)){hidden++;continue}
+        try{
+          const item=JSON.parse(row.data)
+          const level=String(item.level||'unknown')
+          const stat=levels[level]||(levels[level]={records:0,words:0,images:0})
+          stat.records++
+          const words=Array.isArray(item.payload?.words)?item.payload.words:[]
+          stat.words+=words.length
+          stat.images+=words.filter((w:any)=>typeof w.image==='string'&&w.image.length>0).length
+        }catch{unreadable++}
+      }
+      return json({ok:true,source:'D1',section:'words',totalRows:(rows.results||[]).length,hiddenByTombstone:hidden,unreadable,levels,build:APP_CONTENT_VERSION})
+    }
+
     if (url.pathname === '/api/admin/content' || /^\/api\/admin\/content\/\d+$/.test(url.pathname)) {
       const admin=await requireAdmin(request,env)
       if (!admin) return json({ok:false,code:'ADMIN_REQUIRED',error:'Требуются права администратора'},403)
@@ -879,21 +959,37 @@ export default {
           const id=match?Number(match[1]):Number(item.id)||Date.now()
           if(!Number.isSafeInteger(id)||id<=0)return json({ok:false,code:'INVALID_ID',requestId,error:'Неверный идентификатор'},400)
           item.id=id
+          delete (item as any)._serverVersion
           await ensureDb(env)
           const data=JSON.stringify(item)
           if (data.length>12_000_000) return json({ok:false,code:'CONTENT_TOO_LARGE',requestId,error:'Слишком большой материал для D1'},413)
-          const now=new Date().toISOString()
+          const now=new Date().toISOString()+'#'+crypto.randomUUID()
+          // Preserve every previous server version before an edit. The history write and
+          // current content write must succeed together, never separately.
           if (!match) {
             // Client-chosen stable ID makes POST safe to retry after a lost response.
             const existing=await env.DB.prepare('SELECT data FROM content WHERE id=?').bind(id).first<{data:string}>()
-            if(existing){const previous=JSON.parse(existing.data) as ContentItem;if(JSON.stringify(previous)!==data)return json({ok:false,code:'CONTENT_ID_CONFLICT',requestId,error:'Этот идентификатор уже занят другим материалом. Обнови список и создай новый материал.'},409);return json({ok:true,item:previous,alreadySaved:true,requestId},200)}
+            if(existing){const previous=JSON.parse(existing.data) as ContentItem;if(JSON.stringify(previous)!==data)return json({ok:false,code:'CONTENT_ID_CONFLICT',requestId,error:'Этот идентификатор уже занят другим материалом. Обнови список и создай новый материал.'},409);return json({ok:true,item:{...previous,_serverVersion:(await env.DB.prepare('SELECT updated_at FROM content WHERE id=?').bind(id).first<{updated_at:string}>())?.updated_at},alreadySaved:true,requestId},200)}
             await env.DB.prepare('INSERT OR IGNORE INTO content (id,section,data,updated_at) VALUES (?,?,?,?)').bind(id,item.section,data,now).run()
           } else {
-            await env.DB.prepare('INSERT INTO content (id,section,data,updated_at) VALUES (?,?,?,?) ON CONFLICT(id) DO UPDATE SET section=excluded.section,data=excluded.data,updated_at=excluded.updated_at').bind(id,item.section,data,now).run()
+            const previous=await env.DB.prepare('SELECT section,data,updated_at FROM content WHERE id=?').bind(id).first<{section:string;data:string;updated_at:string}>()
+            const expected=request.headers.get('If-Unmodified-Since-MEWAY')
+            if(!expected)return json({ok:false,code:'CONTENT_VERSION_REQUIRED',requestId,error:'Версия материала обязательна. Перезагрузи список.'},428)
+            if(previous && previous.updated_at!==expected)return json({ok:false,code:'CONTENT_VERSION_CONFLICT',requestId,error:'Материал был изменён в другой вкладке. Обнови его перед сохранением.'},409)
+            if(previous){
+              const result=await env.DB.batch([
+                env.DB.prepare('INSERT INTO content_history(content_id,section,data,action,created_at) SELECT id,section,data,?,? FROM content WHERE id=? AND updated_at=?').bind('edit',now,id,expected),
+                env.DB.prepare('UPDATE content SET section=?,data=?,updated_at=? WHERE id=? AND updated_at=?').bind(item.section,data,now,id,previous.updated_at)
+              ])
+              if(!result[1]?.meta?.changes)return json({ok:false,code:'CONTENT_VERSION_CONFLICT',requestId,error:'Материал изменился во время сохранения. Предыдущая версия сохранена.'},409)
+            }else{
+              return json({ok:false,code:'CONTENT_NOT_FOUND',requestId,error:'Материал отсутствует в D1. Не создаём его незаметно при редактировании.'},404)
+            }
           }
           const verified=await env.DB.prepare('SELECT data FROM content WHERE id=?').bind(id).first<{data:string}>()
           if(!verified)return json({ok:false,code:'D1_WRITE_NOT_VERIFIED',requestId,error:'D1 не подтвердила сохранение'},503)
-          const saved=JSON.parse(verified.data) as ContentItem
+          if(verified.data!==data)return json({ok:false,code:'D1_CONTENT_MISMATCH',requestId,error:'D1 returned different content; save not confirmed. Reload before editing.'},409)
+          const saved={...(JSON.parse(verified.data) as ContentItem),_serverVersion:now}
           let syncWarning=''
           try {await env.DB.prepare('DELETE FROM deleted_content WHERE id=?').bind(id).run();await bumpRevision(env,item.section)}
           catch(e){syncWarning='Материал записан в D1, но обновление каталога требует проверки';console.error('content sync warning',requestId,e)}
@@ -903,15 +999,21 @@ export default {
       }
       if(match&&request.method==='DELETE'){
         const id=Number(match[1]);await ensureDb(env)
-        const now=new Date().toISOString(),row=await env.DB.prepare('SELECT section FROM content WHERE id=?').bind(id).first<{section:string}>()
-        const builtIn=builtInContent.find(x=>x.id===id)||(await loadGeneratedContent(env)).find(x=>x.id===id)
-        const sec=(row?.section||builtIn?.section||'games') as keyof Revisions
-        let changes=0
-        if(builtIn){const results=await env.DB.batch([env.DB.prepare('DELETE FROM content WHERE id=?').bind(id),env.DB.prepare('INSERT OR REPLACE INTO deleted_content (id,deleted_at) VALUES (?,?)').bind(id,now)]);changes=results[0]?.meta?.changes||0}
-        else{const result=await env.DB.prepare('DELETE FROM content WHERE id=?').bind(id).run();changes=result.meta?.changes||0}
-        try{await bumpRevision(env,sec,now)}catch(e){console.error('delete revision warning',e)}
+        const expected=request.headers.get('If-Unmodified-Since-MEWAY')
+        if(!expected)return json({ok:false,code:'CONTENT_VERSION_REQUIRED',error:'Для удаления нужна версия материала'},428)
+        const previous=await env.DB.prepare('SELECT section,data,updated_at FROM content WHERE id=?').bind(id).first<{section:string;data:string;updated_at:string}>()
+        if(!previous)return json({ok:false,code:'CONTENT_NOT_FOUND',error:'Материал не найден в D1'},404)
+        if(previous.updated_at!==expected)return json({ok:false,code:'CONTENT_VERSION_CONFLICT'},409)
+        const now=new Date().toISOString()
+        const results=await env.DB.batch([
+          env.DB.prepare('INSERT INTO content_history(content_id,section,data,action,created_at) SELECT id,section,data,?,? FROM content WHERE id=? AND updated_at=?').bind('delete',now,id,expected),
+          env.DB.prepare('DELETE FROM content WHERE id=? AND updated_at=?').bind(id,expected),
+          env.DB.prepare("INSERT OR IGNORE INTO deleted_content(id,deleted_at) SELECT ?,? WHERE EXISTS (SELECT 1 FROM content_history WHERE content_id=? AND action='delete' AND created_at=?)").bind(id,now,id,now)
+        ])
+        if(!results[1]?.meta?.changes)return json({ok:false,code:'CONTENT_VERSION_CONFLICT'},409)
+        try{await bumpRevision(env,previous.section as keyof Revisions,now)}catch(e){console.error('delete revision warning',e)}
         clearPublic();clearQueryCache('merged-content:')
-        return json({ok:true,deleted:id,changes})
+        return json({ok:true,deleted:id,changes:1})
       }
     }
 
@@ -936,9 +1038,11 @@ export default {
       if (request.method === 'POST') {
         const mission = await request.json<Mission>()
         mission.id = Date.now()
-        await env.DB.prepare('INSERT INTO missions (id, data, updated_at) VALUES (?, ?, ?)').bind(mission.id, JSON.stringify(mission), new Date().toISOString()).run()
+        delete (mission as any)._serverVersion
+        const now=new Date().toISOString()
+        await env.DB.prepare('INSERT INTO missions (id, data, updated_at) VALUES (?, ?, ?)').bind(mission.id, JSON.stringify(mission), now).run()
         await env.DB.prepare('DELETE FROM deleted_missions WHERE id = ?').bind(mission.id).run(); await bumpRevision(env,'missions'); clearPublic(); clearQueryCache('merged-missions:')
-        return json({ ok: true, mission }, 201)
+        return json({ ok: true, mission:{...mission,_serverVersion:now} }, 201)
       }
     }
 
@@ -949,18 +1053,36 @@ export default {
       await ensureDb(env)
       const id = Number(match[1])
       if (request.method === 'PUT') {
-        const mission = await request.json<Mission>(); mission.id = id
-        await env.DB.prepare('INSERT OR REPLACE INTO missions (id, data, updated_at) VALUES (?, ?, ?)').bind(id, JSON.stringify(mission), new Date().toISOString()).run()
+        const mission = await request.json<Mission>(); mission.id = id; delete (mission as any)._serverVersion
+        const previous=await env.DB.prepare('SELECT data,updated_at FROM missions WHERE id=?').bind(id).first<{data:string;updated_at:string}>()
+        if(!previous)return json({ok:false,code:'MISSION_NOT_FOUND'},404)
+        const now=new Date().toISOString()+'#'+crypto.randomUUID()
+        const expected=request.headers.get('If-Unmodified-Since-MEWAY')
+        if(!expected)return json({ok:false,code:'MISSION_VERSION_REQUIRED'},428)
+        if(expected!==previous.updated_at)return json({ok:false,code:'MISSION_VERSION_CONFLICT'},409)
+        const results=await env.DB.batch([
+          env.DB.prepare('INSERT INTO mission_history(mission_id,data,action,created_at) SELECT id,data,?,? FROM missions WHERE id=? AND updated_at=?').bind('edit',now,id,expected),
+          env.DB.prepare('UPDATE missions SET data=?,updated_at=? WHERE id=? AND updated_at=?').bind(JSON.stringify(mission),now,id,previous.updated_at)
+        ])
+        if(!results[1]?.meta?.changes)return json({ok:false,code:'MISSION_VERSION_CONFLICT'},409)
         await env.DB.prepare('DELETE FROM deleted_missions WHERE id = ?').bind(id).run(); await bumpRevision(env,'missions'); clearPublic(); clearQueryCache('merged-missions:')
-        return json({ ok: true, mission })
+        return json({ ok: true, mission:{...mission,_serverVersion:now} })
       }
       if (request.method === 'DELETE') {
-        const now=new Date().toISOString(),builtIn=seed.some(m=>m.id===id)||(await loadGeneratedMissions(env)).some(m=>m.id===id)
-        let changes=0
-        if(builtIn){const results=await env.DB.batch([env.DB.prepare('DELETE FROM missions WHERE id = ?').bind(id),env.DB.prepare('INSERT OR REPLACE INTO deleted_missions (id,deleted_at) VALUES (?,?)').bind(id,now)]);changes=results[0]?.meta?.changes||0}
-        else{const result=await env.DB.prepare('DELETE FROM missions WHERE id = ?').bind(id).run();changes=result.meta?.changes||0}
+        const expected=request.headers.get('If-Unmodified-Since-MEWAY')
+        if(!expected)return json({ok:false,code:'MISSION_VERSION_REQUIRED'},428)
+        const old=await env.DB.prepare('SELECT data,updated_at FROM missions WHERE id=?').bind(id).first<{data:string;updated_at:string}>()
+        if(!old)return json({ok:false,code:'MISSION_NOT_FOUND'},404)
+        if(old.updated_at!==expected)return json({ok:false,code:'MISSION_VERSION_CONFLICT'},409)
+        const now=new Date().toISOString()
+        const results=await env.DB.batch([
+          env.DB.prepare('INSERT INTO mission_history(mission_id,data,action,created_at) SELECT id,data,?,? FROM missions WHERE id=? AND updated_at=?').bind('delete',now,id,expected),
+          env.DB.prepare('DELETE FROM missions WHERE id=? AND updated_at=?').bind(id,expected),
+          env.DB.prepare('INSERT OR IGNORE INTO deleted_missions(id,deleted_at) VALUES (?,?)').bind(id,now)
+        ])
+        if(!results[1]?.meta?.changes)return json({ok:false,code:'MISSION_VERSION_CONFLICT'},409)
         await bumpRevision(env,'missions',now); clearPublic(); clearQueryCache('merged-missions:')
-        return json({ ok: true, deleted: id, changes })
+        return json({ok:true,deleted:id,changes:1})
       }
     }
 

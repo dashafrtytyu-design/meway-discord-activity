@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
+const worker=readFileSync(new URL('../worker.ts',import.meta.url),'utf8');
+test('cached public sections return without network',()=>{assert.match(app,/const mem=publicContentCache\.get\(section\);if\(mem\)return mem/);assert.match(app,/if\(saved\)\{\s*let data=saved\.data/)});
+test('auth response contains progress and revisions without separate manifest call',()=>{assert.match(worker,/accessLevels, revisions, appVersion:APP_CONTENT_VERSION, progress:savedProgress/);assert.match(app,/function getManifest\(\)\{return Promise\.resolve\(authManifest\)\}/)});
+test('content save verifies D1 in same Worker invocation',()=>{assert.match(worker,/SELECT data FROM content WHERE id=\?/);assert.match(worker,/verified\.data!==data/);assert.match(app,/if\(r\.ok&&d\?\.ok&&d\.item\)/)});
+test('extra verification is failure recovery only',()=>{assert.match(app,/if\(\[408,429,500,502,503,504\]\.includes\(r\.status\)\)\{if\(await verify\(\)\)/);assert.match(app,/catch\(e\)\{if\(await verify\(\)\)/)});
+test('no background server polling timer',()=>{assert.doesNotMatch(app,/setInterval\s*\(\s*(?:async\s*)?\(?[^)]*\)?\s*=>\s*fetch\(/);assert.match(app,/window\.setInterval\(\(\)=>setNow\(Date\.now\(\)\),1000\)/)});

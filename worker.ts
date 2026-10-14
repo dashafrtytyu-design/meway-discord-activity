@@ -690,10 +690,10 @@ export default {
     }
     if (url.pathname === '/api/progress-signal' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
-      if(!env.ACCESS_SIGNALS){const levels=await readCourseAccess(env,user.id);return json({ok:true,revision:null,needsRecovery:false,levels,signalAvailable:false})}
-      let signal:{revision?:string}|null=null;let access:{levels?:string[]}|null=null;try{[signal,access]=await Promise.all([env.ACCESS_SIGNALS.get(progressSignalKey(user.id),'json') as Promise<{revision?:string}|null>,env.ACCESS_SIGNALS.get(accessSignalKey(user.id),'json') as Promise<{levels?:string[]}|null>])}catch{const levels=await readCourseAccess(env,user.id);return json({ok:true,revision:null,needsRecovery:false,levels,signalAvailable:false})}
+      if(!env.ACCESS_SIGNALS){const levels=await readCourseAccess(env,user.id,user.id===env.ADMIN_DISCORD_ID);return json({ok:true,revision:null,needsRecovery:false,levels,role:user.id===env.ADMIN_DISCORD_ID?'admin':'student',signalAvailable:false})}
+      let signal:{revision?:string}|null=null;let access:{levels?:string[]}|null=null;try{[signal,access]=await Promise.all([env.ACCESS_SIGNALS.get(progressSignalKey(user.id),'json') as Promise<{revision?:string}|null>,env.ACCESS_SIGNALS.get(accessSignalKey(user.id),'json') as Promise<{levels?:string[]}|null>])}catch{const levels=await readCourseAccess(env,user.id,user.id===env.ADMIN_DISCORD_ID);return json({ok:true,revision:null,needsRecovery:false,levels,role:user.id===env.ADMIN_DISCORD_ID?'admin':'student',signalAvailable:false})}
       // Missing signal is NOT evidence that a cached profile is fresh.
-      return json({ok:true,revision:signal?.revision||null,needsRecovery:!signal,levels:access?.levels||await readCourseAccess(env,user.id),signalAvailable:true})
+      return json({ok:true,revision:signal?.revision||null,needsRecovery:!signal,levels:user.id===env.ADMIN_DISCORD_ID?[...COURSE_LEVELS]:(access?.levels||await readCourseAccess(env,user.id)),role:user.id===env.ADMIN_DISCORD_ID?'admin':'student',signalAvailable:true})
     }
     if ((url.pathname === '/api/content-signal' || url.pathname === '/api/manifest') && request.method === 'GET') {
       // One small authoritative revision read on Activity entry. Never serve a stale

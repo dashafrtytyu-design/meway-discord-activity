@@ -12,7 +12,7 @@ test('student word loader fails visibly when D1 fails, without demo substitution
  assert.match(app,/Встроенные демонстрационные карточки не подставляются/);
 });
 test('existing cached A1 words are not overwritten by an unexplained empty full response',()=>{
- assert.match(app,/saved\.data\.length>0&&d\.items\.length===0/);
+ assert.match(app,/section==='words'&&saved\.data\.length>0&&merged\.length===0/);
 });
 test('admin can inspect authoritative D1 word counts and image counts without writing',()=>{
  assert.match(worker,/\/api\/admin\/content-health/);

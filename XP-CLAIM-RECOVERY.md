@@ -1,0 +1,7 @@
+# MEWAY: XP claim recovery (2026-10-15)
+
+The exact 400 guard in worker.ts validates operationId (12–100 ASCII letters/digits/_/-), kind (mission/content/daily), and itemId (1–15 digits for content/mission, UTC YYYY-MM-DD for daily). The screenshot alone cannot identify which field is invalid in the 5 existing queued operations. The new worker responds with field-specific 400 errors. The client validates before sending, retains malformed historical entries in IndexedDB/localStorage, skips them instead of repeatedly resending them, and continues processing valid entries. HTTP 400/422 responses remain queued for review and never trigger automatic XP awards. Existing operation IDs are never regenerated, so idempotency remains intact.
+
+IMPORTANT: This does not automatically convert invalid legacy claims into valid XP. A claim without a verifiable server item ID or activity proof cannot safely be awarded. Keep the local browser storage intact. Do not clear cache, IndexedDB, or localStorage until the 5 queued records have been diagnosed and reconciled. Do not manually edit XP in D1. A valid pending claim still requires the server to confirm its award.
+
+No production D1 accessed, modified or migrated. Test deployment: use a separate Worker and test D1; test a valid completed item, repeat same operationId, malformed itemId, offline queue, reload and reconnect, then check xp_operations/progress. The production build was not run: npm ci --offline failed because zod-3.25.76.tgz is not cached in this environment. Run npm ci && npm run build in Cloudflare CI.

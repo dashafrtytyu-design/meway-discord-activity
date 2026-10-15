@@ -17,6 +17,13 @@
     "ADMIN_DISCORD_ID": "715131938368651294",
     "DISCORD_GUILD_ID": "1554179282513829998"
   },
+  "previews": {
+  "vars": {
+    "DISCORD_CLIENT_ID": "0",
+    "ADMIN_DISCORD_ID": "0",
+    "DISCORD_GUILD_ID": "0"
+  }
+},
 
 
   "d1_databases": [

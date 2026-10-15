@@ -253,14 +253,22 @@ for(const x of builtInContent){
  else if(x.section==='challenges'){x.xp=v7198Reward(x.level,'challenge',Array.isArray(x.payload?.questions)?x.payload.questions.length:Number(x.payload?.target||7),2);if(x.payload?.reward)x.payload.reward=`+${x.xp} XP`}
 }
 
-let generatedContentCache: ContentItem[] | null = null
+// Load only the requested curriculum section. The former eager 1.4 MB JSON
+// allocation on every words request needlessly increased Worker memory usage.
+const generatedContentBySection = new Map<string,ContentItem[]>()
 let generatedMissionsCache: Mission[] | null = null
-async function loadGeneratedContent(env:Env):Promise<ContentItem[]> {
-  if(generatedContentCache) return generatedContentCache
-  const r=await env.ASSETS.fetch(new Request('https://meway.local/curriculum-content.json'))
-  if(!r.ok) throw new Error(`curriculum-content.json ${r.status}`)
-  generatedContentCache=await r.json<ContentItem[]>()
-  return generatedContentCache
+async function loadGeneratedContent(env:Env,section?:string):Promise<ContentItem[]> {
+  const key=section||'all'
+  const hit=generatedContentBySection.get(key)
+  if(hit)return hit
+  const path=section && ['words','quizzes','challenges'].includes(section)
+    ? `curriculum-${section}.json` : 'curriculum-content.json'
+  const r=await env.ASSETS.fetch(new Request(`https://meway.local/${path}`))
+  if(!r.ok) throw new Error(`${path} ${r.status}`)
+  const items=await r.json<ContentItem[]>()
+  // Avoid permanently retaining the full combined curriculum in a warm isolate.
+  if(section)generatedContentBySection.set(key,items)
+  return items
 }
 async function loadGeneratedMissions(env:Env):Promise<Mission[]> {
   if(generatedMissionsCache) return generatedMissionsCache
@@ -280,13 +288,13 @@ async function listContent(env: Env, section?: string, all = false) {
   ])
   const deletedIds=new Set((deleted.results||[]).map(x=>Number(x.id)))
   const merged=new Map<number,ContentItem>()
-  const generated=await loadGeneratedContent(env)
+  const generated=await loadGeneratedContent(env,section)
   for(const x of builtInContent) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
   for(const x of generated) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
   for(const r of custom.results||[]){try{const x=JSON.parse(r.data) as ContentItem;/* V7.21.6: all games that existed before this reset are intentionally hidden. New admin-created games after the reset remain supported. */if(x.section==='games'&&String((r as any).updated_at||'')<'2026-10-06T04:00:00.000Z')continue;if(!deletedIds.has(x.id))merged.set(x.id,x)}catch{}}
   const items=[...merged.values()].sort((a,b)=>b.id-a.id)
   const result=all?items:items.filter(x=>x.status==='published')
-  setQueryCache(key,result,10*60_000)
+  setQueryCache(key,result,section==='words'?60_000:10*60_000)
   return result
 }
 
@@ -331,7 +339,7 @@ async function listMissions(env: Env, all = false) {
   for(const r of custom.results||[]){try{const m=JSON.parse(r.data) as Mission;if(!deletedIds.has(m.id))merged.set(m.id,m)}catch{}}
   const items=[...merged.values()].sort((a,b)=>b.id-a.id)
   const result=all?items:items.filter(m=>m.status==='published')
-  setQueryCache(key,result,10*60_000)
+  setQueryCache(key,result,section==='words'?60_000:10*60_000)
   return result
 }
 
@@ -487,7 +495,7 @@ export default {
       const operationId=String(body?.operationId||'')
       const kind=String(body?.kind||'')
       const itemId=String(body?.itemId||'')
-      if(!/^[a-zA-Z0-9_-]{12,100}$/.test(operationId)||!['mission','content','daily'].includes(kind)||!((kind==='daily'&&/^\d{4}-\d{2}-\d{2}$/.test(itemId))||(/^[0-9]{1,12}$/.test(itemId)&&kind!=='daily')))return json({ok:false,error:'Invalid XP claim.'},400)
+      if(!/^[a-zA-Z0-9_-]{12,100}$/.test(operationId)||!['mission','content','daily'].includes(kind)||!((kind==='daily'&&/^\d{4}-\d{2}-\d{2}$/.test(itemId))||(/^[0-9]{1,20}$/.test(itemId)&&kind!=='daily')))return json({ok:false,error:'Invalid XP claim.',hint:'Expected operationId (12-100 alphanumeric/underscore/hyphen), kind mission/content/daily, and numeric itemId up to 20 digits (or UTC date for daily).'},400)
       await ensureDb(env)
       if(kind==='daily'){
         const now=new Date().toISOString(),today=now.slice(0,10)
@@ -511,8 +519,23 @@ export default {
         if(results[2].meta?.changes){await publishProgressSignal(env,user.id);await env.DB.prepare('INSERT OR IGNORE INTO xp_role_outbox(user_id,updated_at) VALUES (?,?)').bind(user.id,now).run()}
         return json({ok:true,progress,alreadyCompleted:!(results[2].meta?.changes||0)})
       }
-      const item=kind==='mission'?(await listMissions(env,true)).find((x:any)=>String(x.id)===itemId):(await Promise.all(['games','quizzes','words','challenges','rewards','grammar','vocabulary','listening','speaking','writing','reading','video'].map(section=>listContent(env,section,true)))).flat().find((x:any)=>String(x.id)===itemId)
-      if(!item)return json({ok:false,error:'Unknown learning item.'},404)
+      // Prefer a single D1 lookup; loading every section and embedded image into Worker memory
+      // for one XP claim can exhaust the isolate. Built-in/generated items retain fallback.
+      const dbItem=kind==='content'?await env.DB.prepare('SELECT data FROM content WHERE id=?').bind(Number(itemId)).first<{data:string}>():null
+      let item:any=null
+      if(dbItem?.data){try{item=JSON.parse(dbItem.data)}catch{return json({ok:false,error:'Learning item data is invalid.'},500)}}
+      if(!item){
+        // Do not scan every D1 content section. A single claim must not
+        // deserialize dozens of megabytes of embedded images.
+        if(kind==='mission'){
+          const row=await env.DB.prepare('SELECT data FROM missions WHERE id=?').bind(Number(itemId)).first<{data:string}>()
+          if(row?.data){try{item=JSON.parse(row.data)}catch{return json({ok:false,error:'Learning item data is invalid.'},500)}}
+          if(!item)item=seed.find(x=>String(x.id)===itemId)||(await loadGeneratedMissions(env)).find(x=>String(x.id)===itemId)
+        }else{
+          item=builtInContent.find(x=>String(x.id)===itemId)||(await loadGeneratedContent(env)).find(x=>String(x.id)===itemId)
+        }
+      }
+      if(!item)return json({ok:false,error:'Unknown learning item.',code:'XP_ITEM_NOT_FOUND',hint:'The activity is not present in the server D1 database or published curriculum. Check its ID, publication/sync state and stale local cache; do not award XP for an unverified ID.',itemId,kind},404)
       if(item.status!=='published')return json({ok:false,error:'Learning item is not published.'},403)
       const allowed=await readCourseAccess(env,user.id,user.id===env.ADMIN_DISCORD_ID)
       if(item.level&&!allowed.includes(item.level))return json({ok:false,error:'Course level is not available.'},403)
@@ -543,7 +566,8 @@ export default {
         const accepted=[task.correctAnswer,...(Array.isArray(task.acceptedAnswers)&&(!Array.isArray(task.options)||!task.options.length)?task.acceptedAnswers:[])].map(normalizeAnswer)
         return accepted.includes(normalizeAnswer(submitted[index]))
       }).length:0
-      const award=Math.max(0,Math.min(1000,Number(item.xp)||0))
+      const maximumAward=Math.max(0,Math.min(1000,Number(item.xp)||0))
+      const award=graded?Math.round(maximumAward*correctCount/tasks.length):maximumAward
       const now=new Date().toISOString()
       // D1 batch executes the conditional claim and progress update as one transaction.
       // A duplicate operation or already-completed item cannot award XP again.
@@ -574,7 +598,7 @@ export default {
         try{const role=await syncDiscordLevelRole(env,user.id,Number(progress?.xp)||0);if(role.ok)await env.DB.prepare('DELETE FROM xp_role_outbox WHERE user_id=?').bind(user.id).run();else await env.DB.prepare('UPDATE xp_role_outbox SET attempts=attempts+1,last_error=? WHERE user_id=?').bind(String(role.error||'Discord unavailable').slice(0,300),user.id).run()}catch(e){await env.DB.prepare('UPDATE xp_role_outbox SET attempts=attempts+1,last_error=? WHERE user_id=?').bind(String(e).slice(0,300),user.id).run().catch(()=>null)}
       }
       clearQueryCache('students');clearQueryCache('leaderboard')
-      return json({ok:true,progress,verifiedScore:graded?{correct:correctCount,total:tasks.length}:null,alreadyCompleted:!(results[2].meta?.changes||0)})
+      return json({ok:true,progress,verifiedScore:graded?{correct:correctCount,total:tasks.length,earnedXp:award,maxXp:maximumAward}:null,alreadyCompleted:!(results[2].meta?.changes||0)})
     }
 
     if (url.pathname === '/api/progress') {
@@ -876,18 +900,15 @@ export default {
           const id=match?Number(match[1]):Number(item.id)||Date.now()
           if(!Number.isSafeInteger(id)||id<=0)return json({ok:false,code:'INVALID_ID',requestId,error:'Неверный идентификатор'},400)
           item.id=id
-          // Vocabulary is text-only across A1–C2. Preserve all other sections.
-          if (item.section === 'words' && item.payload && typeof item.payload === 'object') {
-            const payload = item.payload as Record<string, unknown>
-            delete payload.cover
-            if (Array.isArray(payload.words)) {
-              payload.words = payload.words.map((word: unknown) => {
-                if (!word || typeof word !== 'object' || Array.isArray(word)) return word
-                const clean = { ...(word as Record<string, unknown>) }
-                delete clean.image
-                return clean
-              })
-            }
+          // Word Vault is text-only. Do not reintroduce old image data from
+          // offline drafts or IndexedDB when a word collection is saved.
+          if(item.section==='words' && Array.isArray(item.payload?.words)){
+            item.payload.words=item.payload.words.map((word:any)=>{
+              if(!word || typeof word!=='object')return word
+              const {image,...textFields}=word
+              return textFields
+            })
+            if(item.payload.cover)delete item.payload.cover
           }
           await ensureDb(env)
           const data=JSON.stringify(item)

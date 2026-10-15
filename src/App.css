@@ -1054,3 +1054,29 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
 .darkTheme .mewayLevelRoute .mewayLevelSwitcher button,.darkTheme .mewayLevelRoute .mewayLevelDots button:not(.active){background:#183552;color:#f4f8ff;border-color:#6c8bac}
 @media(max-width:600px){.mewayLevelRoute .routeStages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mewayLevelRoute .routeStages article{width:auto}.mewayLevelRoute .routeTitle{flex-wrap:wrap}.mewayLevelRoute .mewayLevelSwitcher button{flex-shrink:0}}
 @media(max-width:360px){.mewayLevelRoute .routeStages{grid-template-columns:minmax(0,1fr)}.mewayLevelRoute .mewayLevelDots button{min-width:38px}}
+
+/* Editable Drag & Sort categories; no additional network requests. */
+.vpSortGuide{color:#dbeafe;font-size:14px;line-height:1.5;margin:10px 0}.vpSortCategoryEditor{display:grid;gap:10px;background:#eff7ff;border-radius:16px;padding:14px;margin:14px 0;color:#11345a}.vpSortCategoryRow{display:flex;align-items:center;gap:8px;min-width:0}.vpSortCategoryRow .vpInline{flex:1;min-width:0;color:#11345a;background:#fff}.vpSortCategoryRow button{flex-shrink:0;border:1px solid #bfd9f2;border-radius:10px;background:white;color:#174a79;padding:10px}.vpBuckets b{color:#eaf6ff;overflow-wrap:anywhere}.vpSortCategoryEditor .vpAddMini{justify-self:start}@media(max-width:600px){.vpSortCategoryRow{flex-wrap:wrap}.vpSortCategoryRow .vpInline{flex-basis:100%}}
+
+/* Editor field wrappers avoid nested labels and preserve form layout. */
+.editorField{display:flex;flex-direction:column;gap:8px;min-width:0}.editorFieldLabel{font-weight:700}.editorField input,.editorField select,.editorField textarea{min-width:0;max-width:100%}
+.formGrid .editorField{font-size:11px;font-weight:800;color:#5f7da4}
+.formGrid .editorField.wide{grid-column:1/-1}
+.darkTheme .formGrid .editorField{color:#a9bfd6}
+@media(max-width:700px){.formGrid .editorField.wide{grid-column:auto}}
+
+/* XP diagnostics must never cover the navigation or block game controls. */
+.xpSyncNotice{position:fixed;z-index:1500;right:12px;bottom:12px;top:auto;left:auto;transform:none;max-width:min(420px,calc(100vw - 24px));padding:9px 11px;border:1px solid var(--border,#c9d8e8);border-radius:12px;background:var(--surface,#fff);color:var(--ui-dark-text,#173755);box-shadow:0 4px 20px #102f4a24;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;overflow-wrap:anywhere}
+.xpSyncNotice span{flex:1;min-width:0;max-height:64px;overflow:auto}.xpSyncNotice button{cursor:pointer;flex-shrink:0;padding:5px 8px;border-radius:8px;border:1px solid #bed6ed;background:#edf6ff;color:#163e69;font-size:12px}
+@media(max-width:560px){.xpSyncNotice{right:8px;bottom:8px;max-width:calc(100vw - 16px);font-size:11px;padding:6px}.xpSyncNotice button{padding:4px}}
+/* Drag & Sort: placed words can be moved to another zone or returned to the bank. */
+.sortZone .sortPlacedWord{appearance:none;background:#fff;border:1px solid #c7e1f4;border-radius:12px;padding:8px 10px;color:#174a73;font:inherit;font-weight:800;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
+.sortZone .sortPlacedWord:hover,.sortZone .sortPlacedWord:focus-visible{outline:2px solid #168cff;outline-offset:2px}
+.darkTheme .sortZone .sortPlacedWord{background:#173e5d;border-color:#376786;color:#eef8ff}
+
+/* Puzzle verification: show incorrectly positioned tiles only after Finish */
+.puzzleBoard button.puzzleWrong{outline:4px solid #e53935;outline-offset:-4px;z-index:1}
+.puzzleBoard button.puzzleCorrect{outline:3px solid #22a46a;outline-offset:-3px}
+.vpPreviewToggle{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:14px 20px;background:#edf7ff;border:1px solid #a9d7ff;border-radius:16px;margin-bottom:12px}
+.vpPreviewToggle button{border:0;border-radius:12px;background:#176ec7;color:#fff;font-weight:700;padding:12px 16px;cursor:pointer}
+.vpPreviewToggle small{color:#345c83;flex:1;min-width:200px}

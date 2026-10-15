@@ -490,7 +490,9 @@ export default {
       const operationId=String(body?.operationId||'')
       const kind=String(body?.kind||'')
       const itemId=String(body?.itemId||'')
-      if(!/^[a-zA-Z0-9_-]{12,100}$/.test(operationId)||!['mission','content','daily'].includes(kind)||!((kind==='daily'&&/^\d{4}-\d{2}-\d{2}$/.test(itemId))||(/^[0-9]{1,15}$/.test(itemId)&&kind!=='daily')))return json({ok:false,error:'Invalid XP claim.'},400)
+      if(!/^[a-zA-Z0-9_-]{12,100}$/.test(operationId))return json({ok:false,error:'Invalid XP operation ID (12–100 letters, numbers, underscores or hyphens).'},400)
+      if(!['mission','content','daily'].includes(kind))return json({ok:false,error:'Invalid XP kind.'},400)
+      if(kind==='daily'?!/^\d{4}-\d{2}-\d{2}$/.test(itemId):!/^[0-9]{1,15}$/.test(itemId))return json({ok:false,error:'Invalid XP item ID.'},400)
       await ensureDb(env)
       if(kind==='daily'){
         const now=new Date().toISOString(),today=now.slice(0,10)

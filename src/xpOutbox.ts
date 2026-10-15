@@ -33,3 +33,12 @@ export async function acknowledgeXpClaim(userId:string,operationId:string):Promi
  try{await transact<void>('readwrite',(store,done)=>{store.delete(operationId);done()})}catch{return}
  const current=legacyRead(userId).filter(x=>x.operationId!==operationId);legacyWrite(userId,current)
 }
+
+/** Validate the exact wire contract without rewriting or deleting historical claims. */
+export function validateXpClaim(claim:XpClaim):string|null {
+ if(!claim||!(/^[a-zA-Z0-9_-]{12,100}$/.test(String(claim.operationId||''))))return 'некорректный идентификатор операции'
+ if(!['mission','content','daily'].includes(String(claim.kind)))return 'неизвестный тип начисления'
+ const id=String(claim.itemId??'')
+ if(claim.kind==='daily'? !/^\d{4}-\d{2}-\d{2}$/.test(id): !/^[0-9]{1,15}$/.test(id))return 'некорректный ID задания'
+ return null
+}

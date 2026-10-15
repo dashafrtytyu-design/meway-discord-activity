@@ -487,7 +487,7 @@ export default {
       const operationId=String(body?.operationId||'')
       const kind=String(body?.kind||'')
       const itemId=String(body?.itemId||'')
-      if(!/^[a-zA-Z0-9_-]{12,100}$/.test(operationId)||!['mission','content','daily'].includes(kind)||!((kind==='daily'&&/^\d{4}-\d{2}-\d{2}$/.test(itemId))||(/^[0-9]{1,15}$/.test(itemId)&&kind!=='daily')))return json({ok:false,error:'Invalid XP claim.'},400)
+      if(!/^[a-zA-Z0-9_-]{12,100}$/.test(operationId)||!['mission','content','daily'].includes(kind)||!((kind==='daily'&&/^\d{4}-\d{2}-\d{2}$/.test(itemId))||(/^[0-9]{1,20}$/.test(itemId)&&kind!=='daily')))return json({ok:false,error:'Invalid XP claim.',hint:'Expected operationId (12-100 alphanumeric/underscore/hyphen), kind mission/content/daily, and numeric itemId up to 20 digits (or UTC date for daily).'},400)
       await ensureDb(env)
       if(kind==='daily'){
         const now=new Date().toISOString(),today=now.slice(0,10)
@@ -511,7 +511,20 @@ export default {
         if(results[2].meta?.changes){await publishProgressSignal(env,user.id);await env.DB.prepare('INSERT OR IGNORE INTO xp_role_outbox(user_id,updated_at) VALUES (?,?)').bind(user.id,now).run()}
         return json({ok:true,progress,alreadyCompleted:!(results[2].meta?.changes||0)})
       }
-      const item=kind==='mission'?(await listMissions(env,true)).find((x:any)=>String(x.id)===itemId):(await Promise.all(['games','quizzes','words','challenges','rewards','grammar','vocabulary','listening','speaking','writing','reading','video'].map(section=>listContent(env,section,true)))).flat().find((x:any)=>String(x.id)===itemId)
+      // Prefer a single D1 lookup; loading every section and embedded image into Worker memory
+      // for one XP claim can exhaust the isolate. Built-in/generated items retain fallback.
+      const dbItem=kind==='content'?await env.DB.prepare('SELECT data FROM content WHERE id=?').bind(Number(itemId)).first<{data:string}>():null
+      let item:any=null
+      if(dbItem?.data){try{item=JSON.parse(dbItem.data)}catch{return json({ok:false,error:'Learning item data is invalid.'},500)}}
+      if(!item){
+        if(kind==='mission')item=(await listMissions(env,true)).find((x:any)=>String(x.id)===itemId)
+        else {
+          for(const section of ['games','quizzes','words','challenges','rewards','grammar','vocabulary','listening','speaking','writing','reading','video']){
+            item=(await listContent(env,section,true)).find((x:any)=>String(x.id)===itemId)
+            if(item)break
+          }
+        }
+      }
       if(!item)return json({ok:false,error:'Unknown learning item.'},404)
       if(item.status!=='published')return json({ok:false,error:'Learning item is not published.'},403)
       const allowed=await readCourseAccess(env,user.id,user.id===env.ADMIN_DISCORD_ID)
@@ -543,7 +556,8 @@ export default {
         const accepted=[task.correctAnswer,...(Array.isArray(task.acceptedAnswers)&&(!Array.isArray(task.options)||!task.options.length)?task.acceptedAnswers:[])].map(normalizeAnswer)
         return accepted.includes(normalizeAnswer(submitted[index]))
       }).length:0
-      const award=Math.max(0,Math.min(1000,Number(item.xp)||0))
+      const maximumAward=Math.max(0,Math.min(1000,Number(item.xp)||0))
+      const award=graded?Math.round(maximumAward*correctCount/tasks.length):maximumAward
       const now=new Date().toISOString()
       // D1 batch executes the conditional claim and progress update as one transaction.
       // A duplicate operation or already-completed item cannot award XP again.
@@ -574,7 +588,7 @@ export default {
         try{const role=await syncDiscordLevelRole(env,user.id,Number(progress?.xp)||0);if(role.ok)await env.DB.prepare('DELETE FROM xp_role_outbox WHERE user_id=?').bind(user.id).run();else await env.DB.prepare('UPDATE xp_role_outbox SET attempts=attempts+1,last_error=? WHERE user_id=?').bind(String(role.error||'Discord unavailable').slice(0,300),user.id).run()}catch(e){await env.DB.prepare('UPDATE xp_role_outbox SET attempts=attempts+1,last_error=? WHERE user_id=?').bind(String(e).slice(0,300),user.id).run().catch(()=>null)}
       }
       clearQueryCache('students');clearQueryCache('leaderboard')
-      return json({ok:true,progress,verifiedScore:graded?{correct:correctCount,total:tasks.length}:null,alreadyCompleted:!(results[2].meta?.changes||0)})
+      return json({ok:true,progress,verifiedScore:graded?{correct:correctCount,total:tasks.length,earnedXp:award,maxXp:maximumAward}:null,alreadyCompleted:!(results[2].meta?.changes||0)})
     }
 
     if (url.pathname === '/api/progress') {
@@ -876,6 +890,16 @@ export default {
           const id=match?Number(match[1]):Number(item.id)||Date.now()
           if(!Number.isSafeInteger(id)||id<=0)return json({ok:false,code:'INVALID_ID',requestId,error:'Неверный идентификатор'},400)
           item.id=id
+          // Word Vault is text-only. Do not reintroduce old image data from
+          // offline drafts or IndexedDB when a word collection is saved.
+          if(item.section==='words' && Array.isArray(item.payload?.words)){
+            item.payload.words=item.payload.words.map((word:any)=>{
+              if(!word || typeof word!=='object')return word
+              const {image,...textFields}=word
+              return textFields
+            })
+            if(item.payload.cover)delete item.payload.cover
+          }
           await ensureDb(env)
           const data=JSON.stringify(item)
           if (data.length>12_000_000) return json({ok:false,code:'CONTENT_TOO_LARGE',requestId,error:'Слишком большой материал для D1'},413)

@@ -253,14 +253,22 @@ for(const x of builtInContent){
  else if(x.section==='challenges'){x.xp=v7198Reward(x.level,'challenge',Array.isArray(x.payload?.questions)?x.payload.questions.length:Number(x.payload?.target||7),2);if(x.payload?.reward)x.payload.reward=`+${x.xp} XP`}
 }
 
-let generatedContentCache: ContentItem[] | null = null
+// Load only the requested curriculum section. The former eager 1.4 MB JSON
+// allocation on every words request needlessly increased Worker memory usage.
+const generatedContentBySection = new Map<string,ContentItem[]>()
 let generatedMissionsCache: Mission[] | null = null
-async function loadGeneratedContent(env:Env):Promise<ContentItem[]> {
-  if(generatedContentCache) return generatedContentCache
-  const r=await env.ASSETS.fetch(new Request('https://meway.local/curriculum-content.json'))
-  if(!r.ok) throw new Error(`curriculum-content.json ${r.status}`)
-  generatedContentCache=await r.json<ContentItem[]>()
-  return generatedContentCache
+async function loadGeneratedContent(env:Env,section?:string):Promise<ContentItem[]> {
+  const key=section||'all'
+  const hit=generatedContentBySection.get(key)
+  if(hit)return hit
+  const path=section && ['words','quizzes','challenges'].includes(section)
+    ? `curriculum-${section}.json` : 'curriculum-content.json'
+  const r=await env.ASSETS.fetch(new Request(`https://meway.local/${path}`))
+  if(!r.ok) throw new Error(`${path} ${r.status}`)
+  const items=await r.json<ContentItem[]>()
+  // Avoid permanently retaining the full combined curriculum in a warm isolate.
+  if(section)generatedContentBySection.set(key,items)
+  return items
 }
 async function loadGeneratedMissions(env:Env):Promise<Mission[]> {
   if(generatedMissionsCache) return generatedMissionsCache
@@ -280,13 +288,13 @@ async function listContent(env: Env, section?: string, all = false) {
   ])
   const deletedIds=new Set((deleted.results||[]).map(x=>Number(x.id)))
   const merged=new Map<number,ContentItem>()
-  const generated=await loadGeneratedContent(env)
+  const generated=await loadGeneratedContent(env,section)
   for(const x of builtInContent) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
   for(const x of generated) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
   for(const r of custom.results||[]){try{const x=JSON.parse(r.data) as ContentItem;/* V7.21.6: all games that existed before this reset are intentionally hidden. New admin-created games after the reset remain supported. */if(x.section==='games'&&String((r as any).updated_at||'')<'2026-10-06T04:00:00.000Z')continue;if(!deletedIds.has(x.id))merged.set(x.id,x)}catch{}}
   const items=[...merged.values()].sort((a,b)=>b.id-a.id)
   const result=all?items:items.filter(x=>x.status==='published')
-  setQueryCache(key,result,10*60_000)
+  setQueryCache(key,result,section==='words'?60_000:10*60_000)
   return result
 }
 
@@ -331,7 +339,7 @@ async function listMissions(env: Env, all = false) {
   for(const r of custom.results||[]){try{const m=JSON.parse(r.data) as Mission;if(!deletedIds.has(m.id))merged.set(m.id,m)}catch{}}
   const items=[...merged.values()].sort((a,b)=>b.id-a.id)
   const result=all?items:items.filter(m=>m.status==='published')
-  setQueryCache(key,result,10*60_000)
+  setQueryCache(key,result,section==='words'?60_000:10*60_000)
   return result
 }
 
@@ -517,15 +525,17 @@ export default {
       let item:any=null
       if(dbItem?.data){try{item=JSON.parse(dbItem.data)}catch{return json({ok:false,error:'Learning item data is invalid.'},500)}}
       if(!item){
-        if(kind==='mission')item=(await listMissions(env,true)).find((x:any)=>String(x.id)===itemId)
-        else {
-          for(const section of ['games','quizzes','words','challenges','rewards','grammar','vocabulary','listening','speaking','writing','reading','video']){
-            item=(await listContent(env,section,true)).find((x:any)=>String(x.id)===itemId)
-            if(item)break
-          }
+        // Do not scan every D1 content section. A single claim must not
+        // deserialize dozens of megabytes of embedded images.
+        if(kind==='mission'){
+          const row=await env.DB.prepare('SELECT data FROM missions WHERE id=?').bind(Number(itemId)).first<{data:string}>()
+          if(row?.data){try{item=JSON.parse(row.data)}catch{return json({ok:false,error:'Learning item data is invalid.'},500)}}
+          if(!item)item=seed.find(x=>String(x.id)===itemId)||(await loadGeneratedMissions(env)).find(x=>String(x.id)===itemId)
+        }else{
+          item=builtInContent.find(x=>String(x.id)===itemId)||(await loadGeneratedContent(env)).find(x=>String(x.id)===itemId)
         }
       }
-      if(!item)return json({ok:false,error:'Unknown learning item.'},404)
+      if(!item)return json({ok:false,error:'Unknown learning item.',code:'XP_ITEM_NOT_FOUND',hint:'The activity is not present in the server D1 database or published curriculum. Check its ID, publication/sync state and stale local cache; do not award XP for an unverified ID.',itemId,kind},404)
       if(item.status!=='published')return json({ok:false,error:'Learning item is not published.'},403)
       const allowed=await readCourseAccess(env,user.id,user.id===env.ADMIN_DISCORD_ID)
       if(item.level&&!allowed.includes(item.level))return json({ok:false,error:'Course level is not available.'},403)

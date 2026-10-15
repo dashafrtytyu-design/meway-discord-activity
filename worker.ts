@@ -945,9 +945,21 @@ export default {
       const match=url.pathname.match(/^\/api\/admin\/content\/(\d+)$/)
       if (!match && request.method==='GET') {
         const section=url.searchParams.get('section')||undefined
-        const allItems=await listContent(env,section,true)
         const offset=Math.max(0,Math.min(1000000,Number(url.searchParams.get('offset'))||0))
         const limit=Math.max(1,Math.min(30,Number(url.searchParams.get('limit'))||6))
+        // Words are server-authored only. Query the requested page in D1 rather than
+        // loading and JSON-parsing every word collection (including base64 photos).
+        // Never replace D1 words with generated/demo material on an empty response.
+        if(section==='words') {
+          await ensureDb(env)
+          const [countResult,pageResult]=await Promise.all([
+            env.DB.prepare('SELECT COUNT(*) AS total FROM content WHERE section = ?').bind('words').first<{total:number}>(),
+            env.DB.prepare('SELECT data,updated_at FROM content WHERE section = ? ORDER BY id DESC LIMIT ? OFFSET ?').bind('words',limit,offset).all<{data:string;updated_at:string}>()
+          ])
+          const items=(pageResult.results||[]).map(row=>({...JSON.parse(row.data) as ContentItem,_serverVersion:row.updated_at}))
+          return json({ok:true,items,total:Number(countResult?.total||0),offset,limit})
+        }
+        const allItems=await listContent(env,section,true)
         return json({ok:true,items:allItems.slice(offset,offset+limit),total:allItems.length,offset,limit})
       }
       if ((request.method==='POST'&&!match)||(request.method==='PUT'&&match)) {

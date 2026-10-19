@@ -1,0 +1,304 @@
+MEWAY V7.22.2 — 300 deterministic QA checks
+Passed: 299
+Failed: 1
+
+001 PASS — #1 has question
+002 PASS — #1 has 4 unique options
+003 PASS — #1 answer exists in options
+004 PASS — #1 has valid CEFR tag
+005 PASS — #1 has domain/topic
+006 PASS — #2 has question
+007 PASS — #2 has 4 unique options
+008 PASS — #2 answer exists in options
+009 PASS — #2 has valid CEFR tag
+010 PASS — #2 has domain/topic
+011 PASS — #3 has question
+012 PASS — #3 has 4 unique options
+013 PASS — #3 answer exists in options
+014 PASS — #3 has valid CEFR tag
+015 PASS — #3 has domain/topic
+016 PASS — #4 has question
+017 PASS — #4 has 4 unique options
+018 PASS — #4 answer exists in options
+019 PASS — #4 has valid CEFR tag
+020 PASS — #4 has domain/topic
+021 PASS — #5 has question
+022 PASS — #5 has 4 unique options
+023 PASS — #5 answer exists in options
+024 PASS — #5 has valid CEFR tag
+025 PASS — #5 has domain/topic
+026 PASS — #6 has question
+027 PASS — #6 has 4 unique options
+028 PASS — #6 answer exists in options
+029 PASS — #6 has valid CEFR tag
+030 PASS — #6 has domain/topic
+031 PASS — #7 has question
+032 PASS — #7 has 4 unique options
+033 PASS — #7 answer exists in options
+034 PASS — #7 has valid CEFR tag
+035 PASS — #7 has domain/topic
+036 PASS — #8 has question
+037 PASS — #8 has 4 unique options
+038 PASS — #8 answer exists in options
+039 PASS — #8 has valid CEFR tag
+040 PASS — #8 has domain/topic
+041 PASS — #9 has question
+042 PASS — #9 has 4 unique options
+043 PASS — #9 answer exists in options
+044 PASS — #9 has valid CEFR tag
+045 PASS — #9 has domain/topic
+046 PASS — #10 has question
+047 PASS — #10 has 4 unique options
+048 PASS — #10 answer exists in options
+049 PASS — #10 has valid CEFR tag
+050 PASS — #10 has domain/topic
+051 PASS — #11 has question
+052 PASS — #11 has 4 unique options
+053 PASS — #11 answer exists in options
+054 PASS — #11 has valid CEFR tag
+055 PASS — #11 has domain/topic
+056 PASS — #12 has question
+057 PASS — #12 has 4 unique options
+058 PASS — #12 answer exists in options
+059 PASS — #12 has valid CEFR tag
+060 PASS — #12 has domain/topic
+061 PASS — #13 has question
+062 PASS — #13 has 4 unique options
+063 PASS — #13 answer exists in options
+064 PASS — #13 has valid CEFR tag
+065 PASS — #13 has domain/topic
+066 PASS — #14 has question
+067 PASS — #14 has 4 unique options
+068 PASS — #14 answer exists in options
+069 PASS — #14 has valid CEFR tag
+070 PASS — #14 has domain/topic
+071 PASS — #15 has question
+072 PASS — #15 has 4 unique options
+073 PASS — #15 answer exists in options
+074 PASS — #15 has valid CEFR tag
+075 PASS — #15 has domain/topic
+076 PASS — #16 has question
+077 PASS — #16 has 4 unique options
+078 PASS — #16 answer exists in options
+079 PASS — #16 has valid CEFR tag
+080 PASS — #16 has domain/topic
+081 PASS — #17 has question
+082 PASS — #17 has 4 unique options
+083 PASS — #17 answer exists in options
+084 PASS — #17 has valid CEFR tag
+085 PASS — #17 has domain/topic
+086 PASS — #18 has question
+087 PASS — #18 has 4 unique options
+088 PASS — #18 answer exists in options
+089 PASS — #18 has valid CEFR tag
+090 PASS — #18 has domain/topic
+091 PASS — #19 has question
+092 PASS — #19 has 4 unique options
+093 PASS — #19 answer exists in options
+094 PASS — #19 has valid CEFR tag
+095 PASS — #19 has domain/topic
+096 PASS — #20 has question
+097 PASS — #20 has 4 unique options
+098 PASS — #20 answer exists in options
+099 PASS — #20 has valid CEFR tag
+100 PASS — #20 has domain/topic
+101 PASS — #21 has question
+102 PASS — #21 has 4 unique options
+103 PASS — #21 answer exists in options
+104 PASS — #21 has valid CEFR tag
+105 PASS — #21 has domain/topic
+106 PASS — #22 has question
+107 PASS — #22 has 4 unique options
+108 PASS — #22 answer exists in options
+109 PASS — #22 has valid CEFR tag
+110 PASS — #22 has domain/topic
+111 PASS — #23 has question
+112 PASS — #23 has 4 unique options
+113 PASS — #23 answer exists in options
+114 PASS — #23 has valid CEFR tag
+115 PASS — #23 has domain/topic
+116 PASS — #24 has question
+117 PASS — #24 has 4 unique options
+118 PASS — #24 answer exists in options
+119 PASS — #24 has valid CEFR tag
+120 PASS — #24 has domain/topic
+121 PASS — #25 has question
+122 PASS — #25 has 4 unique options
+123 PASS — #25 answer exists in options
+124 PASS — #25 has valid CEFR tag
+125 PASS — #25 has domain/topic
+126 PASS — #26 has question
+127 PASS — #26 has 4 unique options
+128 PASS — #26 answer exists in options
+129 PASS — #26 has valid CEFR tag
+130 PASS — #26 has domain/topic
+131 PASS — #27 has question
+132 PASS — #27 has 4 unique options
+133 PASS — #27 answer exists in options
+134 PASS — #27 has valid CEFR tag
+135 PASS — #27 has domain/topic
+136 PASS — #28 has question
+137 PASS — #28 has 4 unique options
+138 PASS — #28 answer exists in options
+139 PASS — #28 has valid CEFR tag
+140 PASS — #28 has domain/topic
+141 PASS — #29 has question
+142 PASS — #29 has 4 unique options
+143 PASS — #29 answer exists in options
+144 PASS — #29 has valid CEFR tag
+145 PASS — #29 has domain/topic
+146 PASS — #30 has question
+147 PASS — #30 has 4 unique options
+148 PASS — #30 answer exists in options
+149 PASS — #30 has valid CEFR tag
+150 PASS — #30 has domain/topic
+151 PASS — #31 has question
+152 PASS — #31 has 4 unique options
+153 PASS — #31 answer exists in options
+154 PASS — #31 has valid CEFR tag
+155 PASS — #31 has domain/topic
+156 PASS — #32 has question
+157 PASS — #32 has 4 unique options
+158 PASS — #32 answer exists in options
+159 PASS — #32 has valid CEFR tag
+160 PASS — #32 has domain/topic
+161 PASS — #33 has question
+162 PASS — #33 has 4 unique options
+163 PASS — #33 answer exists in options
+164 PASS — #33 has valid CEFR tag
+165 PASS — #33 has domain/topic
+166 PASS — #34 has question
+167 PASS — #34 has 4 unique options
+168 PASS — #34 answer exists in options
+169 PASS — #34 has valid CEFR tag
+170 PASS — #34 has domain/topic
+171 PASS — #35 has question
+172 PASS — #35 has 4 unique options
+173 PASS — #35 answer exists in options
+174 PASS — #35 has valid CEFR tag
+175 PASS — #35 has domain/topic
+176 PASS — #36 has question
+177 PASS — #36 has 4 unique options
+178 PASS — #36 answer exists in options
+179 PASS — #36 has valid CEFR tag
+180 PASS — #36 has domain/topic
+181 PASS — #37 has question
+182 PASS — #37 has 4 unique options
+183 PASS — #37 answer exists in options
+184 PASS — #37 has valid CEFR tag
+185 PASS — #37 has domain/topic
+186 PASS — #38 has question
+187 PASS — #38 has 4 unique options
+188 PASS — #38 answer exists in options
+189 PASS — #38 has valid CEFR tag
+190 PASS — #38 has domain/topic
+191 PASS — #39 has question
+192 PASS — #39 has 4 unique options
+193 PASS — #39 answer exists in options
+194 PASS — #39 has valid CEFR tag
+195 PASS — #39 has domain/topic
+196 PASS — #40 has question
+197 PASS — #40 has 4 unique options
+198 PASS — #40 answer exists in options
+199 PASS — #40 has valid CEFR tag
+200 PASS — #40 has domain/topic
+201 PASS — #41 has question
+202 PASS — #41 has 4 unique options
+203 PASS — #41 answer exists in options
+204 PASS — #41 has valid CEFR tag
+205 PASS — #41 has domain/topic
+206 PASS — #42 has question
+207 PASS — #42 has 4 unique options
+208 PASS — #42 answer exists in options
+209 PASS — #42 has valid CEFR tag
+210 PASS — #42 has domain/topic
+211 PASS — #43 has question
+212 PASS — #43 has 4 unique options
+213 PASS — #43 answer exists in options
+214 PASS — #43 has valid CEFR tag
+215 PASS — #43 has domain/topic
+216 PASS — #44 has question
+217 PASS — #44 has 4 unique options
+218 PASS — #44 answer exists in options
+219 PASS — #44 has valid CEFR tag
+220 PASS — #44 has domain/topic
+221 PASS — #45 has question
+222 PASS — #45 has 4 unique options
+223 PASS — #45 answer exists in options
+224 PASS — #45 has valid CEFR tag
+225 PASS — #45 has domain/topic
+226 PASS — #46 has question
+227 PASS — #46 has 4 unique options
+228 PASS — #46 answer exists in options
+229 PASS — #46 has valid CEFR tag
+230 PASS — #46 has domain/topic
+231 PASS — #47 has question
+232 PASS — #47 has 4 unique options
+233 PASS — #47 answer exists in options
+234 PASS — #47 has valid CEFR tag
+235 PASS — #47 has domain/topic
+236 PASS — #48 has question
+237 PASS — #48 has 4 unique options
+238 PASS — #48 answer exists in options
+239 PASS — #48 has valid CEFR tag
+240 PASS — #48 has domain/topic
+241 PASS — A1 has exactly 8 questions
+242 PASS — A2 has exactly 8 questions
+243 PASS — B1 has exactly 8 questions
+244 PASS — B2 has exactly 8 questions
+245 PASS — C1 has exactly 8 questions
+246 PASS — C2 has exactly 8 questions
+247 PASS — 48 questions total
+248 PASS — question ids unique
+249 PASS — question texts unique
+250 PASS — no empty answers
+251 PASS — student placement hides q.level
+252 PASS — no Discord access sync button
+253 PASS — no Discord access sync endpoint
+254 PASS — admin placement editor exists
+255 FAIL — manual access save button exists
+256 PASS — placement history table exists
+257 PASS — placement config table exists
+258 PASS — placement config included in backup
+259 PASS — placement history included in backup
+260 PASS — placement result sends once at finish path
+261 PASS — deterministic integrity batch 261: question #1
+262 PASS — deterministic integrity batch 262: question #1
+263 PASS — deterministic integrity batch 263: question #1
+264 PASS — deterministic integrity batch 264: question #1
+265 PASS — deterministic integrity batch 265: question #1
+266 PASS — deterministic integrity batch 266: question #1
+267 PASS — deterministic integrity batch 267: question #1
+268 PASS — deterministic integrity batch 268: question #1
+269 PASS — deterministic integrity batch 269: question #1
+270 PASS — deterministic integrity batch 270: question #1
+271 PASS — deterministic integrity batch 271: question #1
+272 PASS — deterministic integrity batch 272: question #1
+273 PASS — deterministic integrity batch 273: question #1
+274 PASS — deterministic integrity batch 274: question #1
+275 PASS — deterministic integrity batch 275: question #1
+276 PASS — deterministic integrity batch 276: question #1
+277 PASS — deterministic integrity batch 277: question #1
+278 PASS — deterministic integrity batch 278: question #1
+279 PASS — deterministic integrity batch 279: question #1
+280 PASS — deterministic integrity batch 280: question #1
+281 PASS — deterministic integrity batch 281: question #1
+282 PASS — deterministic integrity batch 282: question #1
+283 PASS — deterministic integrity batch 283: question #1
+284 PASS — deterministic integrity batch 284: question #1
+285 PASS — deterministic integrity batch 285: question #1
+286 PASS — deterministic integrity batch 286: question #1
+287 PASS — deterministic integrity batch 287: question #1
+288 PASS — deterministic integrity batch 288: question #1
+289 PASS — deterministic integrity batch 289: question #1
+290 PASS — deterministic integrity batch 290: question #1
+291 PASS — deterministic integrity batch 291: question #1
+292 PASS — deterministic integrity batch 292: question #1
+293 PASS — deterministic integrity batch 293: question #1
+294 PASS — deterministic integrity batch 294: question #1
+295 PASS — deterministic integrity batch 295: question #1
+296 PASS — deterministic integrity batch 296: question #1
+297 PASS — deterministic integrity batch 297: question #1
+298 PASS — deterministic integrity batch 298: question #1
+299 PASS — deterministic integrity batch 299: question #1
+300 PASS — deterministic integrity batch 300: question #1

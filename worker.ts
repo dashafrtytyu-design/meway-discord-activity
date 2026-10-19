@@ -253,14 +253,21 @@ for(const x of builtInContent){
  else if(x.section==='challenges'){x.xp=v7198Reward(x.level,'challenge',Array.isArray(x.payload?.questions)?x.payload.questions.length:Number(x.payload?.target||7),2);if(x.payload?.reward)x.payload.reward=`+${x.xp} XP`}
 }
 
-let generatedContentCache: ContentItem[] | null = null
 let generatedMissionsCache: Mission[] | null = null
-async function loadGeneratedContent(env:Env):Promise<ContentItem[]> {
-  if(generatedContentCache) return generatedContentCache
-  const r=await env.ASSETS.fetch(new Request('https://meway.local/curriculum-content.json'))
-  if(!r.ok) throw new Error(`curriculum-content.json ${r.status}`)
-  generatedContentCache=await r.json<ContentItem[]>()
-  return generatedContentCache
+const generatedContentBySection=new Map<string,ContentItem[]>()
+async function loadGeneratedContent(env:Env,section?:string):Promise<ContentItem[]> {
+  if(!section){
+    const parts=await Promise.all(['words','quizzes','challenges'].map(name=>loadGeneratedContent(env,name)))
+    return parts.flat()
+  }
+  if(!['words','quizzes','challenges'].includes(section))return []
+  const cached=generatedContentBySection.get(section)
+  if(cached)return cached
+  const r=await env.ASSETS.fetch(new Request(`https://meway.local/curriculum-${section}.json`))
+  if(!r.ok)throw new Error(`curriculum-${section}.json ${r.status}`)
+  const items=await r.json<ContentItem[]>()
+  generatedContentBySection.set(section,items)
+  return items
 }
 async function loadGeneratedMissions(env:Env):Promise<Mission[]> {
   if(generatedMissionsCache) return generatedMissionsCache
@@ -280,7 +287,7 @@ async function listContent(env: Env, section?: string, all = false) {
   ])
   const deletedIds=new Set((deleted.results||[]).map(x=>Number(x.id)))
   const merged=new Map<number,ContentItem>()
-  const generated=await loadGeneratedContent(env)
+  const generated=await loadGeneratedContent(env,section)
   for(const x of builtInContent) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
   for(const x of generated) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
   for(const r of custom.results||[]){try{const x=JSON.parse(r.data) as ContentItem;/* V7.21.6: all games that existed before this reset are intentionally hidden. New admin-created games after the reset remain supported. */if(x.section==='games'&&String((r as any).updated_at||'')<'2026-10-06T04:00:00.000Z')continue;if(!deletedIds.has(x.id))merged.set(x.id,x)}catch{}}
@@ -487,7 +494,7 @@ export default {
       const operationId=String(body?.operationId||'')
       const kind=String(body?.kind||'')
       const itemId=String(body?.itemId||'')
-      if(!/^[a-zA-Z0-9_-]{12,100}$/.test(operationId)||!['mission','content','daily'].includes(kind)||!((kind==='daily'&&/^\d{4}-\d{2}-\d{2}$/.test(itemId))||(/^[0-9]{1,12}$/.test(itemId)&&kind!=='daily')))return json({ok:false,error:'Invalid XP claim.'},400)
+      if(!/^[a-zA-Z0-9_-]{12,100}$/.test(operationId)||!['mission','content','daily'].includes(kind)||!((kind==='daily'&&/^\d{4}-\d{2}-\d{2}$/.test(itemId))||(/^[0-9]{1,20}$/.test(itemId)&&kind!=='daily')))return json({ok:false,error:'Invalid XP claim.'},400)
       await ensureDb(env)
       if(kind==='daily'){
         const now=new Date().toISOString(),today=now.slice(0,10)
@@ -504,7 +511,7 @@ export default {
         const results=await env.DB.batch([
           env.DB.prepare("INSERT OR IGNORE INTO progress (user_id,data,updated_at) VALUES (?,json_object('xp',0),?)").bind(user.id,now),
           env.DB.prepare('INSERT OR IGNORE INTO xp_operations (user_id,operation_id,kind,item_id,xp,created_at) VALUES (?,?,?,?,?,?)').bind(user.id,operationId,'daily',today,award,now),
-          env.DB.prepare("UPDATE progress SET data=json_set(data,'$.xp',COALESCE(CAST(json_extract(data,'$.xp') AS INTEGER),0)+?,'$.dailyClaimDate',?),updated_at=? WHERE user_id=? AND EXISTS (SELECT 1 FROM xp_operations WHERE user_id=? AND operation_id=? AND kind='daily' AND item_id=? AND created_at=?)").bind(award,today,now,user.id,user.id,operationId,today,now),
+          env.DB.prepare("UPDATE progress SET data=json_set(data,'$.xp',COALESCE(CAST(json_extract(data,'$.xp') AS INTEGER),0)+?,'$.dailyClaimDate',?),updated_at=? WHERE user_id=? AND COALESCE(json_extract(data,'$.dailyClaimDate'),'')<>? AND EXISTS (SELECT 1 FROM xp_operations WHERE user_id=? AND operation_id=? AND kind='daily' AND item_id=? AND created_at=?)").bind(award,today,now,user.id,today,user.id,operationId,today,now),
           env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(user.id)
         ])
         const progress=JSON.parse(String((results[3].results?.[0] as any)?.data||'{}'))
@@ -543,7 +550,41 @@ export default {
         const accepted=[task.correctAnswer,...(Array.isArray(task.acceptedAnswers)&&(!Array.isArray(task.options)||!task.options.length)?task.acceptedAnswers:[])].map(normalizeAnswer)
         return accepted.includes(normalizeAnswer(submitted[index]))
       }).length:0
-      const award=Math.max(0,Math.min(1000,Number(item.xp)||0))
+      // For new multi-round games, verify each answer against server-owned content.
+      // Older queued claims with no transcript retain their original completion path.
+      let gameScore: {correct:number,total:number}|null=null
+      if(kind==='content'&&item.section==='games'&&Array.isArray(submitted)&&submitted.length>0){
+        const gameType=String(item.payload?.gameType||'word-match')
+        const sourceWords=Array.isArray(item.payload?.words)?item.payload.words:[]
+        const gameWords=gameType==='memory'
+          ?sourceWords.slice(0,20)
+          :gameType==='crossword'
+            ?sourceWords.filter((w:any)=>w.en)
+            :gameType==='drag-sort'
+              ?sourceWords.filter((w:any)=>w.en&&w.category)
+              :sourceWords.slice(0,100)
+        const puzzleSize=Math.max(2,Math.min(5,Number(item.payload?.puzzleSize)||3))
+        const total=gameType==='picture-puzzle'?puzzleSize*puzzleSize:gameWords.length
+        if(!total||submitted.length>total||submitted.some((v:unknown)=>typeof v!=='string'||v.length>1000))return json({ok:false,error:'Invalid game answer transcript.'},422)
+        const answers=Array.from({length:total},(_,index:number)=>{
+          const w:any=gameWords[index]||{}
+          if(gameType==='picture-puzzle')return String(index)
+          if(gameType==='crossword')return String(w.en||'').replace(/[^a-z]/gi,'')
+          if(gameType==='category-sort'||gameType==='drag-sort')return String(w.category||'')
+          if(gameType==='sentence-order')return String(w.hint||w.example||w.en||'')
+          if(gameType==='odd-one')return String(item.payload?.oddAnswer||gameWords[gameWords.length-1]?.en||'')
+          if(gameType==='true-false'){
+            const statement=String(w.hint||w.example||`${w.ru} = ${w.en}`)
+            return statement.toLowerCase().includes(String(w.en||'').toLowerCase())?'Правда':'Ложь'
+          }
+          return String(w.correctAnswer||w.en||'')
+        })
+        const correct=answers.filter((expected:string,i:number)=>Boolean(expected)&&normalizeAnswer(expected)===normalizeAnswer(submitted[i])).length
+        gameScore={correct,total}
+      }
+      const maximumAward=Math.max(0,Math.min(1000,Number(item.xp)||0))
+      const award=graded?Math.round(maximumAward*correctCount/tasks.length):maximumAward
+      const creditedXp=gameScore?Math.round(maximumAward*gameScore.correct/gameScore.total):award
       const now=new Date().toISOString()
       // D1 batch executes the conditional claim and progress update as one transaction.
       // A duplicate operation or already-completed item cannot award XP again.
@@ -556,7 +597,7 @@ export default {
           SELECT ?,?,?,?,?,? WHERE NOT EXISTS (
             SELECT 1 FROM json_each(COALESCE((SELECT json_extract(data,?) FROM progress WHERE user_id=?),json('[]')))
             WHERE CAST(value AS TEXT)=?
-          )`).bind(user.id,operationId,kind,itemId,award,now,path,user.id,itemId),
+          )`).bind(user.id,operationId,kind,itemId,creditedXp,now,path,user.id,itemId),
         env.DB.prepare(`UPDATE progress SET
           data=json_set(data, ?, json_insert(COALESCE(json_extract(data,?),json('[]')),'$[#]',CAST(? AS INTEGER)),
             '$.xp',COALESCE(CAST(json_extract(data,'$.xp') AS INTEGER),0)+?),updated_at=?
@@ -564,7 +605,7 @@ export default {
             SELECT 1 FROM xp_operations WHERE user_id=? AND operation_id=? AND kind=? AND item_id=? AND created_at=?
           ) AND NOT EXISTS (
             SELECT 1 FROM json_each(COALESCE(json_extract(data,?),json('[]'))) WHERE CAST(value AS TEXT)=?
-          )`).bind(path,path,itemId,award,now,user.id,user.id,operationId,kind,itemId,now,path,itemId),
+          )`).bind(path,path,itemId,creditedXp,now,user.id,user.id,operationId,kind,itemId,now,path,itemId),
         env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(user.id)
       ])
       const row=results[3].results?.[0] as {data?:string}|undefined
@@ -574,7 +615,7 @@ export default {
         try{const role=await syncDiscordLevelRole(env,user.id,Number(progress?.xp)||0);if(role.ok)await env.DB.prepare('DELETE FROM xp_role_outbox WHERE user_id=?').bind(user.id).run();else await env.DB.prepare('UPDATE xp_role_outbox SET attempts=attempts+1,last_error=? WHERE user_id=?').bind(String(role.error||'Discord unavailable').slice(0,300),user.id).run()}catch(e){await env.DB.prepare('UPDATE xp_role_outbox SET attempts=attempts+1,last_error=? WHERE user_id=?').bind(String(e).slice(0,300),user.id).run().catch(()=>null)}
       }
       clearQueryCache('students');clearQueryCache('leaderboard')
-      return json({ok:true,progress,verifiedScore:graded?{correct:correctCount,total:tasks.length}:null,alreadyCompleted:!(results[2].meta?.changes||0)})
+      return json({ok:true,progress,verifiedScore:gameScore||(graded?{correct:correctCount,total:tasks.length}:null),awardedXp:creditedXp,alreadyCompleted:!(results[2].meta?.changes||0)})
     }
 
     if (url.pathname === '/api/progress') {

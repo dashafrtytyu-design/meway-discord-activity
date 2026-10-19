@@ -1054,3 +1054,5 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
 .darkTheme .mewayLevelRoute .mewayLevelSwitcher button,.darkTheme .mewayLevelRoute .mewayLevelDots button:not(.active){background:#183552;color:#f4f8ff;border-color:#6c8bac}
 @media(max-width:600px){.mewayLevelRoute .routeStages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.mewayLevelRoute .routeStages article{width:auto}.mewayLevelRoute .routeTitle{flex-wrap:wrap}.mewayLevelRoute .mewayLevelSwitcher button{flex-shrink:0}}
 @media(max-width:360px){.mewayLevelRoute .routeStages{grid-template-columns:minmax(0,1fr)}.mewayLevelRoute .mewayLevelDots button{min-width:38px}}
+
+.formGrid .editorField{font-size:11px;font-weight:800;color:#5f7da4;min-width:0}.formGrid .editorField.wide{grid-column:1/-1}.formGrid .editorFieldLabel{display:block}.darkTheme .formGrid .editorField{color:#a9bfd6}@media(max-width:720px){.formGrid .editorField.wide{grid-column:auto}}

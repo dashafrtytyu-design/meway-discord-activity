@@ -2730,6 +2730,606 @@
           "synonyms": [],
           "antonyms": [],
           "senses": []
+        },
+        {
+          "ru": "учитель",
+          "en": "teacher",
+          "transcription": "/ˈtiːtʃə/",
+          "image": "",
+          "example": "My teacher is kind.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "классная комната",
+          "en": "classroom",
+          "transcription": "/klˈæsrˌuːm/",
+          "image": "",
+          "example": "Our classroom is big.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "класс",
+          "en": "class",
+          "transcription": "/klˈæs/",
+          "image": "",
+          "example": "I am in class.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "парта",
+          "en": "desk",
+          "transcription": "/desk/",
+          "image": "",
+          "example": "My book is on the desk.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "стул",
+          "en": "chair",
+          "transcription": "/tʃeə/",
+          "image": "",
+          "example": "Sit on the chair.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "ручка",
+          "en": "pen",
+          "transcription": "/pˈen/",
+          "image": "",
+          "example": "I have a blue pen.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "карандаш",
+          "en": "pencil",
+          "transcription": "/pˈensəl/",
+          "image": "",
+          "example": "I write with a pencil.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "ластик",
+          "en": "eraser",
+          "transcription": "/ɪrˈeɪsɜː/",
+          "image": "",
+          "example": "I need an eraser.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "линейка",
+          "en": "ruler",
+          "transcription": "/rˈuːlɜː/",
+          "image": "",
+          "example": "This ruler is long.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "тетрадь",
+          "en": "notebook",
+          "transcription": "/nˈəʊtbˌʊk/",
+          "image": "",
+          "example": "Open your notebook.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "сумка",
+          "en": "bag",
+          "transcription": "/bæɡ/",
+          "image": "",
+          "example": "My school bag is black.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "рюкзак",
+          "en": "backpack",
+          "transcription": "/bˈækpˌæk/",
+          "image": "",
+          "example": "My backpack is new.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "страница",
+          "en": "page",
+          "transcription": "/pˈeɪdʒ/",
+          "image": "",
+          "example": "Read page ten.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "слово",
+          "en": "word",
+          "transcription": "/wˈɜːd/",
+          "image": "",
+          "example": "Write the word.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "буква",
+          "en": "letter",
+          "transcription": "/lˈetə/",
+          "image": "",
+          "example": "This letter is A.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "число",
+          "en": "number",
+          "transcription": "/nˈʌmbɜː/",
+          "image": "",
+          "example": "Write the number five.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "предложение",
+          "en": "sentence",
+          "transcription": "/sˈentəns/",
+          "image": "",
+          "example": "Read this sentence.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "вопрос",
+          "en": "question",
+          "transcription": "/kwˈestʃən/",
+          "image": "",
+          "example": "I have a question.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "ответ",
+          "en": "answer",
+          "transcription": "/ˈænsə/",
+          "image": "",
+          "example": "I know the answer.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "домашнее задание",
+          "en": "homework",
+          "transcription": "/hˈəʊmwˌɜːk/",
+          "image": "",
+          "example": "I do my homework after school.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "тест",
+          "en": "test",
+          "transcription": "/tˈest/",
+          "image": "",
+          "example": "We have a test today.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "экзамен",
+          "en": "exam",
+          "transcription": "/ɪɡzˈæm/",
+          "image": "",
+          "example": "My exam is on Monday.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "учебный предмет",
+          "en": "subject",
+          "transcription": "/səbdʒˈekt/",
+          "image": "",
+          "example": "English is my favourite subject.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "английский язык",
+          "en": "English",
+          "transcription": "/ˈɪŋɡlɪʃ/",
+          "image": "",
+          "example": "I study English.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "математика",
+          "en": "maths",
+          "transcription": "/mæθs/",
+          "image": "",
+          "example": "We have maths today.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "естествознание",
+          "en": "science",
+          "transcription": "/sˈaɪʌns/",
+          "image": "",
+          "example": "Science is interesting.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "история",
+          "en": "history",
+          "transcription": "/hˈɪstɜːiː/",
+          "image": "",
+          "example": "I like history.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "география",
+          "en": "geography",
+          "transcription": "/dʒiːˈɑːɡrʌfiː/",
+          "image": "",
+          "example": "We study geography.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "рисование",
+          "en": "art",
+          "transcription": "/ɑːt/",
+          "image": "",
+          "example": "Art is fun.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "музыка",
+          "en": "music",
+          "transcription": "/ˈmjuːzɪk/",
+          "image": "",
+          "example": "We have music on Friday.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "физкультура",
+          "en": "PE",
+          "transcription": "/ˌpiː ˈiː/",
+          "image": "",
+          "example": "We play games in PE.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "читать",
+          "en": "read",
+          "transcription": "/rˈed/",
+          "image": "",
+          "example": "I read a story.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "писать",
+          "en": "write",
+          "transcription": "/rˈaɪt/",
+          "image": "",
+          "example": "I write my name.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "слушать",
+          "en": "listen",
+          "transcription": "/ˈlɪsən/",
+          "image": "",
+          "example": "Listen to the teacher.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "говорить",
+          "en": "speak",
+          "transcription": "/spˈiːk/",
+          "image": "",
+          "example": "I speak English.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "учить",
+          "en": "learn",
+          "transcription": "/lɜːn/",
+          "image": "",
+          "example": "I learn new words.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "учиться",
+          "en": "study",
+          "transcription": "/ˈstʌdi/",
+          "image": "",
+          "example": "I study every day.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "практиковаться",
+          "en": "practise",
+          "transcription": "/ˈpræktɪs/",
+          "image": "",
+          "example": "I practise English at home.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "повторять",
+          "en": "repeat",
+          "transcription": "/rɪpˈiːt/",
+          "image": "",
+          "example": "Repeat after me.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "произносить по буквам",
+          "en": "spell",
+          "transcription": "/spˈel/",
+          "image": "",
+          "example": "Spell your name, please.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "считать",
+          "en": "count",
+          "transcription": "/kˈaʊnt/",
+          "image": "",
+          "example": "Count from one to ten.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "рисовать",
+          "en": "draw",
+          "transcription": "/drɔː/",
+          "image": "",
+          "example": "I draw a house.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "раскрашивать",
+          "en": "colour",
+          "transcription": "/ˈkʌlə/",
+          "image": "",
+          "example": "Colour the picture blue.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "открывать",
+          "en": "open",
+          "transcription": "/ˈəʊpən/",
+          "image": "",
+          "example": "Open your book.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "закрывать",
+          "en": "close",
+          "transcription": "/kləʊz/",
+          "image": "",
+          "example": "Close the door.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "спрашивать",
+          "en": "ask",
+          "transcription": "/ˈæsk/",
+          "image": "",
+          "example": "Ask a question.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "помогать",
+          "en": "help",
+          "transcription": "/help/",
+          "image": "",
+          "example": "Please help me.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "понимать",
+          "en": "understand",
+          "transcription": "/ˌʌndɜːstˈænd/",
+          "image": "",
+          "example": "I understand this word.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "помнить",
+          "en": "remember",
+          "transcription": "/rɪmˈembɜː/",
+          "image": "",
+          "example": "I remember the answer.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "знать",
+          "en": "know",
+          "transcription": "/nˈəʊ/",
+          "image": "",
+          "example": "I know this word.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "начинать",
+          "en": "start",
+          "transcription": "/stˈɑːrt/",
+          "image": "",
+          "example": "We start at nine.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "заканчивать",
+          "en": "finish",
+          "transcription": "/fˈɪnɪʃ/",
+          "image": "",
+          "example": "I finish school at three.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "перемена",
+          "en": "break",
+          "transcription": "/breɪk/",
+          "image": "",
+          "example": "We play during the break.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "обед",
+          "en": "lunch",
+          "transcription": "/lʌntʃ/",
+          "image": "",
+          "example": "I eat lunch at school.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "доска",
+          "en": "board",
+          "transcription": "/bˈɔːd/",
+          "image": "",
+          "example": "The teacher writes on the board.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "карта",
+          "en": "map",
+          "transcription": "/mˈæp/",
+          "image": "",
+          "example": "Look at the map.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "компьютер",
+          "en": "computer",
+          "transcription": "/kəmˈpjuːtə/",
+          "image": "",
+          "example": "We use a computer in class.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "библиотека",
+          "en": "library",
+          "transcription": "/ˈlaɪbrəri/",
+          "image": "",
+          "example": "I read in the library.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "одноклассник",
+          "en": "classmate",
+          "transcription": "/klˈæsmˌeɪt/",
+          "image": "",
+          "example": "My classmate is friendly.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "школьная форма",
+          "en": "school uniform",
+          "transcription": "/skuːl ˈjuːnɪfɔːm/",
+          "image": "",
+          "example": "I wear a school uniform.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
         }
       ]
     }
@@ -15599,6 +16199,476 @@
           "transcription": "/pˈʌblɪʃə/",
           "image": "",
           "example": "The discussion included “publisher” as a key idea.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "высказывать мнение",
+          "en": "express an opinion",
+          "transcription": "/ɪksprˈes ˈæn ʌpˈɪnjʌn/",
+          "image": "",
+          "example": "Everyone can express an opinion.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "точка зрения",
+          "en": "point of view",
+          "transcription": "/pˈɔɪnt ˈʌv vjˈuː/",
+          "image": "",
+          "example": "I understand your point of view.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "соглашаться",
+          "en": "agree",
+          "transcription": "/ʌɡrˈiː/",
+          "image": "",
+          "example": "I agree with your suggestion.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "не соглашаться",
+          "en": "disagree",
+          "transcription": "/dɪsʌɡrˈiː/",
+          "image": "",
+          "example": "I disagree with that conclusion.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "убеждать",
+          "en": "persuade",
+          "transcription": "/pɜːswˈeɪd/",
+          "image": "",
+          "example": "She tried to persuade the audience.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "убедить",
+          "en": "convince",
+          "transcription": "/kʌnvˈɪns/",
+          "image": "",
+          "example": "The evidence convinced me.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "объяснять",
+          "en": "explain",
+          "transcription": "/ɪksplˈeɪn/",
+          "image": "",
+          "example": "Could you explain your idea?",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "прояснять",
+          "en": "clarify",
+          "transcription": "/klˈerʌfˌaɪ/",
+          "image": "",
+          "example": "Please clarify what you mean.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "перебивать",
+          "en": "interrupt",
+          "transcription": "/ˌɪntɜːˈʌpt/",
+          "image": "",
+          "example": "Try not to interrupt the speaker.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "отвечать",
+          "en": "respond",
+          "transcription": "/rɪspˈɑːnd/",
+          "image": "",
+          "example": "He responded to the question.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "ответ",
+          "en": "reply",
+          "transcription": "/rɪplˈaɪ/",
+          "image": "",
+          "example": "I received a reply this morning.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "обратная связь",
+          "en": "feedback",
+          "transcription": "/fˈiːdbˌæk/",
+          "image": "",
+          "example": "The teacher gave useful feedback.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "недопонимание",
+          "en": "misunderstanding",
+          "transcription": "/mˌɪsʌndɜːstˈændɪŋ/",
+          "image": "",
+          "example": "A misunderstanding caused the problem.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "обсуждение",
+          "en": "discussion",
+          "transcription": "/dɪskˈʌʃʌn/",
+          "image": "",
+          "example": "We had a discussion after class.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "дебаты",
+          "en": "debate",
+          "transcription": "/dʌbˈeɪt/",
+          "image": "",
+          "example": "The debate lasted an hour.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "интервью",
+          "en": "interview",
+          "transcription": "/ˈɪntəvjuː/",
+          "image": "",
+          "example": "She gave an interview on television.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "заголовок",
+          "en": "headline",
+          "transcription": "/hˈedlˌaɪn/",
+          "image": "",
+          "example": "The headline caught my attention.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "источник",
+          "en": "source",
+          "transcription": "/sˈɔːs/",
+          "image": "",
+          "example": "Check the source before sharing news.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "надёжный",
+          "en": "reliable",
+          "transcription": "/rɪlˈaɪəbəl/",
+          "image": "",
+          "example": "This website is usually reliable.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "вводящий в заблуждение",
+          "en": "misleading",
+          "transcription": "/mɪslˈiːdɪŋ/",
+          "image": "",
+          "example": "The headline was misleading.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "слух",
+          "en": "rumour",
+          "transcription": "/rˈuːmɜː/",
+          "image": "",
+          "example": "The rumour spread quickly online.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "факт",
+          "en": "fact",
+          "transcription": "/fˈækt/",
+          "image": "",
+          "example": "We need to check the facts.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "доказательства",
+          "en": "evidence",
+          "transcription": "/ˈevədəns/",
+          "image": "",
+          "example": "There is little evidence for that claim.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "утверждение",
+          "en": "claim",
+          "transcription": "/klˈeɪm/",
+          "image": "",
+          "example": "The article makes a surprising claim.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "освещение в СМИ",
+          "en": "media coverage",
+          "transcription": "/ˈmiːdiə kˈʌvəədʒ/",
+          "image": "",
+          "example": "The event received wide media coverage.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "социальные сети",
+          "en": "social media",
+          "transcription": "/sˈəʊʃʌl mˈiːdiːʌ/",
+          "image": "",
+          "example": "She shares photos on social media.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "публикация",
+          "en": "post",
+          "transcription": "/pˈəʊst/",
+          "image": "",
+          "example": "I read your latest post.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "делиться",
+          "en": "share",
+          "transcription": "/ʃeə/",
+          "image": "",
+          "example": "Please share the link.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "подписываться",
+          "en": "subscribe",
+          "transcription": "/sʌbskrˈaɪb/",
+          "image": "",
+          "example": "You can subscribe to the channel.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "подписчик",
+          "en": "follower",
+          "transcription": "/fˈɑːləʊɜː/",
+          "image": "",
+          "example": "The account has many followers.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "уведомление",
+          "en": "notification",
+          "transcription": "/nˌəʊtəfəkˈeɪʃən/",
+          "image": "",
+          "example": "I received a notification.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "настройки конфиденциальности",
+          "en": "privacy settings",
+          "transcription": "/prˈaɪvʌsiː sˈetɪŋz/",
+          "image": "",
+          "example": "Check your privacy settings.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "публичный профиль",
+          "en": "public profile",
+          "transcription": "/pˈʌblɪk prˈəʊfˌaɪl/",
+          "image": "",
+          "example": "His public profile is easy to find.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "раздел комментариев",
+          "en": "comment section",
+          "transcription": "/kˈɑːment sˈekʃʌn/",
+          "image": "",
+          "example": "The comment section was busy.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "онлайн-сообщество",
+          "en": "online community",
+          "transcription": "/ˈɔːnlˌaɪn kəmjˈuːnətiː/",
+          "image": "",
+          "example": "She joined an online community.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "навыки общения",
+          "en": "communication skills",
+          "transcription": "/kʌmjˌuːnʌkˈeɪʃʌn skˈɪlz/",
+          "image": "",
+          "example": "Communication skills are important at work.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "язык тела",
+          "en": "body language",
+          "transcription": "/bˈɑːdiː lˈæŋɡwʌdʒ/",
+          "image": "",
+          "example": "Body language can show how we feel.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "тон голоса",
+          "en": "tone of voice",
+          "transcription": "/tˈəʊn ˈʌv vˈɔɪs/",
+          "image": "",
+          "example": "Her tone of voice sounded calm.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "официальный стиль речи",
+          "en": "formal language",
+          "transcription": "/fˈɔːrmʌl lˈæŋɡwʌdʒ/",
+          "image": "",
+          "example": "Use formal language in this email.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "неофициальный стиль речи",
+          "en": "informal language",
+          "transcription": "/ˌɪnfˈɔːrmʌl lˈæŋɡwʌdʒ/",
+          "image": "",
+          "example": "Friends often use informal language.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "вносить предложение",
+          "en": "make a suggestion",
+          "transcription": "/mˈeɪk ʌ sʌdʒˈestʃʌn/",
+          "image": "",
+          "example": "Can I make a suggestion?",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "поднимать вопрос",
+          "en": "raise a question",
+          "transcription": "/rˈeɪz ʌ kwˈestʃʌn/",
+          "image": "",
+          "example": "The article raises an important question.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "поддерживать связь",
+          "en": "keep in touch",
+          "transcription": "/kˈiːp ɪn tˈʌtʃ/",
+          "image": "",
+          "example": "We keep in touch by email.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "лицом к лицу",
+          "en": "face-to-face",
+          "transcription": "/ˌfeɪs tə ˈfeɪs/",
+          "image": "",
+          "example": "We had a face-to-face conversation.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "видеозвонок",
+          "en": "video call",
+          "transcription": "/vˈɪdiːəʊ kˈɔːl/",
+          "image": "",
+          "example": "We arranged a video call.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "голосовое сообщение",
+          "en": "voice message",
+          "transcription": "/vˈɔɪs mˈesʌdʒ/",
+          "image": "",
+          "example": "She sent me a voice message.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "пресс-релиз",
+          "en": "press release",
+          "transcription": "/prˈes riːlˈiːs/",
+          "image": "",
+          "example": "The company issued a press release.",
           "synonyms": [],
           "antonyms": [],
           "senses": []
@@ -33321,6 +34391,296 @@
           "synonyms": [],
           "antonyms": [],
           "senses": []
+        },
+        {
+          "ru": "взаимодействие с заинтересованными сторонами",
+          "en": "stakeholder engagement",
+          "transcription": "/stˈeɪkhˌəʊldə enɡˈeɪdʒmənt/",
+          "image": "",
+          "example": "Stakeholder engagement is central to the project.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "корпоративное управление",
+          "en": "corporate governance",
+          "transcription": "/kˈɔːpəət ɡˈʌvənəns/",
+          "image": "",
+          "example": "Strong corporate governance supports accountability.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "организационная реструктуризация",
+          "en": "organisational restructuring",
+          "transcription": "/ˈorganisational riːstrˈʌktʃəɪŋ/",
+          "image": "",
+          "example": "Organisational restructuring affected several departments.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "управление изменениями",
+          "en": "change management",
+          "transcription": "/tʃˈeɪndʒ mˈænʌdʒmʌnt/",
+          "image": "",
+          "example": "Effective change management reduces uncertainty.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "снижение рисков",
+          "en": "risk mitigation",
+          "transcription": "/rˈɪsk mˌɪtɪɡˈeɪʃʌn/",
+          "image": "",
+          "example": "The team developed a risk mitigation strategy.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "планирование на случай непредвиденных обстоятельств",
+          "en": "contingency planning",
+          "transcription": "/kʌntˈɪndʒʌnsiː plˈænɪŋ/",
+          "image": "",
+          "example": "Contingency planning helped the firm respond quickly.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "стратегическая согласованность",
+          "en": "strategic alignment",
+          "transcription": "/strətˈiːdʒɪk əlˈaɪnmənt/",
+          "image": "",
+          "example": "Strategic alignment improved cooperation between teams.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "конкурентное преимущество",
+          "en": "competitive advantage",
+          "transcription": "/kəmpˈetətɪv ædvˈæntɪdʒ/",
+          "image": "",
+          "example": "Innovation can create a competitive advantage.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "позиционирование на рынке",
+          "en": "market positioning",
+          "transcription": "/ˈmɑːkɪt pəzˈɪʃənɪŋ/",
+          "image": "",
+          "example": "The company revised its market positioning.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "ценностное предложение",
+          "en": "value proposition",
+          "transcription": "/vˈæljuː prˌɒpəzˈɪʃən/",
+          "image": "",
+          "example": "The presentation clarified the value proposition.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "операционная эффективность",
+          "en": "operational efficiency",
+          "transcription": "/ˌɒpəˈeɪʃənəl ɪfˈɪʃənsiː/",
+          "image": "",
+          "example": "Automation improved operational efficiency.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "оценка эффективности работы",
+          "en": "performance appraisal",
+          "transcription": "/pɜːfˈɔːrmʌns ʌprˈeɪzʌl/",
+          "image": "",
+          "example": "Each employee receives an annual performance appraisal.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "ключевой показатель эффективности",
+          "en": "key performance indicator",
+          "transcription": "/kˈiː pɜːfˈɔːrmʌns ˈɪndʌkˌeɪtɜː/",
+          "image": "",
+          "example": "Customer retention is a key performance indicator.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "удержание сотрудников",
+          "en": "workforce retention",
+          "transcription": "/wˈɜːkfˌɔːrs riːtˈenʃʌn/",
+          "image": "",
+          "example": "Flexible hours may improve workforce retention.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "привлечение талантов",
+          "en": "talent acquisition",
+          "transcription": "/tˈælənt ˌækwəzˈɪʃən/",
+          "image": "",
+          "example": "Talent acquisition remains a major priority.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "планирование кадровой преемственности",
+          "en": "succession planning",
+          "transcription": "/səksˈeʃən plˈænɪŋ/",
+          "image": "",
+          "example": "Succession planning prepares future leaders.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "профессиональная добросовестность",
+          "en": "professional integrity",
+          "transcription": "/prəfˈeʃənəl ˌɪntˈeɡrətiː/",
+          "image": "",
+          "example": "Professional integrity is essential in auditing.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "конфликт интересов",
+          "en": "conflict of interest",
+          "transcription": "/kˈɑːnflɪkt ˈʌv ˈɪntrʌst/",
+          "image": "",
+          "example": "Staff must disclose any conflict of interest.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "комплексная проверка",
+          "en": "due diligence",
+          "transcription": "/dˈuː dˈɪlədʒəns/",
+          "image": "",
+          "example": "The buyer conducted due diligence before signing.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "договорное обязательство",
+          "en": "contractual obligation",
+          "transcription": "/kʌntrˈæktʃuːʌl ˌɑːblʌɡˈeɪʃʌn/",
+          "image": "",
+          "example": "Both parties must meet their contractual obligations.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "рычаг влияния на переговорах",
+          "en": "negotiation leverage",
+          "transcription": "/nɪɡˌəʊʃiːˈeɪʃʌn lˈevɜːɪdʒ/",
+          "image": "",
+          "example": "Exclusive access gave the firm negotiation leverage.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "коммерческая жизнеспособность",
+          "en": "commercial viability",
+          "transcription": "/kʌmˈɜːʃʌl vaɪʌbˈɪlʌtiː/",
+          "image": "",
+          "example": "The study assessed the project's commercial viability.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "источник дохода",
+          "en": "revenue stream",
+          "transcription": "/rˈevʌnˌuː strˈiːm/",
+          "image": "",
+          "example": "Subscriptions became a major revenue stream.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "непрерывность бизнеса",
+          "en": "business continuity",
+          "transcription": "/ˈbɪznəs kˌɒntənˈuːətiː/",
+          "image": "",
+          "example": "The plan safeguards business continuity.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "межфункциональное сотрудничество",
+          "en": "cross-functional collaboration",
+          "transcription": "/ˌkrɒs ˈfʌŋkʃənəl kəˌlæbəˈreɪʃən/",
+          "image": "",
+          "example": "Cross-functional collaboration accelerated delivery.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "передача знаний",
+          "en": "knowledge transfer",
+          "transcription": "/nˈɑːlʌdʒ trænsfˈɜː/",
+          "image": "",
+          "example": "The handover ensured effective knowledge transfer.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "оптимизация процессов",
+          "en": "process optimisation",
+          "transcription": "/ˈprəʊses ˌɒptɪmaɪˈzeɪʃən/",
+          "image": "",
+          "example": "Process optimisation reduced unnecessary delays.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "распределение ресурсов",
+          "en": "resource allocation",
+          "transcription": "/rˈiːsɔːs ˌæləkˈeɪʃən/",
+          "image": "",
+          "example": "Resource allocation must reflect strategic priorities.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "организационная гибкость",
+          "en": "organisational agility",
+          "transcription": "/ˈorganisational ədʒˈɪlətiː/",
+          "image": "",
+          "example": "Organisational agility helps companies adapt.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
         }
       ]
     }
@@ -33465,6 +34825,526 @@
           "transcription": "/kənsˈuːmə kˈɒnfɪdəns/",
           "image": "",
           "example": "In precise British English, “consumer confidence” can be used when discussing economics and society.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "покупательная способность",
+          "en": "purchasing power",
+          "transcription": "/pˈɜːtʃʌsɪŋ pˈaʊɜː/",
+          "image": "",
+          "example": "Inflation has weakened household purchasing power.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "располагаемый доход",
+          "en": "disposable income",
+          "transcription": "/dɪspˈəʊzəbəl ˈɪnkˌʌm/",
+          "image": "",
+          "example": "Higher rent reduces disposable income.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "расходы домохозяйства",
+          "en": "household expenditure",
+          "transcription": "/hˈaʊshˌəʊld ɪkspˈendʌtʃɜː/",
+          "image": "",
+          "example": "Household expenditure rose sharply this year.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "кризис стоимости жизни",
+          "en": "cost-of-living crisis",
+          "transcription": "/ˌkɒst əv ˈlɪvɪŋ ˈkraɪsɪs/",
+          "image": "",
+          "example": "The cost-of-living crisis affected consumer choices.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "финансовая грамотность",
+          "en": "financial literacy",
+          "transcription": "/fʌnˈænʃʌl lˈɪtɜːʌsiː/",
+          "image": "",
+          "example": "Schools increasingly teach financial literacy.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "потребительское поведение",
+          "en": "consumer behaviour",
+          "transcription": "/kʌnsˈuːmɜː bɪhˈeɪvjɜː/",
+          "image": "",
+          "example": "Advertising can influence consumer behaviour.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "ценовая эластичность",
+          "en": "price elasticity",
+          "transcription": "/prˈaɪs ˌiːlˌæstˈɪsʌtiː/",
+          "image": "",
+          "example": "Price elasticity varies across products.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "рыночная волатильность",
+          "en": "market volatility",
+          "transcription": "/ˈmɑːkɪt vˌɒlətˈɪlətiː/",
+          "image": "",
+          "example": "Investors must account for market volatility.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "процентная ставка",
+          "en": "interest rate",
+          "transcription": "/ˈɪntrʌst rˈeɪt/",
+          "image": "",
+          "example": "The central bank raised the interest rate.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "сложный процент",
+          "en": "compound interest",
+          "transcription": "/kˈɒmpaʊnd ˈɪntrəst/",
+          "image": "",
+          "example": "Compound interest can increase long-term savings.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "кредитоспособность",
+          "en": "creditworthiness",
+          "transcription": "/krˈedɪtwˌɜːðiːnəs/",
+          "image": "",
+          "example": "Lenders assess an applicant's creditworthiness.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "кредитный рейтинг",
+          "en": "credit rating",
+          "transcription": "/krˈedʌt rˈeɪtɪŋ/",
+          "image": "",
+          "example": "A lower credit rating can raise borrowing costs.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "долговая нагрузка",
+          "en": "debt burden",
+          "transcription": "/dˈet bˈɜːdʌn/",
+          "image": "",
+          "example": "The debt burden limits household spending.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "погашение долга",
+          "en": "debt repayment",
+          "transcription": "/dˈet riːpˈeɪmʌnt/",
+          "image": "",
+          "example": "The agreement sets out a debt repayment schedule.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "невыполнение обязательств по кредиту",
+          "en": "loan default",
+          "transcription": "/lˈəʊn dɪfˈɔːlt/",
+          "image": "",
+          "example": "The bank reported fewer cases of loan default.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "финансовые трудности",
+          "en": "financial hardship",
+          "transcription": "/fʌnˈænʃʌl hˈɑːrdʃɪp/",
+          "image": "",
+          "example": "The charity supports families facing financial hardship.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "распределение бюджета",
+          "en": "budget allocation",
+          "transcription": "/bˈʌdʒɪt ˌælʌkˈeɪʃʌn/",
+          "image": "",
+          "example": "Budget allocation reflects policy priorities.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "бюджетно-налоговая политика",
+          "en": "fiscal policy",
+          "transcription": "/fˈɪskəl pˈɒləsiː/",
+          "image": "",
+          "example": "Fiscal policy can influence economic demand.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "денежно-кредитная политика",
+          "en": "monetary policy",
+          "transcription": "/mˈɒnətˌeriː pˈɒləsiː/",
+          "image": "",
+          "example": "Monetary policy aims to maintain price stability.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "защита прав потребителей",
+          "en": "consumer protection",
+          "transcription": "/kʌnsˈuːmɜː prʌtˈekʃʌn/",
+          "image": "",
+          "example": "Consumer protection rules apply to online sales.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "вводящая в заблуждение реклама",
+          "en": "misleading advertising",
+          "transcription": "/mɪslˈiːdɪŋ ˈædvɜːtˌaɪzɪŋ/",
+          "image": "",
+          "example": "The company was criticised for misleading advertising.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "этичное потребление",
+          "en": "ethical consumption",
+          "transcription": "/ˈeθɪkʌl kʌnsˈʌmpʃʌn/",
+          "image": "",
+          "example": "Ethical consumption considers labour conditions.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "экологически ответственное приобретение",
+          "en": "sustainable purchasing",
+          "transcription": "/sʌstˈeɪnʌbʌl pˈɜːtʃʌsɪŋ/",
+          "image": "",
+          "example": "Sustainable purchasing can reduce waste.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "цепочка поставок",
+          "en": "supply chain",
+          "transcription": "/səplˈaɪ tʃˈeɪn/",
+          "image": "",
+          "example": "The disruption affected the global supply chain.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "торговая наценка",
+          "en": "retail markup",
+          "transcription": "/rˈiːtˌeɪl mˈɑːrkˌʌp/",
+          "image": "",
+          "example": "The retail markup differs between stores.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "оптовая цена",
+          "en": "wholesale price",
+          "transcription": "/hˈəʊlsˌeɪl prˈaɪs/",
+          "image": "",
+          "example": "The wholesale price increased last month.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "маржа прибыли",
+          "en": "profit margin",
+          "transcription": "/prˈɒfət mˈɒdʒən/",
+          "image": "",
+          "example": "Rising costs have reduced the profit margin.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "окупаемость инвестиций",
+          "en": "return on investment",
+          "transcription": "/rɪtˈɜːn ˈɑːn ˌɪnvˈestmʌnt/",
+          "image": "",
+          "example": "The firm calculated its return on investment.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "распределение активов",
+          "en": "asset allocation",
+          "transcription": "/ˈæsˌet ˌæləkˈeɪʃən/",
+          "image": "",
+          "example": "Asset allocation depends on financial goals.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "диверсификация портфеля",
+          "en": "portfolio diversification",
+          "transcription": "/pɔːtfˈəʊliːˌəʊ daɪvˌɜːsəfəkˈeɪʃən/",
+          "image": "",
+          "example": "Portfolio diversification can spread risk.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "финансовое регулирование",
+          "en": "financial regulation",
+          "transcription": "/fʌnˈænʃʌl rˌeɡjʌlˈeɪʃʌn/",
+          "image": "",
+          "example": "Financial regulation seeks to protect consumers.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "соблюдение нормативных требований",
+          "en": "regulatory compliance",
+          "transcription": "/rˈeɡjələtˌɔːriː kəmplˈaɪəns/",
+          "image": "",
+          "example": "The bank reviewed its regulatory compliance.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "налоговое обязательство",
+          "en": "tax liability",
+          "transcription": "/tˈæks lˌaɪʌbˈɪlɪtiː/",
+          "image": "",
+          "example": "The accountant calculated the tax liability.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "налоговый вычет",
+          "en": "tax deduction",
+          "transcription": "/tˈæks dɪdˈʌkʃʌn/",
+          "image": "",
+          "example": "Some expenses qualify for a tax deduction.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "прирост капитала",
+          "en": "capital gains",
+          "transcription": "/kˈæpətəl ɡˈeɪnz/",
+          "image": "",
+          "example": "Capital gains may be subject to tax.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "колебание валютного курса",
+          "en": "exchange-rate fluctuation",
+          "transcription": "/ɪksˈtʃeɪndʒ reɪt ˌflʌktʃuˈeɪʃən/",
+          "image": "",
+          "example": "Exchange-rate fluctuation affects import prices.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "обесценивание валюты",
+          "en": "currency depreciation",
+          "transcription": "/kˈɜːənsiː dɪprˌiːʃiːˈeɪʃən/",
+          "image": "",
+          "example": "Currency depreciation made imports more expensive.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "экономический спад",
+          "en": "economic downturn",
+          "transcription": "/ˌekʌnˈɑːmɪk dˈaʊntˌɜːn/",
+          "image": "",
+          "example": "The retailer struggled during the economic downturn.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "насыщение рынка",
+          "en": "market saturation",
+          "transcription": "/mˈɑːrkʌt sˌætʃɜːˈeɪʃʌn/",
+          "image": "",
+          "example": "Market saturation limited further growth.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "конкурентное ценообразование",
+          "en": "competitive pricing",
+          "transcription": "/kʌmpˈetʌtɪv prˈaɪsɪŋ/",
+          "image": "",
+          "example": "The brand adopted competitive pricing.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "потребительский спрос",
+          "en": "consumer demand",
+          "transcription": "/kʌnsˈuːmɜː dɪmˈænd/",
+          "image": "",
+          "example": "Consumer demand fell after the price rise.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "платёж в рассрочку",
+          "en": "payment instalment",
+          "transcription": "/ˈpeɪmənt ɪnˈstɔːlmənt/",
+          "image": "",
+          "example": "Each payment instalment is due monthly.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "раскрытие финансовой информации",
+          "en": "financial disclosure",
+          "transcription": "/faɪˈnænʃəl dɪsklˈəʊʒə/",
+          "image": "",
+          "example": "Financial disclosure improves transparency.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "комиссия за транзакцию",
+          "en": "transaction fee",
+          "transcription": "/trænzˈækʃʌn fˈiː/",
+          "image": "",
+          "example": "The platform charges a small transaction fee.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "финансовая устойчивость",
+          "en": "financial resilience",
+          "transcription": "/fʌnˈænʃʌl rɪzˈɪliːʌns/",
+          "image": "",
+          "example": "Emergency savings can improve financial resilience.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "распределение богатства",
+          "en": "wealth distribution",
+          "transcription": "/wˈelθ dˌɪstrʌbjˈuːʃʌn/",
+          "image": "",
+          "example": "The study examines wealth distribution.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "неравенство доходов",
+          "en": "income inequality",
+          "transcription": "/ˈɪnkˌʌm ˌɪnɪkwˈɑːlʌtiː/",
+          "image": "",
+          "example": "The report highlights growing income inequality.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "вмешательство в рынок",
+          "en": "market intervention",
+          "transcription": "/mˈɑːrkʌt ˌɪntɜːvˈenʃʌn/",
+          "image": "",
+          "example": "Market intervention can have unintended consequences.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "прозрачность цен",
+          "en": "price transparency",
+          "transcription": "/prˈaɪs trænspˈerʌnsiː/",
+          "image": "",
+          "example": "Price transparency helps consumers compare offers.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "финансовое планирование",
+          "en": "financial planning",
+          "transcription": "/fʌnˈænʃʌl plˈænɪŋ/",
+          "image": "",
+          "example": "Financial planning should consider future expenses.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "ликвидность",
+          "en": "liquidity",
+          "transcription": "/lɪkwˈɪdətiː/",
+          "image": "",
+          "example": "The company maintained sufficient liquidity.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "платёжеспособность",
+          "en": "solvency",
+          "transcription": "/sˈɔːlvʌnsiː/",
+          "image": "",
+          "example": "Auditors assessed the firm's solvency.",
           "synonyms": [],
           "antonyms": [],
           "senses": []
@@ -33682,6 +35562,456 @@
           "transcription": "/ˌɔːɡɐnaɪzˈeɪʃənəl kˈʌltʃə/",
           "image": "",
           "example": "The analysis considers “organisational culture” in its wider context.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "культурное наследие",
+          "en": "cultural heritage",
+          "transcription": "/kˈʌltʃəəl hˈerətədʒ/",
+          "image": "",
+          "example": "Protecting cultural heritage requires sustained investment.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "социальная сплочённость",
+          "en": "social cohesion",
+          "transcription": "/sˈəʊʃəl kəʊhˈiːʒən/",
+          "image": "",
+          "example": "Social cohesion depends on mutual trust.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "коллективная память",
+          "en": "collective memory",
+          "transcription": "/kəlˈektɪv mˈeməiː/",
+          "image": "",
+          "example": "Museums help preserve collective memory.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "культурная апроприация",
+          "en": "cultural appropriation",
+          "transcription": "/kˈʌltʃəəl əprˌəʊpriːˈeɪʃən/",
+          "image": "",
+          "example": "The exhibition prompted a debate about cultural appropriation.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "межкультурный диалог",
+          "en": "intercultural dialogue",
+          "transcription": "/ˌɪntɜːkˈʌltʃɜːʌl dˈaɪʌlˌɔːɡ/",
+          "image": "",
+          "example": "Intercultural dialogue can challenge assumptions.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "социальная мобильность",
+          "en": "social mobility",
+          "transcription": "/sˈəʊʃəl məʊbˈɪlətiː/",
+          "image": "",
+          "example": "Education can promote social mobility.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "структурное неравенство",
+          "en": "structural inequality",
+          "transcription": "/strˈʌktʃəəl ˌɪnɪkwˈɒlətiː/",
+          "image": "",
+          "example": "The report examines structural inequality.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "социальное расслоение",
+          "en": "social stratification",
+          "transcription": "/sˈəʊʃəl strˌætəfɪkˈeɪʃən/",
+          "image": "",
+          "example": "Researchers analysed patterns of social stratification.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "маргинализация",
+          "en": "marginalisation",
+          "transcription": "/ˌmɑːdʒɪnəlaɪˈzeɪʃən/",
+          "image": "",
+          "example": "The policy aims to reduce marginalisation.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "дискриминация",
+          "en": "discrimination",
+          "transcription": "/dɪskrˌɪmənˈeɪʃən/",
+          "image": "",
+          "example": "The organisation campaigns against discrimination.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "представленность",
+          "en": "representation",
+          "transcription": "/rˌeprəzentˈeɪʃən/",
+          "image": "",
+          "example": "The committee called for broader representation.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "демографический сдвиг",
+          "en": "demographic shift",
+          "transcription": "/dˌemʌɡrˈæfɪk ʃˈɪft/",
+          "image": "",
+          "example": "A demographic shift has changed the region.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "мультикультурализм",
+          "en": "multiculturalism",
+          "transcription": "/mˌʌltiːkˈʌltʃəəlˌɪzəm/",
+          "image": "",
+          "example": "Multiculturalism remains a topic of public debate.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "ассимиляция",
+          "en": "assimilation",
+          "transcription": "/ʌsˌɪmʌlˈeɪʃʌn/",
+          "image": "",
+          "example": "The study distinguishes integration from assimilation.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "аккультурация",
+          "en": "acculturation",
+          "transcription": "/əˌkʌltʃəˈreɪʃən/",
+          "image": "",
+          "example": "Acculturation can influence family traditions.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "секуляризация",
+          "en": "secularisation",
+          "transcription": "/ˌsekjʊləraɪˈzeɪʃən/",
+          "image": "",
+          "example": "The article explores secularisation in modern societies.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "социальные нормы",
+          "en": "social norms",
+          "transcription": "/sˈəʊʃʌl nˈɔːrmz/",
+          "image": "",
+          "example": "Social norms evolve across generations.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "коллективная идентичность",
+          "en": "collective identity",
+          "transcription": "/kəlˈektɪv aɪdˈentɪtˌiː/",
+          "image": "",
+          "example": "Shared experiences shape collective identity.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "гражданская ответственность",
+          "en": "civic responsibility",
+          "transcription": "/sˈɪvɪk riːspˌɑːnsʌbˈɪlʌtiː/",
+          "image": "",
+          "example": "Voting is one form of civic responsibility.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "работа с местным сообществом",
+          "en": "community outreach",
+          "transcription": "/kʌmjˈuːnʌtiː ˈaʊtrˌiːtʃ/",
+          "image": "",
+          "example": "The museum expanded its community outreach.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "общественный дискурс",
+          "en": "public discourse",
+          "transcription": "/pˈʌblɪk dˈɪskɔːs/",
+          "image": "",
+          "example": "Social media has transformed public discourse.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "идеологический раскол",
+          "en": "ideological divide",
+          "transcription": "/ˌaɪdiːʌlˈɑːdʒɪkʌl dɪvˈaɪd/",
+          "image": "",
+          "example": "The debate exposed an ideological divide.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "межпоколенческий конфликт",
+          "en": "intergenerational conflict",
+          "transcription": "/ˌɪntədʒˈenəˈeɪʃənəl kˈɒnflɪkt/",
+          "image": "",
+          "example": "The novel explores intergenerational conflict.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "культурное разнообразие",
+          "en": "cultural diversity",
+          "transcription": "/kˈʌltʃɜːʌl dɪvˈɜːsɪtiː/",
+          "image": "",
+          "example": "Cultural diversity enriches the arts.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "права меньшинств",
+          "en": "minority rights",
+          "transcription": "/maɪnˈɔːrʌtiː rˈaɪts/",
+          "image": "",
+          "example": "The legislation seeks to protect minority rights.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "социальная справедливость",
+          "en": "social justice",
+          "transcription": "/sˈəʊʃʌl dʒˈʌstʌs/",
+          "image": "",
+          "example": "The campaign focuses on social justice.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "равные возможности",
+          "en": "equal opportunity",
+          "transcription": "/ˈiːkwʌl ˌɑːpɜːtˈuːnʌtiː/",
+          "image": "",
+          "example": "The programme promotes equal opportunity.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "устойчивость сообщества",
+          "en": "community resilience",
+          "transcription": "/kʌmjˈuːnʌtiː rɪzˈɪliːʌns/",
+          "image": "",
+          "example": "Community resilience improved after the crisis.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "доверие к институтам",
+          "en": "institutional trust",
+          "transcription": "/ˌɪnstɪtˈuːʃənəl trˈʌst/",
+          "image": "",
+          "example": "Transparency can strengthen institutional trust.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "культурная грамотность",
+          "en": "cultural literacy",
+          "transcription": "/kˈʌltʃɜːʌl lˈɪtɜːʌsiː/",
+          "image": "",
+          "example": "Cultural literacy supports meaningful dialogue.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "этноцентризм",
+          "en": "ethnocentrism",
+          "transcription": "/ˌeθnəʊsˈentrɪzʌm/",
+          "image": "",
+          "example": "The course encourages students to question ethnocentrism.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "плюрализм",
+          "en": "pluralism",
+          "transcription": "/plˈʊrʌlˌɪzʌm/",
+          "image": "",
+          "example": "Pluralism allows diverse perspectives to coexist.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "общественное участие",
+          "en": "public participation",
+          "transcription": "/pˈʌblɪk pɑːrtˌɪsʌpˈeɪʃʌn/",
+          "image": "",
+          "example": "The council invited public participation.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "низовое общественное движение",
+          "en": "grassroots movement",
+          "transcription": "/ɡrˈæsrˈuːts mˈuːvmʌnt/",
+          "image": "",
+          "example": "A grassroots movement pushed for change.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "социальная изоляция",
+          "en": "social exclusion",
+          "transcription": "/sˈəʊʃʌl ɪksklˈuːʒʌn/",
+          "image": "",
+          "example": "Unemployment can contribute to social exclusion.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "сохранение наследия",
+          "en": "heritage preservation",
+          "transcription": "/hˈerətədʒ prˌezəvˈeɪʃən/",
+          "image": "",
+          "example": "Heritage preservation benefits future generations.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "культурное самовыражение",
+          "en": "cultural expression",
+          "transcription": "/kˈʌltʃɜːʌl ɪksprˈeʃʌn/",
+          "image": "",
+          "example": "Music is a powerful form of cultural expression.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "коллективные действия",
+          "en": "collective action",
+          "transcription": "/kəlˈektɪv ˈækʃən/",
+          "image": "",
+          "example": "Collective action brought the issue to public attention.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "этические соображения",
+          "en": "ethical considerations",
+          "transcription": "/ˈeθɪkʌl kʌnsˌɪdɜːˈeɪʃʌnz/",
+          "image": "",
+          "example": "Ethical considerations shaped the research.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "общественные ожидания",
+          "en": "societal expectations",
+          "transcription": "/sʌsˈaɪɪtʌl ˌekspektˈeɪʃʌnz/",
+          "image": "",
+          "example": "Societal expectations influence career choices.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "культурная предвзятость",
+          "en": "cultural bias",
+          "transcription": "/kˈʌltʃɜːʌl bˈaɪʌs/",
+          "image": "",
+          "example": "The researchers sought to minimise cultural bias.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "общественная осведомлённость",
+          "en": "public awareness",
+          "transcription": "/pˈʌblɪk ʌwˈernʌs/",
+          "image": "",
+          "example": "The campaign raised public awareness.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "демократия участия",
+          "en": "participatory democracy",
+          "transcription": "/pˌɑːrtˈɪsʌpʌtˌɔːriː dɪmˈɑːkrʌsiː/",
+          "image": "",
+          "example": "Participatory democracy encourages local involvement.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "социальная трансформация",
+          "en": "social transformation",
+          "transcription": "/sˈəʊʃəl trˌænsfəmˈeɪʃən/",
+          "image": "",
+          "example": "Technology can accelerate social transformation.",
+          "synonyms": [],
+          "antonyms": [],
+          "senses": []
+        },
+        {
+          "ru": "культурная преемственность",
+          "en": "cultural continuity",
+          "transcription": "/kˈʌltʃəəl kˌɒntənˈuːətiː/",
+          "image": "",
+          "example": "Traditional festivals help maintain cultural continuity.",
           "synonyms": [],
           "antonyms": [],
           "senses": []

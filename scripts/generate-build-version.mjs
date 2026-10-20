@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 const pkg=JSON.parse(await readFile(new URL('../package.json',import.meta.url),'utf8'))
-const files=['contentSeed.ts','worker.ts','src/App.tsx','src/data.ts','src/storage.ts','src/App.css','src/index.css']
+const files=['contentSeed.ts','worker.ts','src/App.tsx','src/data.ts','src/storage.ts','src/App.css','src/index.css','public/curriculum-words.json']
 const hash=createHash('sha256')
 for(const file of files){hash.update(file);hash.update(await readFile(new URL(`../${file}`,import.meta.url)))}
 const id=`${pkg.version}-${hash.digest('hex').slice(0,16)}`

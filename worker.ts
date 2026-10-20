@@ -195,6 +195,7 @@ async function ensureDb(env: Env) {
     CREATE TABLE IF NOT EXISTS server_incidents (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT NOT NULL, user_id TEXT, message TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS xp_operations (user_id TEXT NOT NULL, operation_id TEXT NOT NULL, kind TEXT NOT NULL, item_id TEXT NOT NULL, xp INTEGER NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(user_id,operation_id));
     CREATE UNIQUE INDEX IF NOT EXISTS idx_xp_once_per_item ON xp_operations(user_id,kind,item_id);
+    CREATE TABLE IF NOT EXISTS daily_verified_answers (user_id TEXT NOT NULL, kind TEXT NOT NULL, item_id TEXT NOT NULL, answer_count INTEGER NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY(user_id,kind,item_id));
     CREATE TABLE IF NOT EXISTS xp_role_outbox (user_id TEXT PRIMARY KEY, updated_at TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, last_error TEXT NOT NULL DEFAULT '');
   `)
   dbReady = true
@@ -505,7 +506,9 @@ export default {
         const metric=settings.daily.metric
         const kinds=metric==='missions'?['mission']:metric==='materials'?['content']:['mission','content']
         const placeholders=kinds.map(()=>'?').join(',')
-        const countRow=await env.DB.prepare(`SELECT COUNT(*) AS n FROM xp_operations WHERE user_id=? AND kind IN (${placeholders}) AND substr(created_at,1,10)=?`).bind(user.id,...kinds,today).first<{n:number}>()
+        const countRow=metric==='answers'
+          ?await env.DB.prepare('SELECT COALESCE(SUM(answer_count),0) AS n FROM daily_verified_answers WHERE user_id=? AND substr(created_at,1,10)=?').bind(user.id,today).first<{n:number}>()
+          :await env.DB.prepare(`SELECT COUNT(*) AS n FROM xp_operations WHERE user_id=? AND kind IN (${placeholders}) AND substr(created_at,1,10)=?`).bind(user.id,...kinds,today).first<{n:number}>()
         if(Number(countRow?.n||0)<Math.max(1,Number(settings.daily.target)||1))return json({ok:false,error:'Daily goal is not yet confirmed by the server.'},422)
         const award=Math.max(0,Math.min(1000,Number(settings.daily.rewardXp)||0))
         const results=await env.DB.batch([
@@ -586,6 +589,9 @@ export default {
       const award=graded?Math.round(maximumAward*correctCount/tasks.length):maximumAward
       const creditedXp=gameScore?Math.round(maximumAward*gameScore.correct/gameScore.total):award
       const now=new Date().toISOString()
+      // Only completed, server-verified transcripts contribute to daily answer goals.
+      // Legacy queued claims without transcripts remain valid for XP, but count as zero answers.
+      const verifiedAnswerCount=graded?tasks.length:gameScore?submitted.filter((answer:unknown)=>typeof answer==='string'&&answer.trim().length>0).length:0
       // D1 batch executes the conditional claim and progress update as one transaction.
       // A duplicate operation or already-completed item cannot award XP again.
       // Transactional claim: the item is only rewarded if it is not already in
@@ -606,9 +612,13 @@ export default {
           ) AND NOT EXISTS (
             SELECT 1 FROM json_each(COALESCE(json_extract(data,?),json('[]'))) WHERE CAST(value AS TEXT)=?
           )`).bind(path,path,itemId,creditedXp,now,user.id,user.id,operationId,kind,itemId,now,path,itemId),
+        env.DB.prepare(`INSERT OR IGNORE INTO daily_verified_answers (user_id,kind,item_id,answer_count,created_at)
+          SELECT ?,?,?,?,? WHERE ? > 0 AND EXISTS (
+            SELECT 1 FROM xp_operations WHERE user_id=? AND operation_id=? AND kind=? AND item_id=? AND created_at=?
+          )`).bind(user.id,kind,itemId,verifiedAnswerCount,now,verifiedAnswerCount,user.id,operationId,kind,itemId,now),
         env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(user.id)
       ])
-      const row=results[3].results?.[0] as {data?:string}|undefined
+      const row=results[4].results?.[0] as {data?:string}|undefined
       const progress=row?.data?JSON.parse(row.data):null
       if(results[2].meta?.changes){await publishProgressSignal(env,user.id);await env.DB.prepare('INSERT OR IGNORE INTO xp_role_outbox(user_id,updated_at) VALUES (?,?)').bind(user.id,now).run()}
       if(results[2].meta?.changes){

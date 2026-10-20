@@ -10,8 +10,9 @@ test('server accepts 13-digit Date.now IDs and retains safe bounds',()=>{
  assert.ok(limit>=13 && limit<=20);
  assert.match(worker,/xp_operations/);
 });
-test('XP errors are dismissible and not an always-on top banner',()=>{
- assert.match(app,/xpSyncError&&!xpNoticeDismissed/);
- assert.match(app,/Скрыть уведомление XP/);
- assert.doesNotMatch(app,/xpSyncStatus!=='synced'&&<div className="offlineBar"/);
+test('XP synchronization errors do not display a student-facing banner',()=>{
+ assert.doesNotMatch(app,/XP ожидают проверки/);
+ assert.doesNotMatch(app,/Скрыть уведомление XP/);
+ assert.match(app,/setXpSyncError/);
+ assert.match(app,/flushXpQueue/);
 });

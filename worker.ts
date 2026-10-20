@@ -292,6 +292,11 @@ async function listContent(env: Env, section?: string, all = false) {
   for(const x of builtInContent) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
   for(const x of generated) if((!section||x.section===section)&&!deletedIds.has(x.id)) merged.set(x.id,x)
   for(const r of custom.results||[]){try{const x=JSON.parse(r.data) as ContentItem;/* V7.21.6: all games that existed before this reset are intentionally hidden. New admin-created games after the reset remain supported. */if(x.section==='games'&&String((r as any).updated_at||'')<'2026-10-06T04:00:00.000Z')continue;if(!deletedIds.has(x.id))merged.set(x.id,x)}catch{}}
+  // Approved vocabulary overrides older D1 copies.
+  const approvedWordIds=new Set<number>([90000, 90001, 90002, 90003, 90005, 90006, 90008, 90009, 90010, 90011, 90012, 90013, 90014, 90015, 90016, 90092])
+  for(const x of generated) {
+    if(x.section==='words'&&approvedWordIds.has(x.id)) merged.set(x.id,x)
+  }
   const items=[...merged.values()].sort((a,b)=>b.id-a.id)
   const result=all?items:items.filter(x=>x.status==='published')
   setQueryCache(key,result,10*60_000)

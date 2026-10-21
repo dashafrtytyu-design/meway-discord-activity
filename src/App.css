@@ -1108,3 +1108,31 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
 .app.darkTheme :is(.gameTextInput,.gameBoard input,.gameBoard textarea)::placeholder{color:#b8cfe1;opacity:1}
 /* Focus ring must remain visible for keyboard learners. */
 .app :is(.gameBoard,.question,.answers,.gameOptions) :is(button,input,textarea,select):focus-visible{outline:3px solid #50a9ff!important;outline-offset:2px}
+
+/* MEWAY feedback contrast: override inherited dark-theme headings/paragraph colors.
+   Feedback backgrounds are deliberately pale in every theme. */
+.app .explain:not(.good),
+.app.darkTheme .gameBoard .explain:not(.good),
+.app.blueTheme .gameBoard .explain:not(.good){
+  background:#ffebee!important;
+  border:1px solid #e5a6b0!important;
+  color:#812133!important;
+  opacity:1!important;
+}
+.app .explain.good,
+.app.darkTheme .gameBoard .explain.good,
+.app.blueTheme .gameBoard .explain.good{
+  background:#e0f7e9!important;
+  border:1px solid #8cc9a5!important;
+  color:#125d38!important;
+  opacity:1!important;
+}
+/* Nested labels and descriptions must follow the FEEDBACK card, not gameBoard. */
+.app .explain :is(b,strong,p,span,small,em,i,code),
+.app.darkTheme .gameBoard .explain :is(b,strong,p,span,small,em,i,code),
+.app.blueTheme .gameBoard .explain :is(b,strong,p,span,small,em,i,code){
+  color:inherit!important;
+  opacity:1!important;
+  -webkit-text-fill-color:currentColor!important;
+}
+

@@ -1136,3 +1136,28 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
   -webkit-text-fill-color:currentColor!important;
 }
 
+
+/* MEWAY: readable mission feedback in all three themes */
+.app .question .explain:not(.good),
+.app.darkTheme .question .explain:not(.good),
+.app.blueTheme .question .explain:not(.good) {
+  background: #ffebee !important;
+  border-color: #e5a6b0 !important;
+  color: #812133 !important;
+}
+
+.app .question .explain.good,
+.app.darkTheme .question .explain.good,
+.app.blueTheme .question .explain.good {
+  background: #e0f7e9 !important;
+  border-color: #8cc9a5 !important;
+  color: #125d38 !important;
+}
+
+.app .question .explain :is(h1,h2,h3,h4,h5,h6,p,span,small,b,strong,em,i,code,label),
+.app.darkTheme .question .explain :is(h1,h2,h3,h4,h5,h6,p,span,small,b,strong,em,i,code,label),
+.app.blueTheme .question .explain :is(h1,h2,h3,h4,h5,h6,p,span,small,b,strong,em,i,code,label) {
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+  opacity: 1 !important;
+}

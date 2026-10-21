@@ -1068,3 +1068,43 @@ body{overflow-y:auto!important;-webkit-overflow-scrolling:touch}
 
 .memoryGrid button.wrong, .puzzleBoard button.wrong { outline: 3px solid #d43a4b; background-color: #ffe5e8; }
 .memoryGrid button.correct, .puzzleBoard button.correct { outline: 3px solid #16834a; background-color: #dff7e8; }
+
+/* MEWAY contrast contract (light / blue / dark). CSS only, applies to future content. */
+.app{--contrast-on-light:#102e50;--contrast-muted-light:#456783;--contrast-on-dark:#f3f9ff;--contrast-muted-dark:#c4d8e9}
+/* The question/answer area has its own surface, never inherit a conflicting theme label. */
+.app:not(.darkTheme) :is(.gameBoard,.question,.crossClues,.sortZone){color:var(--contrast-on-light)}
+.app:not(.darkTheme) :is(.gameBoard,.question,.crossClues,.sortZone) :is(h1,h2,h3,h4,b,strong,label){color:var(--contrast-on-light)}
+.app:not(.darkTheme) :is(.gameBoard,.question,.crossClues,.sortZone) :is(p,small){color:var(--contrast-muted-light)}
+/* Dark mode: dark blue game surfaces instead of washed-out white. */
+.app.darkTheme .gameBoard{background:#142d46!important;border-color:#426380!important;box-shadow:inset 0 1px rgba(255,255,255,.06)!important;color:var(--contrast-on-dark)!important}
+.app.darkTheme .gameBoard :is(h1,h2,h3,h4,b,strong,label){color:var(--contrast-on-dark)!important;opacity:1}
+.app.darkTheme .gameBoard :is(p,small){color:var(--contrast-muted-dark)!important;opacity:1}
+.app.darkTheme .gameBoard>small{color:#91d5ff!important}
+.app.darkTheme :is(.question,.crossClues,.sortZone){background:#142d46!important;border-color:#426380!important;color:var(--contrast-on-dark)!important}
+.app.darkTheme :is(.question,.crossClues,.sortZone) :is(h1,h2,h3,h4,b,strong,label){color:var(--contrast-on-dark)!important}
+.app.darkTheme :is(.question,.crossClues,.sortZone) :is(p,small){color:var(--contrast-muted-dark)!important}
+/* Interactive dark chips: keep text legible regardless of parent surface. */
+.app.darkTheme :is(.gameOptions button,.answers button,.letterRow button,.memoryGrid button,.dragBank button,.sortZone span){background:#193c59!important;border-color:#4a7395!important;color:#f3f9ff!important}
+.app.darkTheme :is(.gameOptions button,.answers button,.letterRow button,.memoryGrid button,.dragBank button,.sortZone span) :is(span,small,b,strong){color:inherit!important}
+/* Feedback is deliberately light with dark lettering in all three themes. */
+.app :is(.explain:not(.good),.feedbackWrong){background:#ffebee!important;color:#812133!important;border:1px solid #e5a6b0!important;opacity:1!important}
+.app :is(.explain.good,.feedbackCorrect,.correctHint){background:#e0f7e9!important;color:#125d38!important;border:1px solid #8cc9a5!important;opacity:1!important}
+.app :is(.explain,.feedbackWrong,.feedbackCorrect,.correctHint) :is(p,small,span,b,strong){color:inherit!important;opacity:1!important}
+/* Correct/wrong choices are light-coloured surfaces, including in dark/blue modes. */
+.app :is(.answers button,.gameOptions button,.memoryGrid button,.sortZone span).correct{background:#dff7e8!important;color:#125d38!important;border:2px solid #16834a!important}
+.app :is(.answers button,.gameOptions button,.memoryGrid button,.sortZone span).wrong{background:#ffe5e8!important;color:#812133!important;border:2px solid #c9384a!important}
+.app :is(.answers button,.gameOptions button,.memoryGrid button,.sortZone span):is(.correct,.wrong) :is(span,small,b,strong){color:inherit!important}
+.app .gameTextInput.correct{background:#e0f7e9!important;color:#125d38!important;border-color:#16834a!important}
+.app .gameTextInput.wrong{background:#ffe5e8!important;color:#812133!important;border-color:#c9384a!important}
+.app .crossCell.correct input{background:#e0f7e9!important;color:#125d38!important}
+.app .crossCell.wrong input{background:#ffe5e8!important;color:#812133!important}
+/* Blue mode uses dark typography on its pale sky surfaces, including games. */
+.app.blueTheme :is(.gameBoard,.question,.crossClues,.sortZone){background:#eaf7ff!important;border-color:#a7d3ee!important;color:#102e50!important}
+.app.blueTheme :is(.gameBoard,.question,.crossClues,.sortZone) :is(h1,h2,h3,h4,b,strong,label){color:#102e50!important}
+.app.blueTheme :is(.gameBoard,.question,.crossClues,.sortZone) :is(p,small){color:#456783!important}
+/* Accessible inputs and placeholder text in each mode. */
+.app:not(.darkTheme) :is(.gameTextInput,.gameBoard input,.gameBoard textarea,.gameBoard select){color:#102e50}
+.app:not(.darkTheme) :is(.gameTextInput,.gameBoard input,.gameBoard textarea)::placeholder{color:#526f88;opacity:1}
+.app.darkTheme :is(.gameTextInput,.gameBoard input,.gameBoard textarea)::placeholder{color:#b8cfe1;opacity:1}
+/* Focus ring must remain visible for keyboard learners. */
+.app :is(.gameBoard,.question,.answers,.gameOptions) :is(button,input,textarea,select):focus-visible{outline:3px solid #50a9ff!important;outline-offset:2px}

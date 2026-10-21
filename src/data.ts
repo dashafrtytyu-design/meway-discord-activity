@@ -14,6 +14,7 @@ export type Mission = {
   status: MissionStatus
   completed: boolean
   tasks: MissionTask[]
+  shuffleAnswers?: boolean
 }
 
 export type MissionTask = {

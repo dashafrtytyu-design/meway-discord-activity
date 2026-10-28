@@ -1,5 +1,6 @@
 import { MEWAY_BUILD_ID } from './buildVersion'
 import { placementVariants, PLACEMENT_RETAKE_DAYS } from './src/placement'
+import {gradeGameAnswers,proportionalXp} from './src/xpScoring.mjs'
 interface Env {
   ASSETS: Fetcher
   DB: D1Database
@@ -79,7 +80,17 @@ async function readDiscordCourseAccess(env:Env,userId:string){
 }
 async function readCourseAccess(env:Env,userId:string,isAdmin=false){if(isAdmin)return [...COURSE_LEVELS];await ensureDb(env);const row=await env.DB.prepare('SELECT levels FROM course_access WHERE user_id=?').bind(userId).first<{levels:string}>();try{return (JSON.parse(row?.levels||'[]') as CourseLevel[]).filter(x=>COURSE_LEVELS.includes(x))}catch{return []}}
 function levelForXp(xp:number){ return [...LEVEL_ROLES].reverse().find(x=>xp>=x.xp) || null }
-function streakForDays(days:unknown){const set=new Set(Array.isArray(days)?days.filter((x):x is string=>typeof x==='string'):[]);let n=0,d=new Date();for(;;){const k=d.toISOString().slice(0,10);if(!set.has(k))break;n++;d.setUTCDate(d.getUTCDate()-1)}return n}
+/** Calendar keys always use the authenticated learner's local civil day, not UTC. */
+function activityDayAt(iso:string, offsetMinutes:unknown):string {
+  const n=Number(offsetMinutes)
+  const safe=Number.isInteger(n)&&n>=-840&&n<=840?n:-300
+  return new Date(Date.parse(iso)-safe*60_000).toISOString().slice(0,10)
+}
+function verifiedActivityDays(source:unknown):string[]{
+  if(!Array.isArray(source))return []
+  return [...new Set(source.filter((s):s is string=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s+'T00:00:00Z'))))].sort().slice(-5000)
+}
+function streakForDays(days:unknown,offsetMinutes=-300){const set=new Set(Array.isArray(days)?days.filter((x):x is string=>typeof x==='string'):[]);let n=0,d=new Date(activityDayAt(new Date().toISOString(),offsetMinutes)+"T12:00:00Z");for(;;){const k=d.toISOString().slice(0,10);if(!set.has(k))break;n++;d.setUTCDate(d.getUTCDate()-1)}return n}
 async function syncDiscordLevelRole(env:Env,userId:string,xp:number){
   if(!env.DISCORD_BOT_TOKEN||!env.DISCORD_GUILD_ID) return {ok:false,configured:false}
   const target=levelForXp(xp)
@@ -355,8 +366,44 @@ async function listMissions(env: Env, all = false) {
   return result
 }
 
+/** User XP has ALREADY been committed to D1. Slow Discord/KV I/O must never
+ * delay the XP confirmation shown to the student. Role sync is best effort and
+ * tracked separately in xp_role_outbox for later completion attempts. */
+async function syncXpSideEffects(env:Env,userId:string){
+  try{await publishProgressSignal(env,userId)}catch(error){console.warn('MEWAY XP KV signal delayed',error)}
+  try{
+    const row=await env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(userId).first<{data:string}>()
+    if(!row?.data)return
+    const progress=JSON.parse(row.data)
+    const xp=Math.max(0,Number(progress?.xp)||0)
+    const desiredRole=levelForXp(xp)?.id||''
+    const lastVerified=Date.parse(String(progress?.roleVerifiedAt||''))
+    const recentlyVerified=Number.isFinite(lastVerified)&&(Date.now()-lastVerified)<6*60*60*1000
+    if(progress.syncedRoleId===desiredRole&&recentlyVerified){
+      await env.DB.prepare('DELETE FROM xp_role_outbox WHERE user_id=?').bind(userId).run()
+      return
+    }
+    const result=await syncDiscordLevelRole(env,userId,xp)
+    if(result.ok){
+      const now=new Date().toISOString()
+      const saved=await env.DB.prepare("UPDATE progress SET data=json_set(data,'$.syncedRoleId',?,'$.roleVerifiedAt',?),updated_at=? WHERE user_id=? AND CAST(json_extract(data,'$.xp') AS INTEGER)=?")
+        .bind(desiredRole,now,now,userId,xp).run()
+      // A newer XP claim might have crossed another role while Discord replied.
+      // If so, leave the outbox pending for the next attempt.
+      if(saved.meta?.changes)await env.DB.prepare('DELETE FROM xp_role_outbox WHERE user_id=?').bind(userId).run()
+    }else{
+      await env.DB.prepare('UPDATE xp_role_outbox SET attempts=attempts+1,last_error=? WHERE user_id=?')
+        .bind(String(result.error||'Discord role synchronization unavailable').slice(0,300),userId).run()
+    }
+  }catch(error){
+    console.error('MEWAY deferred XP role synchronization failed',error)
+    await env.DB.prepare('UPDATE xp_role_outbox SET attempts=attempts+1,last_error=? WHERE user_id=?')
+      .bind(String(error).slice(0,300),userId).run().catch(()=>null)
+  }
+}
+
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: {waitUntil(promise: Promise<unknown>):void}): Promise<Response> {
     const url = new URL(request.url)
 
     if (url.pathname === '/api/health') {
@@ -510,8 +557,15 @@ export default {
       if(!/^[a-zA-Z0-9_-]{12,100}$/.test(operationId)||!['mission','content','daily'].includes(kind)||!((kind==='daily'&&/^\d{4}-\d{2}-\d{2}$/.test(itemId))||(/^[0-9]{1,20}$/.test(itemId)&&kind!=='daily')))return json({ok:false,error:'Invalid XP claim.'},400)
       await ensureDb(env)
       if(kind==='daily'){
-        const now=new Date().toISOString(),today=now.slice(0,10)
-        if(itemId!==today)return json({ok:false,error:'Daily reward must use current UTC date.'},422)
+        const now=new Date().toISOString()
+        const activityRow=await env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(user.id).first<{data:string}>()
+        let activityOffset=-300
+        try{const d=activityRow?.data?JSON.parse(activityRow.data):{};const stored=Number(d.activityTimezoneOffset);const requested=Number(body?.timezoneOffsetMinutes);const n=Number.isInteger(stored)&&stored>=-840&&stored<=840?stored:requested;if(Number.isInteger(n)&&n>=-840&&n<=840)activityOffset=n}catch{}
+        const today=activityDayAt(now,activityOffset)
+        if(itemId!==today)return json({ok:false,error:'Daily reward must use current local date.'},422)
+        const tzSign=activityOffset<=0?'+':'-'
+        const tzAbsolute=Math.abs(activityOffset)
+        const tzModifier=`${tzSign}${String(Math.floor(tzAbsolute/60)).padStart(2,'0')}:${String(tzAbsolute%60).padStart(2,'0')}`
         const settings=await getSettings(env)
         if(!settings.daily.enabled)return json({ok:false,error:'Daily reward is disabled.'},403)
         // Only server-confirmed completed activities count; client-side answer counters are untrusted.
@@ -519,21 +573,45 @@ export default {
         const kinds=metric==='missions'?['mission']:metric==='materials'?['content']:['mission','content']
         const placeholders=kinds.map(()=>'?').join(',')
         const countRow=metric==='answers'
-          ?await env.DB.prepare('SELECT COALESCE(SUM(answer_count),0) AS n FROM daily_verified_answers WHERE user_id=? AND substr(created_at,1,10)=?').bind(user.id,today).first<{n:number}>()
-          :await env.DB.prepare(`SELECT COUNT(*) AS n FROM xp_operations WHERE user_id=? AND kind IN (${placeholders}) AND substr(created_at,1,10)=?`).bind(user.id,...kinds,today).first<{n:number}>()
+          ?await env.DB.prepare('SELECT COALESCE(SUM(answer_count),0) AS n FROM daily_verified_answers WHERE user_id=? AND date(created_at,?)=?').bind(user.id,tzModifier,today).first<{n:number}>()
+          :await env.DB.prepare(`SELECT COUNT(*) AS n FROM xp_operations WHERE user_id=? AND kind IN (${placeholders}) AND date(created_at,?)=?`).bind(user.id,...kinds,tzModifier,today).first<{n:number}>()
         if(Number(countRow?.n||0)<Math.max(1,Number(settings.daily.target)||1))return json({ok:false,error:'Daily goal is not yet confirmed by the server.'},422)
         const award=Math.max(0,Math.min(1000,Number(settings.daily.rewardXp)||0))
         const results=await env.DB.batch([
           env.DB.prepare("INSERT OR IGNORE INTO progress (user_id,data,updated_at) VALUES (?,json_object('xp',0),?)").bind(user.id,now),
           env.DB.prepare('INSERT OR IGNORE INTO xp_operations (user_id,operation_id,kind,item_id,xp,created_at) VALUES (?,?,?,?,?,?)').bind(user.id,operationId,'daily',today,award,now),
-          env.DB.prepare("UPDATE progress SET data=json_set(data,'$.xp',COALESCE(CAST(json_extract(data,'$.xp') AS INTEGER),0)+?,'$.dailyClaimDate',?),updated_at=? WHERE user_id=? AND COALESCE(json_extract(data,'$.dailyClaimDate'),'')<>? AND EXISTS (SELECT 1 FROM xp_operations WHERE user_id=? AND operation_id=? AND kind='daily' AND item_id=? AND created_at=?)").bind(award,today,now,user.id,today,user.id,operationId,today,now),
+          env.DB.prepare("UPDATE progress SET data=json_set(data,'$.xp',COALESCE(CAST(json_extract(data,'$.xp') AS INTEGER),0)+?,'$.dailyClaimDate',?,'$.xpEvents',CASE WHEN ?>0 THEN json_insert(COALESCE(json_extract(data,'$.xpEvents'),json('[]')),'$[#]',json_object('date',?,'delta',?)) ELSE COALESCE(json_extract(data,'$.xpEvents'),json('[]')) END),updated_at=? WHERE user_id=? AND COALESCE(json_extract(data,'$.dailyClaimDate'),'')<>? AND EXISTS (SELECT 1 FROM xp_operations WHERE user_id=? AND operation_id=? AND kind='daily' AND item_id=? AND created_at=?)").bind(award,today,award,now,award,now,user.id,today,user.id,operationId,today,now),
+          env.DB.prepare("INSERT OR IGNORE INTO xp_role_outbox(user_id,updated_at) SELECT ?,? WHERE EXISTS (SELECT 1 FROM xp_operations WHERE user_id=? AND operation_id=? AND kind='daily' AND item_id=? AND created_at=?)").bind(user.id,now,user.id,operationId,today,now),
           env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(user.id)
         ])
-        const progress=JSON.parse(String((results[3].results?.[0] as any)?.data||'{}'))
-        if(results[2].meta?.changes){await publishProgressSignal(env,user.id);await env.DB.prepare('INSERT OR IGNORE INTO xp_role_outbox(user_id,updated_at) VALUES (?,?)').bind(user.id,now).run()}
-        return json({ok:true,progress,alreadyCompleted:!(results[2].meta?.changes||0)})
+        const progress=JSON.parse(String((results[4].results?.[0] as any)?.data||'{}'))
+        if(results[2].meta?.changes)ctx.waitUntil(syncXpSideEffects(env,user.id))
+        return json({ok:true,progress,awardedXp:results[2].meta?.changes?award:0,alreadyCompleted:!(results[2].meta?.changes||0)})
       }
-      const item=kind==='mission'?(await listMissions(env,true)).find((x:any)=>String(x.id)===itemId):(await Promise.all(['games','quizzes','words','challenges','rewards','grammar','vocabulary','listening','speaking','writing','reading','video'].map(section=>listContent(env,section,true)))).flat().find((x:any)=>String(x.id)===itemId)
+      // Fast indexed lookup for D1-backed items (including thousands of new games).
+      // Only use bundled curriculum fallback for items that are not in D1.
+      let item:any=null
+      if(kind==='mission'){
+        const stored=await env.DB.prepare('SELECT data FROM missions WHERE id=?').bind(itemId).first<{data:string}>()
+        if(stored?.data){try{item=JSON.parse(stored.data)}catch{}}
+        const deleted=await env.DB.prepare('SELECT id FROM deleted_missions WHERE id=?').bind(itemId).first()
+        if(deleted)item=null
+        if(!item&&!deleted)item=(await listMissions(env,true)).find((x:any)=>String(x.id)===itemId)
+      }else{
+        const stored=await env.DB.prepare('SELECT data,updated_at FROM content WHERE id=?').bind(itemId).first<{data:string;updated_at:string}>()
+        const deleted=await env.DB.prepare('SELECT id FROM deleted_content WHERE id=?').bind(itemId).first()
+        if(stored?.data&&!deleted){
+          try{
+            const candidate=JSON.parse(stored.data)
+            if(candidate?.section!=='games'||String(stored.updated_at||'')>='2026-10-06T04:00:00.000Z')item=candidate
+          }catch{}
+        }
+        if(!item&&!deleted){
+          // Existing bundled quizzes, challenges and word sets still work.
+          const fallback=await loadGeneratedContent(env)
+          item=([...builtInContent,...fallback] as any[]).find(x=>String(x.id)===itemId)||null
+        }
+      }
       if(!item)return json({ok:false,error:'Unknown learning item.'},404)
       if(item.status!=='published')return json({ok:false,error:'Learning item is not published.'},403)
       const allowed=await readCourseAccess(env,user.id,user.id===env.ADMIN_DISCORD_ID)
@@ -565,41 +643,14 @@ export default {
         const accepted=[task.correctAnswer,...(Array.isArray(task.acceptedAnswers)&&(!Array.isArray(task.options)||!task.options.length)?task.acceptedAnswers:[])].map(normalizeAnswer)
         return accepted.includes(normalizeAnswer(submitted[index]))
       }).length:0
-      // For new multi-round games, verify each answer against server-owned content.
-      // Older queued claims with no transcript retain their original completion path.
-      let gameScore: {correct:number,total:number}|null=null
-      if(kind==='content'&&item.section==='games'&&Array.isArray(submitted)&&submitted.length>0){
-        const gameType=String(item.payload?.gameType||'word-match')
-        const sourceWords=Array.isArray(item.payload?.words)?item.payload.words:[]
-        const gameWords=gameType==='memory'
-          ?sourceWords.slice(0,20)
-          :gameType==='crossword'
-            ?sourceWords.filter((w:any)=>w.en)
-            :gameType==='drag-sort'
-              ?sourceWords.filter((w:any)=>w.en&&w.category)
-              :sourceWords.slice(0,100)
-        const puzzleSize=Math.max(2,Math.min(5,Number(item.payload?.puzzleSize)||3))
-        const total=gameType==='picture-puzzle'?puzzleSize*puzzleSize:gameWords.length
-        if(!total||submitted.length>total||submitted.some((v:unknown)=>typeof v!=='string'||v.length>1000))return json({ok:false,error:'Invalid game answer transcript.'},422)
-        const answers=Array.from({length:total},(_,index:number)=>{
-          const w:any=gameWords[index]||{}
-          if(gameType==='picture-puzzle')return String(index)
-          if(gameType==='crossword')return String(w.en||'').replace(/[^a-z]/gi,'')
-          if(gameType==='category-sort'||gameType==='drag-sort')return String(w.category||'')
-          if(gameType==='sentence-order')return String(w.hint||w.example||w.en||'')
-          if(gameType==='odd-one')return String(item.payload?.oddAnswer||gameWords[gameWords.length-1]?.en||'')
-          if(gameType==='true-false'){
-            const statement=String(w.hint||w.example||`${w.ru} = ${w.en}`)
-            return statement.toLowerCase().includes(String(w.en||'').toLowerCase())?'Правда':'Ложь'
-          }
-          return String(w.correctAnswer||w.en||'')
-        })
-        const correct=answers.filter((expected:string,i:number)=>Boolean(expected)&&normalizeAnswer(expected)===normalizeAnswer(submitted[i])).length
-        gameScore={correct,total}
-      }
+      // Game results are scored even if every answer is wrong or blank: 0 correct
+      // must NEVER silently fall back to the full reward. All rounds are required.
+      const gameResult=kind==='content'&&item.section==='games'?gradeGameAnswers(item,submitted):null
+      if(gameResult&&!gameResult.ok)return json({ok:false,error:gameResult.error},422)
+      const gameScore=gameResult&&gameResult.ok?{correct:gameResult.correct,total:gameResult.total}:null
       const maximumAward=Math.max(0,Math.min(1000,Number(item.xp)||0))
-      const award=graded?Math.round(maximumAward*correctCount/tasks.length):maximumAward
-      const creditedXp=gameScore?Math.round(maximumAward*gameScore.correct/gameScore.total):award
+      const creditedXp=gameScore?proportionalXp(maximumAward,gameScore.correct,gameScore.total)
+        :graded?proportionalXp(maximumAward,correctCount,tasks.length):maximumAward
       const now=new Date().toISOString()
       // Only completed, server-verified transcripts contribute to daily answer goals.
       // Legacy queued claims without transcripts remain valid for XP, but count as zero answers.
@@ -618,26 +669,78 @@ export default {
           )`).bind(user.id,operationId,kind,itemId,creditedXp,now,path,user.id,itemId),
         env.DB.prepare(`UPDATE progress SET
           data=json_set(data, ?, json_insert(COALESCE(json_extract(data,?),json('[]')),'$[#]',CAST(? AS INTEGER)),
-            '$.xp',COALESCE(CAST(json_extract(data,'$.xp') AS INTEGER),0)+?),updated_at=?
+            '$.xp',COALESCE(CAST(json_extract(data,'$.xp') AS INTEGER),0)+?,
+            '$.xpEvents',CASE WHEN ?>0 THEN json_insert(COALESCE(json_extract(data,'$.xpEvents'),json('[]')),'$[#]',json_object('date',?,'delta',?)) ELSE COALESCE(json_extract(data,'$.xpEvents'),json('[]')) END),updated_at=?
           WHERE user_id=? AND EXISTS (
             SELECT 1 FROM xp_operations WHERE user_id=? AND operation_id=? AND kind=? AND item_id=? AND created_at=?
           ) AND NOT EXISTS (
             SELECT 1 FROM json_each(COALESCE(json_extract(data,?),json('[]'))) WHERE CAST(value AS TEXT)=?
-          )`).bind(path,path,itemId,creditedXp,now,user.id,user.id,operationId,kind,itemId,now,path,itemId),
+          )`).bind(path,path,itemId,creditedXp,creditedXp,now,creditedXp,now,user.id,user.id,operationId,kind,itemId,now,path,itemId),
         env.DB.prepare(`INSERT OR IGNORE INTO daily_verified_answers (user_id,kind,item_id,answer_count,created_at)
           SELECT ?,?,?,?,? WHERE ? > 0 AND EXISTS (
             SELECT 1 FROM xp_operations WHERE user_id=? AND operation_id=? AND kind=? AND item_id=? AND created_at=?
           )`).bind(user.id,kind,itemId,verifiedAnswerCount,now,verifiedAnswerCount,user.id,operationId,kind,itemId,now),
+        env.DB.prepare(`INSERT OR IGNORE INTO xp_role_outbox (user_id,updated_at)
+          SELECT ?,? WHERE EXISTS (SELECT 1 FROM xp_operations WHERE user_id=? AND operation_id=? AND kind=? AND item_id=? AND created_at=?)`)
+          .bind(user.id,now,user.id,operationId,kind,itemId,now),
         env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(user.id)
       ])
-      const row=results[4].results?.[0] as {data?:string}|undefined
+      const row=results[5].results?.[0] as {data?:string}|undefined
       const progress=row?.data?JSON.parse(row.data):null
-      if(results[2].meta?.changes){await publishProgressSignal(env,user.id);await env.DB.prepare('INSERT OR IGNORE INTO xp_role_outbox(user_id,updated_at) VALUES (?,?)').bind(user.id,now).run()}
-      if(results[2].meta?.changes){
-        try{const role=await syncDiscordLevelRole(env,user.id,Number(progress?.xp)||0);if(role.ok)await env.DB.prepare('DELETE FROM xp_role_outbox WHERE user_id=?').bind(user.id).run();else await env.DB.prepare('UPDATE xp_role_outbox SET attempts=attempts+1,last_error=? WHERE user_id=?').bind(String(role.error||'Discord unavailable').slice(0,300),user.id).run()}catch(e){await env.DB.prepare('UPDATE xp_role_outbox SET attempts=attempts+1,last_error=? WHERE user_id=?').bind(String(e).slice(0,300),user.id).run().catch(()=>null)}
-      }
+      if(results[2].meta?.changes)ctx.waitUntil(syncXpSideEffects(env,user.id))
       clearQueryCache('students');clearQueryCache('leaderboard')
-      return json({ok:true,progress,verifiedScore:gameScore||(graded?{correct:correctCount,total:tasks.length}:null),awardedXp:creditedXp,alreadyCompleted:!(results[2].meta?.changes||0)})
+      return json({ok:true,progress,verifiedScore:gameScore||(graded?{correct:correctCount,total:tasks.length}:null),awardedXp:results[2].meta?.changes?creditedXp:0,alreadyCompleted:!(results[2].meta?.changes||0)})
+    }
+
+    // One authenticated check-in per learner per local day. The browser caches only
+    // confirmed visits and retries on focus/next action after a network failure.
+    // Never rewrite XP, completions, roles or unrelated profile properties.
+    if(url.pathname==='/api/activity/visit'&&request.method==='POST'){
+      const user=await requireUser(request)
+      if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      const body=await request.json<any>().catch(()=>({}))
+      const requestedOffset=Number(body?.timezoneOffsetMinutes)
+      const offset=Number.isInteger(requestedOffset)&&requestedOffset>=-840&&requestedOffset<=840?requestedOffset:-300
+      const now=new Date().toISOString(),today=activityDayAt(now,offset)
+      await ensureDb(env)
+      const row=await env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(user.id).first<{data:string}>()
+      let previous:any={}
+      try{if(row?.data)previous=JSON.parse(row.data)}catch{}
+      const days=new Set(verifiedActivityDays(previous.activityDays))
+      const needsHistory=Number(previous.activityHistoryVersion||0)<2
+      // Historical backfill uses evidence already recorded by the SERVER;
+      // fabricated client-side calendar dates are never accepted.
+      if(needsHistory){
+        const [xpOps,placement]=await Promise.all([
+          env.DB.prepare('SELECT created_at FROM xp_operations WHERE user_id=? LIMIT 5000').bind(user.id).all<{created_at:string}>(),
+          env.DB.prepare('SELECT created_at FROM placement_history WHERE user_id=? LIMIT 500').bind(user.id).all<{created_at:string}>()
+        ])
+        for(const at of [previous.firstSeen,previous.lastSeen,...(xpOps.results||[]).map(x=>x.created_at),...(placement.results||[]).map(x=>x.created_at),...(Array.isArray(previous.xpEvents)?previous.xpEvents.map((x:any)=>x?.date):[]),...(Array.isArray(previous.events)?previous.events.map((x:any)=>x?.date):[])]){
+          if(typeof at==='string'&&Number.isFinite(Date.parse(at))&&Date.parse(at)<=Date.now()+60_000)days.add(activityDayAt(new Date(at).toISOString(),offset))
+        }
+      }
+      const missingToday=!days.has(today)
+      const offsetChanged=Number(previous.activityTimezoneOffset)!==offset
+      days.add(today)
+      const activityDays=[...days].sort().slice(-5000)
+      if(!row){
+        await env.DB.prepare('INSERT OR IGNORE INTO progress (user_id,data,updated_at) VALUES (?,?,?)')
+          .bind(user.id,JSON.stringify({xp:0,completedMissions:[],completedContent:[],firstSeen:now}),now).run()
+      }
+      if(!row||missingToday||needsHistory||offsetChanged){
+        // Set union inside SQL prevents overlapping devices from erasing either day.
+        // json_patch/older cached PUTs do not own activityDays after this fix.
+        await env.DB.prepare(`UPDATE progress SET data=json_set(data,
+          '$.activityDays',json((SELECT json_group_array(value) FROM (
+            SELECT value FROM json_each(COALESCE(json_extract(data,'$.activityDays'),json('[]')))
+            UNION SELECT value FROM json_each(json(?)) ORDER BY value))),
+          '$.activityHistoryVersion',2,'$.activityTimezoneOffset',?,
+          '$.lastSeen',?),updated_at=? WHERE user_id=?`)
+          .bind(JSON.stringify(activityDays),offset,now,now,user.id).run()
+      }
+      // Return authoritative days after the atomic merge (no additional reads
+      // on normal same-day calls; the app does not send them again after success).
+      return json({ok:true,day:today,activityDays,trackedFrom:'2026-10-28'})
     }
 
     if (url.pathname === '/api/progress') {
@@ -648,7 +751,7 @@ export default {
         const row = await env.DB.prepare('SELECT data, updated_at FROM progress WHERE user_id = ?').bind(user.id).first<{data:string;updated_at:string}>()
         const now=new Date().toISOString()
         const base:any = { xp: 0, completedMissions: [], completedContent: [], nickname: '', avatar: '', mistakes: 0, correctAnswers:0, answerCount:0, activityDays:[], sectionStats:{}, leaderboardVisible:true, firstSeen: now, lastSeen: now, discordUsername: user.username, discordGlobalName: user.global_name ?? '' }
-        const previous:any=row?.data?JSON.parse(row.data):{};const progress:any = row?.data ? { ...base, ...previous, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' } : base; const today=now.slice(0,10);const hadToday=Array.isArray(previous.activityDays)&&previous.activityDays.includes(today);progress.activityDays=Array.from(new Set([...(progress.activityDays||[]),today])).slice(-5000)
+        const previous:any=row?.data?JSON.parse(row.data):{};const progress:any = row?.data ? { ...base, ...previous, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' } : base; const today=activityDayAt(now,previous.activityTimezoneOffset);const hadToday=Array.isArray(previous.activityDays)&&previous.activityDays.includes(today);progress.activityDays=Array.from(new Set([...(progress.activityDays||[]),today])).slice(-5000)
         // ZERO-POLLING: opening/refreshing the app never calls Discord just to re-check a role.
         // D1 is written on GET only when persistent data actually changes (first visit, first activity of a new day, or Discord identity change).
         const identityChanged=previous.discordUsername!==user.username||previous.discordGlobalName!==(user.global_name??'');const shouldWrite=!row||!hadToday||identityChanged
@@ -661,12 +764,12 @@ export default {
         const oldRow=await env.DB.prepare('SELECT data FROM progress WHERE user_id = ?').bind(user.id).first<{data:string}>()
         const old:any=oldRow?.data?JSON.parse(oldRow.data):{}
         const now=new Date().toISOString()
-        const safe:any = { xp: Math.max(0, Number(old.xp)||0), completedMissions: Array.isArray(old.completedMissions)?old.completedMissions:[], completedContent: Array.isArray(old.completedContent)?old.completedContent:[], nickname: String(data.nickname||'').slice(0,40), avatar: String(data.avatar||'').slice(0,750000), mistakes: Math.max(0,Number(data.mistakes??old.mistakes)||0), correctAnswers:Math.max(0,Number(data.correctAnswers??old.correctAnswers)||0), answerCount:Math.max(0,Number(data.answerCount??old.answerCount)||0), activityDays:Array.isArray(data.activityDays)?data.activityDays.slice(-5000):Array.isArray(old.activityDays)?old.activityDays.slice(-5000):[], sectionStats:(data.sectionStats&&typeof data.sectionStats==='object')?data.sectionStats:(old.sectionStats||{}), dailyAnswers:Math.max(0,Number(data.dailyAnswers??old.dailyAnswers)||0),dailyMissionCount:Math.max(0,Number(data.dailyMissionCount??old.dailyMissionCount)||0),dailyContentCount:Math.max(0,Number(data.dailyContentCount??old.dailyContentCount)||0),dailyAnswerDate:String(data.dailyAnswerDate ?? old.dailyAnswerDate ?? '').slice(0,10),dailyClaimDate:String(data.dailyClaimDate ?? old.dailyClaimDate ?? '').slice(0,10),leaderboardVisible:data.leaderboardVisible!==false, xpEvents:Array.isArray(old.xpEvents)?old.xpEvents.slice(-120):[], events:Array.isArray(old.events)?old.events.slice(-80):[], firstSeen: old.firstSeen||now, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' }
+        const safe:any = { xp: Math.max(0, Number(old.xp)||0), completedMissions: Array.isArray(old.completedMissions)?old.completedMissions:[], completedContent: Array.isArray(old.completedContent)?old.completedContent:[], nickname: String(data.nickname||'').slice(0,40), avatar: String(data.avatar||'').slice(0,750000), mistakes: Math.max(0,Number(data.mistakes??old.mistakes)||0), correctAnswers:Math.max(0,Number(data.correctAnswers??old.correctAnswers)||0), answerCount:Math.max(0,Number(data.answerCount??old.answerCount)||0), activityDays:verifiedActivityDays(old.activityDays), sectionStats:(data.sectionStats&&typeof data.sectionStats==='object')?data.sectionStats:(old.sectionStats||{}), dailyAnswers:Math.max(0,Number(data.dailyAnswers??old.dailyAnswers)||0),dailyMissionCount:Math.max(0,Number(data.dailyMissionCount??old.dailyMissionCount)||0),dailyContentCount:Math.max(0,Number(data.dailyContentCount??old.dailyContentCount)||0),dailyAnswerDate:String(data.dailyAnswerDate ?? old.dailyAnswerDate ?? '').slice(0,10),dailyClaimDate:String(data.dailyClaimDate ?? old.dailyClaimDate ?? '').slice(0,10),leaderboardVisible:data.leaderboardVisible!==false, xpEvents:Array.isArray(old.xpEvents)?old.xpEvents.slice(-120):[], events:Array.isArray(old.events)?old.events.slice(-80):[], firstSeen: old.firstSeen||now, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' }
         const oldXp=Math.max(0,Number(old.xp)||0);if(safe.xp>oldXp){safe.xpEvents=[...(safe.xpEvents||[]),{date:now,delta:safe.xp-oldXp}].slice(-120)}
         const addEvent=(type:string,text:string)=>{safe.events=[...(safe.events||[]),{date:now,type,text}].slice(-80)}
         const oldLevel=levelForXp(oldXp),newLevel=levelForXp(safe.xp);if(newLevel?.id&&newLevel.id!==oldLevel?.id)addEvent('level',`достиг(ла) уровня ${newLevel.name}`)
         const oldM=new Set<number>(Array.isArray(old.completedMissions)?old.completedMissions:[]),oldC=new Set<number>(Array.isArray(old.completedContent)?old.completedContent:[]);if(safe.completedMissions.some((id:number)=>!oldM.has(id)))addEvent('mission','завершил(а) новую миссию');if(safe.completedContent.some((id:number)=>!oldC.has(id)))addEvent('content','завершил(а) новый материал')
-        const oldStreak=streakForDays(old.activityDays),newStreak=streakForDays(safe.activityDays),cfg=await getSettings(env);for(const milestone of cfg.streak.milestones){if(oldStreak<milestone&&newStreak>=milestone)addEvent('streak',`достиг(ла) серии ${milestone} дней 🔥`)}
+        const oldStreak=streakForDays(old.activityDays,old.activityTimezoneOffset),newStreak=streakForDays(safe.activityDays,old.activityTimezoneOffset),cfg=await getSettings(env);for(const milestone of cfg.streak.milestones){if(oldStreak<milestone&&newStreak>=milestone)addEvent('streak',`достиг(ла) серии ${milestone} дней 🔥`)}
         const desired=levelForXp(safe.xp)?.id||''
         // CLOUD-SAVER role sync: no timer, polling, refresh-time Discord checks, or checks on ordinary saves.
         // Discord is contacted immediately on an XP-level crossing. If a previous Discord sync failed,
@@ -686,7 +789,7 @@ export default {
         }else{safe.syncedRoleId=old.syncedRoleId||'';safe.roleVerifiedAt=old.roleVerifiedAt||''}
         // Merge only non-authoritative profile fields into the current D1 record.
         // Never overwrite server XP or completed items using a stale client snapshot.
-        const {xp:_ignoredXp,completedMissions:_ignoredMissions,completedContent:_ignoredContent,...profilePatch}=safe
+        const {xp:_ignoredXp,completedMissions:_ignoredMissions,completedContent:_ignoredContent,activityDays:_serverOwnedDays,...profilePatch}=safe
         await env.DB.prepare("INSERT OR IGNORE INTO progress (user_id,data,updated_at) VALUES (?,?,?)").bind(user.id,JSON.stringify({xp:0,completedMissions:[],completedContent:[]}),now).run()
         await env.DB.prepare("UPDATE progress SET data=json_patch(data,?),updated_at=? WHERE user_id=?").bind(JSON.stringify(profilePatch),now,user.id).run()
         const latest=await env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(user.id).first<{data:string}>()
@@ -768,7 +871,7 @@ export default {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
       const resource=url.searchParams.get('resource')||'';const since=url.searchParams.get('since')||'';await ensureDb(env)
       if(resource==='missions'){const [changed,deleted]=await Promise.all([env.DB.prepare('SELECT data,updated_at FROM missions WHERE updated_at > ?').bind(since).all<{data:string;updated_at:string}>(),env.DB.prepare('SELECT id,deleted_at FROM deleted_missions WHERE deleted_at > ?').bind(since).all<{id:number;deleted_at:string}>()]);return json({ok:true,resource,changed:(changed.results||[]).map(x=>{try{return resource==='missions'?studentMission(JSON.parse(x.data)):studentContent(JSON.parse(x.data))}catch{return null}}).filter(Boolean),deleted:(deleted.results||[]).map(x=>x.id),revision:(await getRevisions(env)).missions})}
-      if(['games','quizzes','words','challenges','rewards'].includes(resource)){const [changed,deleted]=await Promise.all([env.DB.prepare('SELECT data,updated_at FROM content WHERE section = ? AND updated_at > ?').bind(resource,since).all<{data:string;updated_at:string}>(),env.DB.prepare('SELECT id,deleted_at FROM deleted_content WHERE deleted_at > ?').bind(since).all<{id:number;deleted_at:string}>()]);return json({ok:true,resource,changed:(changed.results||[]).map(x=>{try{return resource==='missions'?studentMission(JSON.parse(x.data)):studentContent(JSON.parse(x.data))}catch{return null}}).filter(Boolean),deleted:(deleted.results||[]).map(x=>x.id),revision:(await getRevisions(env))[resource as keyof Revisions]})}
+      if(['games','quizzes','words','challenges','rewards'].includes(resource)){const [changed,deleted]=await Promise.all([env.DB.prepare('SELECT data,updated_at FROM content WHERE section = ? AND datetime(updated_at) > datetime(?)').bind(resource,since).all<{data:string;updated_at:string}>(),env.DB.prepare('SELECT id,deleted_at FROM deleted_content WHERE deleted_at > ?').bind(since).all<{id:number;deleted_at:string}>()]);return json({ok:true,resource,changed:(changed.results||[]).map(x=>{try{return resource==='missions'?studentMission(JSON.parse(x.data)):studentContent(JSON.parse(x.data))}catch{return null}}).filter(Boolean),deleted:(deleted.results||[]).map(x=>x.id),revision:(await getRevisions(env))[resource as keyof Revisions]})}
       return json({ok:false,error:'Unknown sync resource.'},400)
     }
 

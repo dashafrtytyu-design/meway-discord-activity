@@ -1,7 +1,7 @@
 /** MEWAY local-first, account-scoped XP outbox. IndexedDB is the primary store.
  * A legacy localStorage queue is imported once and retained as a recovery fallback.
  * This module never calls Cloudflare. Server acknowledgement is required to delete. */
-export type XpClaim={operationId:string;kind:string;itemId:string;answers?:string[];completed?:boolean}
+export type XpClaim={operationId:string;kind:string;itemId:string;answers?:string[];completed?:boolean;createdAt?:number}
 const NAME='meway-xp-outbox-v1', STORE='claims'
 function open():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{if(typeof indexedDB==='undefined')return reject(new Error('IndexedDB unavailable'));const r=indexedDB.open(NAME,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE,{keyPath:'operationId'})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 async function transact<T>(mode:IDBTransactionMode, action:(store:IDBObjectStore,done:(v:T)=>void)=>void):Promise<T>{const db=await open();return new Promise((resolve,reject)=>{const tx=db.transaction(STORE,mode);let value:T;tx.oncomplete=()=>{db.close();resolve(value)};tx.onerror=()=>{db.close();reject(tx.error)};action(tx.objectStore(STORE),v=>{value=v})})}

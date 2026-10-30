@@ -1,14 +1,16 @@
 {
   "name": "vite-react-typescript-starter",
   "private": true,
-  "version": "7.31.24",
+  "version": "7.31.26",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "node scripts/generate-build-version.mjs && tsc -b && vite build && npm run verify:production",
     "lint": "oxlint",
     "preview": "vite preview",
-    "verify:production": "node scripts/verify-production.mjs"
+    "verify:production": "node scripts/verify-production.mjs",
+    "test:learning-route": "node --test tests/route-progress.test.mjs tests/activity-metrics.test.mjs",
+    "test:all": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@discord/embedded-app-sdk": "^2.5.0",

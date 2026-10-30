@@ -7,6 +7,8 @@ export type Mission = {
   title: string
   description: string
   category: string
+  track?: string
+  topic?: string
   level: Level
   xp: number
   icon: string

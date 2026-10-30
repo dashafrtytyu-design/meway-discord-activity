@@ -24,8 +24,6 @@ export type MewayAuthResult = {
   progress?: Record<string, unknown> | null
   placementCompleted?: boolean
   placementResult?: Record<string, unknown> | null
-  assistantKnowledge?: Array<Record<string, any>>
-  assistantInbox?: any[]
   uiConfig?: Record<string, any>
   learningCatalog?: {missions:Array<{id:number;level:string}>;content:Array<{id:number;section:string;level:string}>}
   error?: string
@@ -149,8 +147,6 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
       progress?: Record<string, unknown> | null
       placementCompleted?: boolean
       placementResult?: Record<string, unknown> | null
-  assistantKnowledge?: Array<Record<string, any>>
-  assistantInbox?: any[]
   uiConfig?: Record<string, any>
   learningCatalog?: {missions:Array<{id:number;level:string}>;content:Array<{id:number;section:string;level:string}>}
       role?: 'admin' | 'student'
@@ -172,7 +168,6 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
       accessToken: data.accessToken, accessLevels: data.accessLevels || [], revisions: data.revisions || {},
       appVersion: data.appVersion || '', progress: data.progress || null,
       placementCompleted: data.placementCompleted === true, placementResult: data.placementResult || null,
-      assistantKnowledge: data.assistantKnowledge || [], assistantInbox: data.assistantInbox || [],
       uiConfig: data.uiConfig || undefined, learningCatalog: data.learningCatalog || {missions:[],content:[]},
     }
     const recovery = {

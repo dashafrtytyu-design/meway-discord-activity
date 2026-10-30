@@ -8,3 +8,5 @@ meway-backup-*/
 .dev.vars
 .dev.vars.*
 .wrangler/
+# Remote D1 backups can contain private student progress.
+meway-d1-backup-*.sql

@@ -20,7 +20,7 @@ test('cross-device changed revision fetches authoritative D1 profile',()=>{
  assert.match(discord,/auth\.progress=d\.progress/);
 });
 test('XP claim and admin restore publish invalidation',()=>{
- assert.match(worker,/if\(results\[2\]\.meta\?\.changes\)\{await publishProgressSignal\(env,user\.id\)/);
+ assert.match(worker,/if\(results\[2\]\.meta\?\.changes\)ctx\.waitUntil\(syncXpSideEffects\(env,user\.id\)\)/);
  assert.match(worker,/await publishProgressSignal\(env,uid\)/);
 });
 test('XP claim is idempotent and client cannot overwrite confirmed XP',()=>{

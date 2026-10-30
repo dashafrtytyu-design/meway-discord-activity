@@ -26,10 +26,11 @@
 },
 
 
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "meway-content"
-    }
-  ]
+"d1_databases": [
+  {
+    "binding": "DB",
+    "database_name": "meway-content",
+    "database_id": "7e8ce092-667f-4cb0-a9b2-a94cea799ef8"
+  }
+]
 }

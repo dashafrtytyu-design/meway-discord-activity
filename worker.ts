@@ -23,47 +23,8 @@ const LEVEL_ROLES = [
   { xp: 10000, id: '1555241516363030568', name: 'MASTER ZONE' },
 ] as const
 
-const ASSISTANT_ALERT_CHANNEL_ID = '1557072699350589522'
 const UI_AUDIT_CHANNEL_ID = '1556276624738222202'
 const DEFAULT_UI_CONFIG={version:1,palette:{darkText:'#F4F8FF',darkMuted:'#BFD0E2',lightText:'#082D52',lightMuted:'#55738F',accent:'#168DFF',radius:22},labels:{missions:'Миссии',quizzes:'Квизы',words:'Слова',challenges:'Челленджи'},updatedAt:''}
-
-async function notifyAssistantUnknown(env:Env,user:DiscordUser,question:string){
-  if(!env.DISCORD_BOT_TOKEN) return {ok:false,configured:false}
-  const safeQuestion=question.trim().slice(0,1200)
-  const userName=String(user.global_name||user.username||'Ученик').slice(0,80)
-  const content=[
-    `<@${env.ADMIN_DISCORD_ID}> ✈️ **MEWAY Assistant — нужен ответ менеджера**`,
-    `Ассистент не нашёл уверенный ответ в локальной базе.`,
-    `**Ученик:** ${userName} (Discord ID: ${user.id})`,
-    `**Вопрос:** ${safeQuestion}`,
-    `Зайдите в **MEWAY → Assistant → Assistant Studio**, откройте чат ученика и ответьте.`
-  ].join('\n')
-  try{
-    const r=await fetch(`https://discord.com/api/v10/channels/${ASSISTANT_ALERT_CHANNEL_ID}/messages`,{
-      method:'POST',
-      headers:{Authorization:`Bot ${env.DISCORD_BOT_TOKEN}`,'Content-Type':'application/json'},
-      body:JSON.stringify({content,allowed_mentions:{users:[env.ADMIN_DISCORD_ID]}})
-    })
-    if(!r.ok){console.error('Assistant Discord alert failed',r.status,await r.text());return {ok:false,configured:true,status:r.status}}
-    return {ok:true,configured:true}
-  }catch(error){console.error('Assistant Discord alert error',error);return {ok:false,configured:true}}
-}
-
-async function notifyAssistantSupport(env:Env,user:DiscordUser,message:string){
-  if(!env.DISCORD_BOT_TOKEN) return {ok:false,configured:false}
-  const safeMessage=message.trim().slice(0,1800)
-  const userName=String(user.global_name||user.username||'Ученик').slice(0,80)
-  const content=[
-    `<@${env.ADMIN_DISCORD_ID}> 🛟 **MEWAY Support — новое сообщение**`,
-    `**Ученик:** ${userName} (Discord ID: ${user.id})`,
-    `**Сообщение:** ${safeMessage}`,
-    `Ответьте в **MEWAY → Assistant → Assistant Studio**.`
-  ].join('\n')
-  try{
-    const r=await fetch(`https://discord.com/api/v10/channels/${ASSISTANT_ALERT_CHANNEL_ID}/messages`,{method:'POST',headers:{Authorization:`Bot ${env.DISCORD_BOT_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify({content,allowed_mentions:{users:[env.ADMIN_DISCORD_ID]}})})
-    return {ok:r.ok,configured:true,status:r.status}
-  }catch{return {ok:false,configured:true}}
-}
 
 const COURSE_ACCESS_ROLES = {
   A1: '1556913943338025012', A2: '1556914417462022245', B1: '1556914567693733938',
@@ -152,8 +113,8 @@ function stripPrivate(value:any):any{
   if(value&&typeof value==='object'){const out:any={};for(const [k,v] of Object.entries(value))if(!PRIVATE_FIELD.test(k))out[k]=stripPrivate(v);return out}
   return value
 }
-function studentMission(m:Mission){return stripPrivate({id:m.id,title:m.title,description:m.description,category:m.category,level:m.level,xp:m.xp,icon:m.icon,duration:m.duration,status:m.status,tasks:m.tasks})}
-function studentContent(x:ContentItem){return stripPrivate({id:x.id,section:x.section,title:x.title,description:x.description,status:x.status,level:x.level,icon:x.icon,xp:x.xp,category:x.category,payload:x.payload})}
+function studentMission(m:Mission){return stripPrivate({id:m.id,title:m.title,description:m.description,category:m.category,track:(m as any).track,topic:(m as any).topic,level:m.level,xp:m.xp,icon:m.icon,duration:m.duration,status:m.status,tasks:m.tasks})}
+function studentContent(x:ContentItem){return stripPrivate({id:x.id,section:x.section,title:x.title,description:x.description,status:x.status,level:x.level,icon:x.icon,xp:x.xp,category:x.category,track:(x as any).track,topic:(x as any).topic,duration:(x as any).duration,payload:x.payload})}
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=UTF-8', 'Cache-Control': 'no-store' } })
@@ -197,10 +158,6 @@ async function ensureDb(env: Env) {
     CREATE TABLE IF NOT EXISTS placement_results (user_id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS placement_history (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, data TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS placement_config (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, updated_at TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS assistant_threads (user_id TEXT PRIMARY KEY, user_name TEXT NOT NULL, last_question TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open', updated_at TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS assistant_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, sender TEXT NOT NULL, kind TEXT NOT NULL, text TEXT NOT NULL, created_at TEXT NOT NULL);
-    CREATE INDEX IF NOT EXISTS idx_assistant_messages_user ON assistant_messages(user_id, id);
-    CREATE TABLE IF NOT EXISTS assistant_knowledge (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS ui_config (id INTEGER PRIMARY KEY CHECK (id = 1), data TEXT NOT NULL, updated_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS admin_audit (id INTEGER PRIMARY KEY AUTOINCREMENT, actor_id TEXT NOT NULL, user_id TEXT NOT NULL, action TEXT NOT NULL, detail TEXT NOT NULL, created_at TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS server_incidents (id INTEGER PRIMARY KEY AUTOINCREMENT, category TEXT NOT NULL, user_id TEXT, message TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -238,6 +195,14 @@ async function publishContentSignal(revisions:Revisions){
     const cache=await caches.open('meway-content-signal-v1')
     await cache.put(new Request(CONTENT_SIGNAL_CACHE_KEY),new Response(JSON.stringify({ok:true,appVersion:APP_CONTENT_VERSION,revisions}),{headers:{'Content-Type':'application/json; charset=UTF-8','Cache-Control':'public, max-age=31536000, immutable'}}))
   }catch{}
+}
+/** Refresh content caches only when a catalog revision actually changes. */
+function invalidatePublishedCatalogIfChanged(rev:Revisions){
+  const stamp=[rev.missions,rev.games,rev.quizzes,rev.words,rev.challenges,rev.rewards].join('|')
+  if((globalThis as any).__mewayCatalogStamp===stamp)return
+  clearQueryCache('merged-')
+  clearPublic()
+  ;(globalThis as any).__mewayCatalogStamp=stamp
 }
 async function bumpRevision(env:Env,key:keyof Revisions,now=new Date().toISOString()){
   const rev=await getRevisions(env);const next={...rev,[key]:now};await env.DB.prepare('INSERT OR REPLACE INTO meway_meta (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify(next),now).run();clearQueryCache('revisions');await publishContentSignal(next);return next
@@ -321,6 +286,19 @@ async function listContent(env: Env, section?: string, all = false) {
   return result
 }
 
+/** Compact authoritative game IDs for progress; never reads game payloads or student rows. */
+async function gameProgressCatalog(env:Env){
+  await ensureDb(env)
+  const [rows,deleted]=await Promise.all([
+    env.DB.prepare("SELECT id,json_extract(data,'$.level') AS level,json_extract(data,'$.status') AS status FROM content WHERE section='games' AND json_valid(data)").all<{id:number;level:string;status:string|null}>(),
+    env.DB.prepare('SELECT id FROM deleted_content').all<{id:number}>()
+  ])
+  const removed=new Set((deleted.results||[]).map(x=>Number(x.id)))
+  return (rows.results||[]).filter(x=>!removed.has(Number(x.id))&&COURSE_LEVELS.includes(x.level as CourseLevel)&&(x.status==='published'||x.status==null)).map(x=>({id:Number(x.id),level:x.level,section:'games'}))
+}
+function compactLearningCatalog(missions:Mission[],quizzes:ContentItem[],words:ContentItem[],challenges:ContentItem[],games:Array<{id:number;level:string;section:string}>){
+ return {missions:missions.map(x=>({id:x.id,level:x.level})),content:[...quizzes,...words,...challenges,...games].map(x=>({id:x.id,level:x.level,section:x.section}))}
+}
 async function getDiscordUser(token: string): Promise<DiscordUser | null> {
   const hit=identityCache.get(token)
   if(hit&&hit.expires>Date.now()) return hit.user
@@ -458,11 +436,11 @@ export default {
       let savedProgress:any=null, savedPlacement:any=null
       try{savedProgress=progressRow?.data?JSON.parse(progressRow.data):null}catch{}
       try{savedPlacement=placementRow?.data?JSON.parse(placementRow.data):null}catch{}
-      // Assistant history/knowledge is loaded only when the Assistant page is opened.
       const uiRow=await env.DB.prepare('SELECT data FROM ui_config WHERE id=1').first<{data:string}>();let uiConfig:any=DEFAULT_UI_CONFIG;try{if(uiRow?.data)uiConfig={...DEFAULT_UI_CONFIG,...JSON.parse(uiRow.data)}}catch{}
+      invalidatePublishedCatalogIfChanged(revisions)
       // Keep the Home route catalog intact; cachedPublic/list* avoid repeated full D1 scans on warm isolates.
-      const [routeMissions,routeQuizzes,routeWords,routeChallenges]=await Promise.all([listMissions(env,false),listContent(env,'quizzes',false),listContent(env,'words',false),listContent(env,'challenges',false)])
-      const learningCatalog={missions:routeMissions.map(x=>({id:x.id,level:x.level})),content:[...routeQuizzes,...routeWords,...routeChallenges].map(x=>({id:x.id,section:x.section,level:x.level}))}
+      const [routeMissions,routeQuizzes,routeWords,routeChallenges,routeGames]=await Promise.all([listMissions(env,false),listContent(env,'quizzes',false),listContent(env,'words',false),listContent(env,'challenges',false),gameProgressCatalog(env)])
+      const learningCatalog=compactLearningCatalog(routeMissions,routeQuizzes,routeWords,routeChallenges,routeGames)
       // SAFE CACHE RECOVERY: this same unavoidable auth response is the single
       // recovery bootstrap after browser/site storage is cleared. No extra D1
       // recovery endpoint/request is required.
@@ -473,79 +451,6 @@ export default {
 
 
 
-
-    if (url.pathname === '/api/assistant/bootstrap' && request.method === 'GET') {
-      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
-      await ensureDb(env)
-      const admin=user.id===env.ADMIN_DISCORD_ID
-      const knowledgeRows=await env.DB.prepare('SELECT id,data,updated_at FROM assistant_knowledge ORDER BY id DESC LIMIT 500').all<{id:number;data:string;updated_at:string}>()
-      const assistantKnowledge=(knowledgeRows.results||[]).flatMap(r=>{try{return [{...JSON.parse(r.data),cloudId:r.id,updatedAt:r.updated_at}]}catch{return []}})
-      let assistantInbox:any[]=[]
-      if(admin){
-        const threads=await env.DB.prepare('SELECT user_id,user_name,last_question,status,updated_at FROM assistant_threads ORDER BY updated_at DESC LIMIT 200').all<any>()
-        const messages=await env.DB.prepare('SELECT id,user_id,sender,kind,text,created_at FROM assistant_messages ORDER BY id DESC LIMIT 1200').all<any>()
-        const byUser=new Map<string,any[]>();for(const m of messages.results||[]){const a=byUser.get(m.user_id)||[];a.push(m);byUser.set(m.user_id,a)}
-        assistantInbox=(threads.results||[]).map(t=>({...t,messages:(byUser.get(t.user_id)||[]).reverse()}))
-      }else{
-        const replies=await env.DB.prepare("SELECT id,sender,kind,text,created_at FROM assistant_messages WHERE user_id=? AND sender='admin' ORDER BY id ASC LIMIT 200").bind(user.id).all<any>()
-        assistantInbox=replies.results||[]
-      }
-      return json({ok:true,assistantKnowledge,assistantInbox})
-    }
-
-    // MEWAY Assistant: automatic known answers stay local. Only an unknown student
-    // question is escalated (one HTTP request), and each manual admin reply is one
-    // HTTP request. There is deliberately no polling endpoint used by the UI.
-    if (url.pathname === '/api/assistant/escalate' && request.method === 'POST') {
-      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
-      await ensureDb(env);const body=await request.json<any>().catch(()=>null);const question=String(body?.question||'').trim().slice(0,1200)
-      if(!question)return json({ok:false,error:'Question required.'},400)
-      const now=new Date().toISOString(),userName=String(user.global_name||user.username||'Ученик').slice(0,80)
-      // Cross-user duplicate guard: identical unknown questions within 24h are still recorded,
-      // but Discord receives only the first alert. This avoids notification storms.
-      const duplicate=await env.DB.prepare("SELECT COUNT(*) AS n FROM assistant_messages WHERE sender='student' AND kind='unknown' AND lower(trim(text))=lower(trim(?)) AND datetime(created_at)>=datetime('now','-1 day')").bind(question).first<{n:number}>()
-      await env.DB.batch([
-        env.DB.prepare("INSERT INTO assistant_messages (user_id,sender,kind,text,created_at) VALUES (?,'student','unknown',?,?)").bind(user.id,question,now),
-        env.DB.prepare("INSERT INTO assistant_threads (user_id,user_name,last_question,status,updated_at) VALUES (?,?,?,'open',?) ON CONFLICT(user_id) DO UPDATE SET user_name=excluded.user_name,last_question=excluded.last_question,status='open',updated_at=excluded.updated_at").bind(user.id,userName,question,now)
-      ])
-      // Same escalation request also sends one Discord notification. This does NOT create
-      // another Cloudflare invocation; it is one outbound Discord REST call inside this request.
-      // The D1 queue remains the source of truth even if Discord is temporarily unavailable.
-      const discordAlert=Number(duplicate?.n||0)>0?{ok:true,deduplicated:true}:await notifyAssistantUnknown(env,user,question)
-      return json({ok:true,queued:true,discordAlert:discordAlert.ok,deduplicated:Number(duplicate?.n||0)>0})
-    }
-
-    if (url.pathname === '/api/assistant/support' && request.method === 'POST') {
-      const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
-      await ensureDb(env);const body=await request.json<any>().catch(()=>null);const message=String(body?.message||'').trim().slice(0,1800)
-      if(!message)return json({ok:false,error:'Message required.'},400)
-      const now=new Date().toISOString(),userName=String(user.global_name||user.username||'Ученик').slice(0,80)
-      await env.DB.batch([
-        env.DB.prepare("INSERT INTO assistant_messages (user_id,sender,kind,text,created_at) VALUES (?,'student','support',?,?)").bind(user.id,message,now),
-        env.DB.prepare("INSERT INTO assistant_threads (user_id,user_name,last_question,status,updated_at) VALUES (?,?,?,'open',?) ON CONFLICT(user_id) DO UPDATE SET user_name=excluded.user_name,last_question=excluded.last_question,status='open',updated_at=excluded.updated_at").bind(user.id,userName,message,now)
-      ])
-      const discordAlert=await notifyAssistantSupport(env,user,message)
-      return json({ok:true,message:{user_id:user.id,sender:'student',kind:'support',text:message,created_at:now},discordAlert:discordAlert.ok})
-    }
-
-    if (url.pathname === '/api/admin/assistant/reply' && request.method === 'POST') {
-      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403)
-      await ensureDb(env);const body=await request.json<any>().catch(()=>null),userId=String(body?.userId||'').trim(),text=String(body?.text||'').trim().slice(0,2400)
-      if(!/^\d+$/.test(userId)||!text)return json({ok:false,error:'Invalid reply.'},400)
-      const now=new Date().toISOString();await env.DB.batch([
-        env.DB.prepare("INSERT INTO assistant_messages (user_id,sender,kind,text,created_at) VALUES (?,'admin','manual',?,?)").bind(userId,text,now),
-        env.DB.prepare("UPDATE assistant_threads SET status='answered',updated_at=? WHERE user_id=?").bind(now,userId)
-      ])
-      return json({ok:true,message:{user_id:userId,sender:'admin',kind:'manual',text,created_at:now}})
-    }
-
-    if (url.pathname === '/api/admin/assistant/knowledge' && request.method === 'POST') {
-      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403)
-      await ensureDb(env);const body=await request.json<any>().catch(()=>null);const title=String(body?.title||'').trim().slice(0,180),answer=String(body?.answer||'').trim().slice(0,3000),keywords=Array.isArray(body?.keywords)?body.keywords.map((x:any)=>String(x).trim().slice(0,120)).filter(Boolean).slice(0,80):[]
-      if(!title||!answer||!keywords.length)return json({ok:false,error:'Title, answer and keywords required.'},400)
-      const now=new Date().toISOString(),data={id:`cloud-${Date.now()}`,title,answer,keywords,followups:Array.isArray(body?.followups)?body.followups.slice(0,8):[]};const r=await env.DB.prepare('INSERT INTO assistant_knowledge (data,updated_at) VALUES (?,?)').bind(JSON.stringify(data),now).run()
-      return json({ok:true,entry:{...data,cloudId:r.meta?.last_row_id,updatedAt:now}})
-    }
 
     // Atomic, idempotent XP claims. The client never supplies the XP award.
     if (url.pathname === '/api/xp/claim' && request.method === 'POST') {
@@ -887,6 +792,18 @@ export default {
       return json({ok:true,items:safeItems})
     }
 
+
+    if (url.pathname === '/api/learning-catalog' && request.method === 'GET') {
+      const user=await requireUser(request)
+      if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      const rev=await getRevisions(env)
+      invalidatePublishedCatalogIfChanged(rev)
+      const [missions,quizzes,words,challenges,games]=await Promise.all([
+        listMissions(env,false),listContent(env,'quizzes',false),listContent(env,'words',false),
+        listContent(env,'challenges',false),gameProgressCatalog(env)
+      ])
+      return json({ok:true,revisions:rev,catalog:compactLearningCatalog(missions,quizzes,words,challenges,games)})
+    }
 
     if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)

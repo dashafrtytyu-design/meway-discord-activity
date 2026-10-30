@@ -1,3 +1,7 @@
+// Discord mobile's native Activity header overlays the web viewport.
+if (typeof window !== 'undefined' && ['frame_id','instance_id','channel_id'].some(k=>new URLSearchParams(window.location.search).has(k))) {
+  document.documentElement.classList.add('mewayDiscordEmbedded')
+}
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'

@@ -5,7 +5,7 @@ const worker=readFileSync(new URL('../worker.ts',import.meta.url),'utf8');
 const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
 test('quiz/challenge/mission XP is calculated by server from correct answer transcript',()=>{
  assert.match(worker,/const correctCount=graded\?/);
- assert.match(worker,/const award=graded\?Math\.round\(maximumAward\*correctCount\/tasks\.length\):maximumAward/);
+ assert.match(worker,/graded\?proportionalXp\(maximumAward,correctCount,tasks\.length\):maximumAward/);
  assert.match(worker,/submitted\.length!==tasks\.length/);
 });
 test('a 20-question activity worth 40 XP awards 10 for five correct answers',()=>{

@@ -4311,3 +4311,18 @@ html.mewayDiscordEmbedded .topActions .avatar{display:grid;place-items:center;fl
 .darkTheme .studentSearchBar button[type=submit]{background:#196ec4;color:#fff}
 .blueTheme .studentSearchBar,.blueTheme .studentSearchBar input{background:#eaf7ff;border-color:#acd5ef;color:#103654}
 @media(max-width:600px){.studentSearchBar form{display:grid;grid-template-columns:1fr 1fr}.studentSearchBar input{grid-column:1/-1}.studentSearchBar button{width:100%}.studentsHead{align-items:flex-start;gap:10px;flex-wrap:wrap}}
+
+/* DAILY MISSION: server-confirmed reward stays visibly claimed until next local day. */
+.dailyReward .dailyClaimDisabled,
+.darkTheme .dailyReward .dailyClaimDisabled,
+.blueTheme .dailyReward .dailyClaimDisabled{
+ background:#d9e0e9!important; color:#526276!important; border:1px solid #c8d2dc!important;
+ box-shadow:none!important; opacity:1!important; cursor:not-allowed!important; transform:none!important;
+ text-shadow:none!important; font-weight:800; border-radius:12px; padding:12px 18px;
+}
+
+@media(max-width:720px){
+ .dailyMission{flex-wrap:wrap;}
+ .dailyMission .dailyReward{display:flex!important;flex-direction:column;align-items:flex-end;gap:6px;max-width:100%;}
+ .dailyMission .dailyReward button{white-space:normal;max-width:100%;}
+}

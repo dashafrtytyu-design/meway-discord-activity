@@ -85,12 +85,39 @@ type Mission = {
 
 
 type MewaySettings = {
-  daily:{enabled:boolean;title:string;description:string;metric:'answers'|'missions'|'materials';target:number;rewardXp:number}
+  daily:{enabled:boolean;title:string;description:string;metric:'answers'|'missions'|'materials'|'activities';target:number;rewardXp:number}
   coach:{enabled:boolean;minAnswers:number;weakBelow:number;maxTopics:number;fallbackTitle:string;fallbackText:string;weakTitle:string;weakTemplate:string}
   streak:{milestones:number[]}
 }
-const DEFAULT_SETTINGS:MewaySettings={daily:{enabled:true,title:'5 ответов за день',description:'Ответь на задания в миссиях, играх или квизах.',metric:'answers',target:5,rewardXp:15},coach:{enabled:true,minAnswers:4,weakBelow:75,maxTopics:3,fallbackTitle:'Отличный маршрут!',fallbackText:'Продолжай проходить задания — после нескольких ответов здесь появятся персональные рекомендации.',weakTitle:'Что повторить следующим рейсом',weakTemplate:'Сфокусируйся на: {topics}'},streak:{milestones:[3,7,14,30]}}
-async function getSettings(env:Env){await ensureDb(env);const hit=cachedPublic('settings') as MewaySettings|null;if(hit)return hit;const row=await env.DB.prepare('SELECT data FROM settings WHERE id = 1').first<{data:string}>();let value=DEFAULT_SETTINGS;try{if(row?.data)value={...DEFAULT_SETTINGS,...JSON.parse(row.data),daily:{...DEFAULT_SETTINGS.daily,...JSON.parse(row.data).daily},coach:{...DEFAULT_SETTINGS.coach,...JSON.parse(row.data).coach},streak:{...DEFAULT_SETTINGS.streak,...JSON.parse(row.data).streak}}}catch{}setPublic('settings',value);return value}
+const DEFAULT_SETTINGS:MewaySettings={daily:{enabled:true,title:'5 завершённых заданий',description:'Заверши 5 разных миссий, игр, квизов, челленджей или словарных коллекций.',metric:'activities',target:5,rewardXp:15},coach:{enabled:true,minAnswers:4,weakBelow:75,maxTopics:3,fallbackTitle:'Отличный маршрут!',fallbackText:'Продолжай проходить задания — после нескольких ответов здесь появятся персональные рекомендации.',weakTitle:'Что повторить следующим рейсом',weakTemplate:'Сфокусируйся на: {topics}'},streak:{milestones:[3,7,14,30]}}
+// The daily reward always requires five separate SERVER-VERIFIED completions,
+// even if the old admin settings in D1 still contain metric='answers'.
+const DAILY_GOAL_TARGET=5
+const DAILY_GOAL_TITLE='5 завершённых заданий'
+const DAILY_GOAL_DESCRIPTION='Заверши 5 разных миссий, игр, квизов, челленджей или словарных коллекций.'
+function normaliseDailySettings(value:MewaySettings):MewaySettings{
+ return {...value,daily:{...value.daily,title:DAILY_GOAL_TITLE,description:DAILY_GOAL_DESCRIPTION,metric:'activities',target:DAILY_GOAL_TARGET}}
+}
+async function getSettings(env:Env){await ensureDb(env);const hit=cachedPublic('settings') as MewaySettings|null;if(hit)return normaliseDailySettings(hit);const row=await env.DB.prepare('SELECT data FROM settings WHERE id = 1').first<{data:string}>();let value=DEFAULT_SETTINGS;try{if(row?.data)value={...DEFAULT_SETTINGS,...JSON.parse(row.data),daily:{...DEFAULT_SETTINGS.daily,...JSON.parse(row.data).daily},coach:{...DEFAULT_SETTINGS.coach,...JSON.parse(row.data).coach},streak:{...DEFAULT_SETTINGS.streak,...JSON.parse(row.data).streak}}}catch{}const normalised=normaliseDailySettings(value);setPublic('settings',normalised);return normalised}
+
+function dailyOffsetMinutes(value:unknown):number{
+ const n=Number(value)
+ return Number.isInteger(n)&&n>=-840&&n<=840?n:-300
+}
+function dailySqlModifier(offset:number):string{
+ const sign=offset<=0?'+':'-',minutes=Math.abs(offset)
+ return `${sign}${String(Math.floor(minutes/60)).padStart(2,'0')}:${String(minutes%60).padStart(2,'0')}`
+}
+// Uses the already-confirmed XP ledger, never a browser-reported answer count.
+// One completed activity == one unique server-confirmed mission/content item.
+async function verifiedDailyCompletions(env:Env,userId:string,day:string,offset:number):Promise<number>{
+ const row=await env.DB.prepare("SELECT COUNT(*) AS n FROM xp_operations WHERE user_id=? AND kind IN ('mission','content') AND date(created_at,?)=?")
+  .bind(userId,dailySqlModifier(offset),day).first<{n:number}>()
+ return Math.max(0,Number(row?.n)||0)
+}
+function dailyStatus(day:string,count:number,progress:any){
+ return {day,completed:count,claimed:progress?.dailyClaimDate===day}
+}
 
 type ContentItem = { id: number; section: 'games'|'quizzes'|'words'|'challenges'|'rewards'; title: string; description: string; status: 'published'|'draft'|'archived'; level: string; icon: string; xp: number; category: string; payload: any }
 
@@ -436,6 +463,10 @@ export default {
       let savedProgress:any=null, savedPlacement:any=null
       try{savedProgress=progressRow?.data?JSON.parse(progressRow.data):null}catch{}
       try{savedPlacement=placementRow?.data?JSON.parse(placementRow.data):null}catch{}
+      const dailyOffset=dailyOffsetMinutes(savedProgress?.activityTimezoneOffset)
+      const authDay=activityDayAt(new Date().toISOString(),dailyOffset)
+      const authDailyCount=await verifiedDailyCompletions(env,user.id,authDay,dailyOffset)
+      savedProgress={...(savedProgress||{}),dailyStatus:dailyStatus(authDay,authDailyCount,savedProgress)}
       const uiRow=await env.DB.prepare('SELECT data FROM ui_config WHERE id=1').first<{data:string}>();let uiConfig:any=DEFAULT_UI_CONFIG;try{if(uiRow?.data)uiConfig={...DEFAULT_UI_CONFIG,...JSON.parse(uiRow.data)}}catch{}
       invalidatePublishedCatalogIfChanged(revisions)
       // Keep the Home route catalog intact; cachedPublic/list* avoid repeated full D1 scans on warm isolates.
@@ -451,6 +482,20 @@ export default {
 
 
 
+
+    // Lazy daily-status sync: only on the Home screen when cached auth has no
+    // status for the current local date. Never fetched on every navigation.
+    if(url.pathname==='/api/daily/status'&&request.method==='GET'){
+      const user=await requireUser(request)
+      if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      await ensureDb(env)
+      const row=await env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(user.id).first<{data:string}>()
+      let progress:any={};try{progress=row?.data?JSON.parse(row.data):{}}catch{}
+      const offset=dailyOffsetMinutes(progress.activityTimezoneOffset??url.searchParams.get('timezoneOffsetMinutes'))
+      const today=activityDayAt(new Date().toISOString(),offset)
+      const completed=await verifiedDailyCompletions(env,user.id,today,offset)
+      return json({ok:true,status:dailyStatus(today,completed,progress)})
+    }
 
     // Atomic, idempotent XP claims. The client never supplies the XP award.
     if (url.pathname === '/api/xp/claim' && request.method === 'POST') {
@@ -468,19 +513,11 @@ export default {
         try{const d=activityRow?.data?JSON.parse(activityRow.data):{};const stored=Number(d.activityTimezoneOffset);const requested=Number(body?.timezoneOffsetMinutes);const n=Number.isInteger(stored)&&stored>=-840&&stored<=840?stored:requested;if(Number.isInteger(n)&&n>=-840&&n<=840)activityOffset=n}catch{}
         const today=activityDayAt(now,activityOffset)
         if(itemId!==today)return json({ok:false,error:'Daily reward must use current local date.'},422)
-        const tzSign=activityOffset<=0?'+':'-'
-        const tzAbsolute=Math.abs(activityOffset)
-        const tzModifier=`${tzSign}${String(Math.floor(tzAbsolute/60)).padStart(2,'0')}:${String(tzAbsolute%60).padStart(2,'0')}`
         const settings=await getSettings(env)
         if(!settings.daily.enabled)return json({ok:false,error:'Daily reward is disabled.'},403)
-        // Only server-confirmed completed activities count; client-side answer counters are untrusted.
-        const metric=settings.daily.metric
-        const kinds=metric==='missions'?['mission']:metric==='materials'?['content']:['mission','content']
-        const placeholders=kinds.map(()=>'?').join(',')
-        const countRow=metric==='answers'
-          ?await env.DB.prepare('SELECT COALESCE(SUM(answer_count),0) AS n FROM daily_verified_answers WHERE user_id=? AND date(created_at,?)=?').bind(user.id,tzModifier,today).first<{n:number}>()
-          :await env.DB.prepare(`SELECT COUNT(*) AS n FROM xp_operations WHERE user_id=? AND kind IN (${placeholders}) AND date(created_at,?)=?`).bind(user.id,...kinds,tzModifier,today).first<{n:number}>()
-        if(Number(countRow?.n||0)<Math.max(1,Number(settings.daily.target)||1))return json({ok:false,error:'Daily goal is not yet confirmed by the server.'},422)
+        // Count 5 different, successfully saved completions, not 5 answers.
+        const confirmedCount=await verifiedDailyCompletions(env,user.id,today,activityOffset)
+        if(confirmedCount<DAILY_GOAL_TARGET)return json({ok:false,error:'Daily goal is not yet confirmed by the server.'},422)
         const award=Math.max(0,Math.min(1000,Number(settings.daily.rewardXp)||0))
         const results=await env.DB.batch([
           env.DB.prepare("INSERT OR IGNORE INTO progress (user_id,data,updated_at) VALUES (?,json_object('xp',0),?)").bind(user.id,now),
@@ -490,6 +527,7 @@ export default {
           env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(user.id)
         ])
         const progress=JSON.parse(String((results[4].results?.[0] as any)?.data||'{}'))
+        progress.dailyStatus=dailyStatus(today,confirmedCount,progress)
         if(results[2].meta?.changes)ctx.waitUntil(syncXpSideEffects(env,user.id))
         return json({ok:true,progress,awardedXp:results[2].meta?.changes?award:0,alreadyCompleted:!(results[2].meta?.changes||0)})
       }
@@ -592,6 +630,11 @@ export default {
       ])
       const row=results[5].results?.[0] as {data?:string}|undefined
       const progress=row?.data?JSON.parse(row.data):null
+      if(progress){
+        const day=activityDayAt(now,dailyOffsetMinutes(progress.activityTimezoneOffset??body?.timezoneOffsetMinutes))
+        const count=await verifiedDailyCompletions(env,user.id,day,dailyOffsetMinutes(progress.activityTimezoneOffset??body?.timezoneOffsetMinutes))
+        progress.dailyStatus=dailyStatus(day,count,progress)
+      }
       if(results[2].meta?.changes)ctx.waitUntil(syncXpSideEffects(env,user.id))
       clearQueryCache('students');clearQueryCache('leaderboard')
       return json({ok:true,progress,verifiedScore:gameScore||(graded?{correct:correctCount,total:tasks.length}:null),awardedXp:results[2].meta?.changes?creditedXp:0,alreadyCompleted:!(results[2].meta?.changes||0)})
@@ -669,7 +712,7 @@ export default {
         const oldRow=await env.DB.prepare('SELECT data FROM progress WHERE user_id = ?').bind(user.id).first<{data:string}>()
         const old:any=oldRow?.data?JSON.parse(oldRow.data):{}
         const now=new Date().toISOString()
-        const safe:any = { xp: Math.max(0, Number(old.xp)||0), completedMissions: Array.isArray(old.completedMissions)?old.completedMissions:[], completedContent: Array.isArray(old.completedContent)?old.completedContent:[], nickname: String(data.nickname||'').slice(0,40), avatar: String(data.avatar||'').slice(0,750000), mistakes: Math.max(0,Number(data.mistakes??old.mistakes)||0), correctAnswers:Math.max(0,Number(data.correctAnswers??old.correctAnswers)||0), answerCount:Math.max(0,Number(data.answerCount??old.answerCount)||0), activityDays:verifiedActivityDays(old.activityDays), sectionStats:(data.sectionStats&&typeof data.sectionStats==='object')?data.sectionStats:(old.sectionStats||{}), dailyAnswers:Math.max(0,Number(data.dailyAnswers??old.dailyAnswers)||0),dailyMissionCount:Math.max(0,Number(data.dailyMissionCount??old.dailyMissionCount)||0),dailyContentCount:Math.max(0,Number(data.dailyContentCount??old.dailyContentCount)||0),dailyAnswerDate:String(data.dailyAnswerDate ?? old.dailyAnswerDate ?? '').slice(0,10),dailyClaimDate:String(data.dailyClaimDate ?? old.dailyClaimDate ?? '').slice(0,10),leaderboardVisible:data.leaderboardVisible!==false, xpEvents:Array.isArray(old.xpEvents)?old.xpEvents.slice(-120):[], events:Array.isArray(old.events)?old.events.slice(-80):[], firstSeen: old.firstSeen||now, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' }
+        const safe:any = { xp: Math.max(0, Number(old.xp)||0), completedMissions: Array.isArray(old.completedMissions)?old.completedMissions:[], completedContent: Array.isArray(old.completedContent)?old.completedContent:[], nickname: String(data.nickname||'').slice(0,40), avatar: String(data.avatar||'').slice(0,750000), mistakes: Math.max(0,Number(data.mistakes??old.mistakes)||0), correctAnswers:Math.max(0,Number(data.correctAnswers??old.correctAnswers)||0), answerCount:Math.max(0,Number(data.answerCount??old.answerCount)||0), activityDays:verifiedActivityDays(old.activityDays), sectionStats:(data.sectionStats&&typeof data.sectionStats==='object')?data.sectionStats:(old.sectionStats||{}), dailyAnswers:Math.max(0,Number(data.dailyAnswers??old.dailyAnswers)||0),dailyMissionCount:Math.max(0,Number(data.dailyMissionCount??old.dailyMissionCount)||0),dailyContentCount:Math.max(0,Number(data.dailyContentCount??old.dailyContentCount)||0),dailyAnswerDate:String(data.dailyAnswerDate ?? old.dailyAnswerDate ?? '').slice(0,10),dailyClaimDate:String(old.dailyClaimDate ?? '').slice(0,10),leaderboardVisible:data.leaderboardVisible!==false, xpEvents:Array.isArray(old.xpEvents)?old.xpEvents.slice(-120):[], events:Array.isArray(old.events)?old.events.slice(-80):[], firstSeen: old.firstSeen||now, lastSeen: now, discordUsername:user.username, discordGlobalName:user.global_name??'' }
         const oldXp=Math.max(0,Number(old.xp)||0);if(safe.xp>oldXp){safe.xpEvents=[...(safe.xpEvents||[]),{date:now,delta:safe.xp-oldXp}].slice(-120)}
         const addEvent=(type:string,text:string)=>{safe.events=[...(safe.events||[]),{date:now,type,text}].slice(-80)}
         const oldLevel=levelForXp(oldXp),newLevel=levelForXp(safe.xp);if(newLevel?.id&&newLevel.id!==oldLevel?.id)addEvent('level',`достиг(ла) уровня ${newLevel.name}`)
@@ -1043,7 +1086,7 @@ export default {
       if(request.method==='GET')return json({ok:true,settings:await getSettings(env)})
       if(request.method==='PUT'){
         const raw=await request.json<any>();const daily={...DEFAULT_SETTINGS.daily,...(raw.daily||{})},coach={...DEFAULT_SETTINGS.coach,...(raw.coach||{})},streak={...DEFAULT_SETTINGS.streak,...(raw.streak||{})}
-        daily.target=Math.max(1,Math.min(100,Number(daily.target)||5));daily.rewardXp=Math.max(0,Math.min(1000,Number(daily.rewardXp)||0));coach.minAnswers=Math.max(1,Math.min(100,Number(coach.minAnswers)||4));coach.weakBelow=Math.max(1,Math.min(100,Number(coach.weakBelow)||75));coach.maxTopics=Math.max(1,Math.min(6,Number(coach.maxTopics)||3));streak.milestones=(Array.isArray(streak.milestones)?streak.milestones:[]).map(Number).filter((x:number)=>x>0&&x<=365).slice(0,12).sort((a:number,b:number)=>a-b)
+        daily.title=DAILY_GOAL_TITLE;daily.description=DAILY_GOAL_DESCRIPTION;daily.metric='activities';daily.target=DAILY_GOAL_TARGET;daily.rewardXp=Math.max(0,Math.min(1000,Number(daily.rewardXp)||0));coach.minAnswers=Math.max(1,Math.min(100,Number(coach.minAnswers)||4));coach.weakBelow=Math.max(1,Math.min(100,Number(coach.weakBelow)||75));coach.maxTopics=Math.max(1,Math.min(6,Number(coach.maxTopics)||3));streak.milestones=(Array.isArray(streak.milestones)?streak.milestones:[]).map(Number).filter((x:number)=>x>0&&x<=365).slice(0,12).sort((a:number,b:number)=>a-b)
         const settings={daily,coach,streak};await ensureDb(env);await env.DB.prepare('INSERT OR REPLACE INTO settings (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify(settings),new Date().toISOString()).run();await bumpRevision(env,'settings');clearPublic();return json({ok:true,settings})
       }
     }

@@ -1,92 +1,110 @@
+import {placementBank} from './placementBank'
+
 export type PlacementLevel='A1'|'A2'|'B1'|'B2'|'C1'|'C2'
-export type PlacementQuestion={id:number;level:PlacementLevel;domain:'Grammar'|'Vocabulary'|'Reading & phrasing';topic:string;q:string;options:string[];answer:string;shuffleAnswers?:boolean}
-export const placementQuestions:PlacementQuestion[]=[
-[1,'A1','Grammar','be','I ___ a student.',['am','is','are','be'],'am'],[2,'A1','Grammar','Present Simple','She ___ coffee every morning.',['drink','drinks','drinking','drank'],'drinks'],[3,'A1','Grammar','Articles','There is ___ apple on the table.',['a','an','the','some'],'an'],[4,'A1','Vocabulary','Family','My mother’s brother is my ___.',['cousin','uncle','nephew','grandfather'],'uncle'],[5,'A1','Grammar','Plural','Two ___.',['childs','children','childrens','child'],'children'],[6,'A1','Reading & phrasing','Everyday English','“How are you?” — “___”',['I’m fine, thanks.','I am seventeen years.','At home.','Yes, I do.'],'I’m fine, thanks.'],[7,'A1','Vocabulary','Time','Half past six means ___.',['6:15','6:30','5:30','7:30'],'6:30'],[8,'A1','Grammar','can','He ___ swim very well.',['can','cans','is can','can to'],'can'],
-[9,'A2','Grammar','Past Simple','We ___ the museum yesterday.',['visit','visited','have visit','visiting'],'visited'],[10,'A2','Grammar','Comparatives','This book is ___ than that one.',['interesting','more interesting','most interesting','interestinger'],'more interesting'],[11,'A2','Grammar','Present Continuous','Please be quiet. The baby ___.',['sleeps','is sleeping','sleep','slept'],'is sleeping'],[12,'A2','Vocabulary','Travel','You show your ___ before boarding an international flight.',['passport','recipe','receipt','timetable'],'passport'],[13,'A2','Grammar','some/any','We haven’t got ___ milk.',['some','any','a','many'],'any'],[14,'A2','Reading & phrasing','Requests','“Could I have the bill, please?” is most likely said ___.',['in a restaurant','at a library','at a bus stop','in a classroom'],'in a restaurant'],[15,'A2','Grammar','Future plans','I ___ my aunt this weekend; we arranged it yesterday.',['visit','am visiting','visited','have visited'],'am visiting'],[16,'A2','Vocabulary','Everyday actions','If you borrow something, you should ___ it.',['return','invite','repairing','arrive'],'return'],
-[17,'B1','Grammar','Present Perfect','I ___ this film three times.',['see','saw','have seen','am seeing'],'have seen'],[18,'B1','Grammar','First conditional','If it rains, we ___ at home.',['stay','will stay','stayed','would stay'],'will stay'],[19,'B1','Grammar','Past Continuous','I ___ dinner when the phone rang.',['cooked','was cooking','have cooked','cook'],'was cooking'],[20,'B1','Vocabulary','Work','A person who applies for a job is an ___.',['employee','applicant','employer','assistant'],'applicant'],[21,'B1','Reading & phrasing','Opinion','Which phrase politely introduces a different opinion?',['I see your point, but…','You are wrong.','No chance.','That is impossible for you.'],'I see your point, but…'],[22,'B1','Grammar','Passive','The bridge ___ in 1998.',['built','was built','has build','is building'],'was built'],[23,'B1','Vocabulary','Phrasal verbs','“Give up” most nearly means ___.',['continue','stop trying','return something','discover'],'stop trying'],[24,'B1','Grammar','Relative clauses','The woman ___ lives next door is a doctor.',['which','who','where','whose'],'who'],
-[25,'B2','Grammar','Second conditional','If I ___ more time, I would learn another language.',['have','had','would have','have had'],'had'],[26,'B2','Grammar','Reported speech','She said that she ___ tired.',['is','was','has','will be'],'was'],[27,'B2','Vocabulary','Collocation','Choose the natural collocation.',['make a decision','do a decision','create a decision','perform a decision'],'make a decision'],[28,'B2','Reading & phrasing','Register','Which is most appropriate in a formal email?',['I am writing to enquire about…','Hey, tell me about…','What’s up with…','Gimme some info about…'],'I am writing to enquire about…'],[29,'B2','Grammar','Modal deduction','The lights are off and nobody answers. They ___ be out.',['must','should to','can to','ought'],'must'],[30,'B2','Vocabulary','Meaning in context','The plan is “feasible”. This means it is ___.',['possible to do','very expensive','already finished','illegal'],'possible to do'],[31,'B2','Grammar','Third conditional','If we had left earlier, we ___ the train.',['would catch','would have caught','caught','had caught'],'would have caught'],[32,'B2','Reading & phrasing','Paraphrase','“Despite the rain, they continued.” means ___.',['They continued although it was raining.','They stopped because it rained.','They continued before it rained.','They expected no rain.'],'They continued although it was raining.'],
-[33,'C1','Vocabulary','Precision','His explanation was so ___ that everyone understood the complex idea.',['lucid','vague','scarce','reluctant'],'lucid'],[34,'C1','Grammar','Inversion','Rarely ___ such a convincing argument.',['I have heard','have I heard','I heard have','did I have heard'],'have I heard'],[35,'C1','Reading & phrasing','Hedging','Which sentence makes a cautious academic claim?',['The findings may indicate a broader trend.','The findings prove everything.','Obviously, this is always true.','There can be no other explanation.'],'The findings may indicate a broader trend.'],[36,'C1','Vocabulary','Collocation','Which phrase is the natural English collocation?',['draw a conclusion','pull a conclusion','do a conclusion','build a conclusion'],'draw a conclusion'],[37,'C1','Grammar','Participle clause','___ the report, she sent it to the team.',['Having completed','Completed','Have completing','To completed'],'Having completed'],[38,'C1','Vocabulary','Nuance','“Mitigate” most nearly means ___.',['make less severe','make certain','copy exactly','refuse publicly'],'make less severe'],[39,'C1','Reading & phrasing','Register','Which is the most neutral formal criticism?',['The proposal overlooks several practical constraints.','The proposal is rubbish.','This idea is totally crazy.','Nobody sensible would agree.'],'The proposal overlooks several practical constraints.'],[40,'C1','Grammar','Cleft sentence','It was the final chapter ___ changed my opinion.',['that','what','where','whose'],'that'],
-[41,'C2','Vocabulary','Nuance','“Equivocal” most nearly describes a statement that is ___.',['ambiguous or open to more than one interpretation','perfectly transparent','strongly emotional','grammatically incorrect'],'ambiguous or open to more than one interpretation'],[42,'C2','Reading & phrasing','Implied meaning','“His praise was faint enough to sound like criticism.” suggests the praise was ___.',['unenthusiastic','overwhelming','unrelated','ungrammatical'],'unenthusiastic'],[43,'C2','Grammar','Advanced inversion','Had I known, I ___ differently.',['would act','would have acted','acted','had acted'],'would have acted'],[44,'C2','Vocabulary','Idiomatic meaning','If an issue is “a bone of contention”, it is ___.',['a cause of disagreement','easy to solve','irrelevant','secretly agreed'],'a cause of disagreement'],[45,'C2','Reading & phrasing','Style','Which version is the most concise without changing the meaning?',['Owing to the fact that he was late, he missed it.','Because he was late, he missed it.','Being late was the fact for missing it.','He missed it, owing that he was late.'],'Because he was late, he missed it.'],[46,'C2','Vocabulary','Connotation','“Disingenuous” most nearly means ___.',['not candid or sincere','generous to a fault','highly imaginative','unusually precise'],'not candid or sincere'],[47,'C2','Grammar','Subjunctive/formal','The committee recommended that the policy ___ revised.',['is','be','was being','will be'],'be'],[48,'C2','Reading & phrasing','Nuanced stance','Which sentence best signals qualified agreement?',['I broadly agree, although the conclusion requires some qualification.','I agree completely and without reservation.','I disagree with every point.','The conclusion is meaningless.'],'I broadly agree, although the conclusion requires some qualification.']
-].map(([id,level,domain,topic,q,options,answer])=>({id:id as number,level:level as PlacementLevel,domain:domain as any,topic:topic as string,q:q as string,options:options as string[],answer:answer as string}))
-
-
-
-// Five original MEWAY forms. Form 1 is the established baseline above; forms 2–5
-// keep the same 8-items-per-band blueprint while changing contexts and wording.
-const VDATA=[
- {name:'Maya',place:'library',thing:'orange',job:'designer',travel:'boarding pass',adj:'quiet',verb:'read',past:'visited'},
- {name:'Leo',place:'station',thing:'umbrella',job:'engineer',travel:'passport',adj:'busy',verb:'cook',past:'watched'},
- {name:'Nora',place:'hotel',thing:'email',job:'teacher',travel:'ticket',adj:'bright',verb:'study',past:'played'},
- {name:'Sam',place:'airport',thing:'sandwich',job:'photographer',travel:'luggage',adj:'modern',verb:'work',past:'cleaned'},
-] as const
-function generatedForm(form:number):PlacementQuestion[]{
- const d=VDATA[form-2]||VDATA[0], id0=(form-1)*1000;let id=id0
- const lead=form===2?'Choose the best answer for this situation: ':form===3?'Complete the following item accurately: ':form===4?'Select the option that makes this example correct: ':'Which answer best completes this language-use item? ';const q=(level:PlacementLevel,domain:PlacementQuestion['domain'],topic:string,text:string,options:string[],answer:string):PlacementQuestion=>({id:++id,level,domain,topic,q:lead+text,options,answer})
- return [
- q('A1','Grammar','be',`${d.name} ___ from Canada.`,['am','is','are','be'],'is'),
- q('A1','Grammar','Present Simple',`My friends ___ English after school.`,['practises','practice','practicing','practiced'],'practice'),
- q('A1','Grammar','Articles',`I have ___ ${d.thing}.`,['a','an','the','any'],/^[aeiou]/i.test(d.thing)?'an':'a'),
- q('A1','Vocabulary','Places',`You can borrow books at a ___.`,['library','bakery','garage','stadium'],'library'),
- q('A1','Grammar','Plural',`One person, two ___.`,['persons','people','peoples','person'],'people'),
- q('A1','Reading & phrasing','Everyday English',`“Thank you very much.” — “___”`,['You’re welcome.','I’m twelve.','See yesterday.','I can blue.'],`You’re welcome.`),
- q('A1','Vocabulary','Time',`Quarter past nine is ___.`,['9:15','9:30','8:45','10:15'],'9:15'),
- q('A1','Grammar','can',`___ you help me, please?`,['Can','Are','Do can','Can to'],'Can'),
- q('A2','Grammar','Past Simple',`Last Saturday we ___ a new café.`,['try','tried','are trying','have try'],'tried'),
- q('A2','Grammar','Comparatives',`The blue suitcase is ___ than the black one.`,['light','lighter','lightest','more light'],'lighter'),
- q('A2','Grammar','Present Continuous',`Look! The bus ___.`,['comes','is coming','came','come'],'is coming'),
- q('A2','Vocabulary','Travel',`At the airport, you usually show your ___ at the gate.`,['boarding pass','menu','invoice','recipe'],'boarding pass'),
- q('A2','Grammar','some/any',`Are there ___ clean towels in the room?`,['some','any','much','a'],'any'),
- q('A2','Reading & phrasing','Requests',`Where would you most likely say “Could I check in, please?”`,['At a hotel reception','At a pharmacy','In a classroom','At a cinema screen'],'At a hotel reception'),
- q('A2','Grammar','Future plans',`${d.name} ___ the dentist tomorrow; the appointment is booked.`,['sees','is seeing','saw','has seen'],'is seeing'),
- q('A2','Vocabulary','Everyday actions',`If your phone battery is empty, you need to ___ it.`,['charge','lend','pack','post'],'charge'),
- q('B1','Grammar','Present Perfect',`We ___ each other since primary school.`,['know','knew','have known','are knowing'],'have known'),
- q('B1','Grammar','First conditional',`If I finish early, I ___ you a message.`,['send','will send','sent','would send'],'will send'),
- q('B1','Grammar','Past Continuous',`While they ___ home, it started to snow.`,['walked','were walking','have walked','walk'],'were walking'),
- q('B1','Vocabulary','Work',`Someone responsible for hiring staff is an ___.`,['employer','applicant','customer','passenger'],'employer'),
- q('B1','Reading & phrasing','Opinion',`Which phrase disagrees politely?`,['I’m not sure I see it the same way.','That’s nonsense.','You clearly know nothing.','Absolutely not, end of story.'],`I’m not sure I see it the same way.`),
- q('B1','Grammar','Passive',`These computers ___ in Japan.`,['make','are made','made','are making'],'are made'),
- q('B1','Vocabulary','Phrasal verbs',`If a meeting is “put off”, it is ___.`,['postponed','started early','made public','cancelled forever'],'postponed'),
- q('B1','Grammar','Relative clauses',`That’s the café ___ we first met.`,['who','where','whose','which person'],'where'),
- q('B2','Grammar','Second conditional',`If she ___ closer, she would walk to work.`,['lives','lived','would live','has lived'],'lived'),
- q('B2','Grammar','Reported speech',`“I can’t come,” he said. He said that he ___ come.`,['can’t','couldn’t','won’t','doesn’t'],'couldn’t'),
- q('B2','Vocabulary','Collocation',`Choose the natural collocation.`,['raise awareness','lift awareness','grow awareness up','do awareness'],'raise awareness'),
- q('B2','Reading & phrasing','Register',`Which opening best suits a formal complaint?`,['I am writing regarding a problem with my order.','Hey, your order was bad.','Listen, fix this.','What on earth happened?'],'I am writing regarding a problem with my order.'),
- q('B2','Grammar','Modal deduction',`Her coat is still here, so she ___ have left yet.`,['can’t','must','should to','ought'],'can’t'),
- q('B2','Vocabulary','Meaning in context',`If evidence is “compelling”, it is ___.`,['strong and convincing','easy to ignore','completely unrelated','secret'],'strong and convincing'),
- q('B2','Grammar','Third conditional',`If you had told me, I ___ you.`,['help','would help','would have helped','had helped'],'would have helped'),
- q('B2','Reading & phrasing','Paraphrase',`“She succeeded in spite of the difficulties.” means ___.`,['She succeeded although it was difficult.','She failed because it was difficult.','The difficulties disappeared first.','She avoided every difficulty.'],'She succeeded although it was difficult.'),
- q('C1','Vocabulary','Precision',`The instructions were sufficiently ___ for everyone to follow without assistance.`,['explicit','scarce','tentative','arbitrary'],'explicit'),
- q('C1','Grammar','Inversion',`Only after the meeting ___ the scale of the problem.`,['we understood','did we understand','we did understand','understood we'],'did we understand'),
- q('C1','Reading & phrasing','Hedging',`Which sentence expresses a carefully qualified conclusion?`,['The data appear to support this interpretation.','The data prove this beyond all doubt.','Everyone knows this is true.','No alternative is possible.'],'The data appear to support this interpretation.'),
- q('C1','Vocabulary','Collocation',`Choose the standard collocation.`,['pose a threat','make a threatness','put a threatening','do a threat'],'pose a threat'),
- q('C1','Grammar','Participle clause',`___ all the available evidence, the panel postponed its decision.`,['Having reviewed','Reviewed','Have review','To reviewing'],'Having reviewed'),
- q('C1','Vocabulary','Nuance',`“Substantiate” most nearly means ___.`,['support with evidence','make less important','hide deliberately','repeat word for word'],'support with evidence'),
- q('C1','Reading & phrasing','Register',`Which sentence offers the most measured formal criticism?`,['The analysis does not fully account for regional differences.','The analysis is terrible.','This makes absolutely no sense.','Only an idiot would accept this.'],'The analysis does not fully account for regional differences.'),
- q('C1','Grammar','Cleft sentence',`What I found most surprising ___ the lack of evidence.`,['was','were','be','has'],'was'),
- q('C2','Vocabulary','Nuance',`A “perfunctory” apology is one that is ___.`,['done with little care or sincerity','deeply emotional and detailed','legally binding','impossible to understand'],'done with little care or sincerity'),
- q('C2','Reading & phrasing','Implied meaning',`“She stopped short of endorsing the proposal.” implies that she ___.`,['did not fully support it','strongly promoted it','wrote the proposal herself','refused to discuss it'],'did not fully support it'),
- q('C2','Grammar','Advanced inversion',`Were the situation to worsen, we ___ the plan.`,['would reconsider','reconsidered','will have reconsidered','had reconsidered'],'would reconsider'),
- q('C2','Vocabulary','Idiomatic meaning',`If someone “moves the goalposts”, they ___.`,['change the conditions unfairly during a process','finish earlier than expected','explain a rule clearly','accept a compromise'],'change the conditions unfairly during a process'),
- q('C2','Reading & phrasing','Style',`Which sentence is the most concise and idiomatic?`,['At this point in time, we are unable to proceed.','We cannot proceed yet.','We are unable for proceeding currently now.','Proceeding is unable at this time point.'],'We cannot proceed yet.'),
- q('C2','Vocabulary','Connotation',`“Specious” most nearly describes an argument that is ___.`,['apparently convincing but actually misleading','carefully proven and reliable','brief but irrelevant','openly humorous'],'apparently convincing but actually misleading'),
- q('C2','Grammar','Subjunctive/formal',`It is essential that every applicant ___ the declaration.`,['sign','signs','signed','will sign'],'sign'),
- q('C2','Reading & phrasing','Nuanced stance',`Which sentence expresses a nuanced reservation?`,['The approach has merit, though its long-term effects remain uncertain.','The approach is unquestionably perfect.','The approach is worthless in every respect.','There is nothing further to consider.'],'The approach has merit, though its long-term effects remain uncertain.')
- ]
-}
-export const placementVariants:Record<number,PlacementQuestion[]>={1:placementQuestions,2:generatedForm(2),3:generatedForm(3),4:generatedForm(4),5:generatedForm(5)}
+export type PlacementDomain='Grammar'|'Vocabulary'
+export type PlacementQuestion={id:number;level:PlacementLevel;domain:PlacementDomain;topic:string;q:string;options:string[];answer:string;shuffleAnswers?:boolean}
+export const PLACEMENT_LEVELS:PlacementLevel[]=['A1','A2','B1','B2','C1','C2']
 export const PLACEMENT_VARIANT_COUNT=5
-export const PLACEMENT_RETAKE_DAYS=10
-export type PlacementResult={level:PlacementLevel;score:number;total:number;percent:number;breakdown:Record<PlacementLevel,{correct:number;total:number;percent:number}>;domainBreakdown:Record<string,{correct:number;total:number;percent:number}>;weakTopics:Array<{topic:string;correct:number;total:number;percent:number}>;mistakes:Array<any>;recommendation:string;completedAt:string}
+export const PLACEMENT_ITEMS_PER_DOMAIN=50
+export const PLACEMENT_ITEMS_PER_FORM=100
+// Retakes advance to the next form as soon as the previous result is saved.
+export const PLACEMENT_RETAKE_DAYS=0
+export const placementVariants:Record<number,PlacementQuestion[]>=placementBank
+export const placementQuestions=placementBank[1]
+export type PlacementCount={correct:number;total:number;percent:number}
+export type PlacementDomainResult=PlacementCount&{level:PlacementLevel;breakdown:Record<PlacementLevel,PlacementCount>}
+export type PlacementAnswerReview={id:number;level:PlacementLevel;domain:PlacementDomain;topic:string;question:string;answer:string;correctAnswer:string;correct:boolean}
+export type PlacementResult={
+ level:PlacementLevel;score:number;total:number;percent:number;
+ breakdown:Record<PlacementLevel,PlacementCount>;
+ domainBreakdown:Record<PlacementDomain,PlacementDomainResult>;
+ weakTopics:Array<PlacementCount&{topic:string;domain:PlacementDomain}>;
+ mistakes:PlacementAnswerReview[];
+ review:PlacementAnswerReview[];
+ recommendation:string;completedAt:string
+}
+const pct=(correct:number,total:number)=>total?Math.round(correct*100/total):0
+function countByLevel(questions:PlacementQuestion[],answers:Record<number,string>):Record<PlacementLevel,PlacementCount>{
+ const result={} as Record<PlacementLevel,PlacementCount>
+ for(const level of PLACEMENT_LEVELS){const qs=questions.filter(q=>q.level===level);const correct=qs.filter(q=>answers[q.id]===q.answer).length;result[level]={correct,total:qs.length,percent:pct(correct,qs.length)}}
+ return result
+}
+// Diagnostic CEFR estimate, NOT standardised or psychometrically calibrated.
+// Evaluate the evidence at each band rather than downgrading a learner for a
+// single lower-band mistake. The pooled overall profile can exceed a domain's
+// band when the other domain supplies strong evidence at that band.
+// Never award an advanced band without adequate performance on its own items.
+export function estimatePlacementLevel(breakdown:Record<PlacementLevel,PlacementCount>):PlacementLevel{
+ let result:PlacementLevel='A1'
+ for(const [index,level] of PLACEMENT_LEVELS.entries()){
+  const item=breakdown[level]
+  if(!item?.total||item.correct/item.total<0.65)continue
+  const below=PLACEMENT_LEVELS.slice(0,index).map(b=>breakdown[b])
+  if(below.some(stat=>!stat?.total||stat.correct/stat.total<0.45))continue
+  const lowerTotal=below.reduce((sum,stat)=>sum+stat.total,0)
+  const lowerCorrect=below.reduce((sum,stat)=>sum+stat.correct,0)
+  if(lowerTotal>0&&lowerCorrect/lowerTotal<0.70)continue
+  result=level
+ }
+ return result
+}
 export function evaluatePlacement(questions:PlacementQuestion[],answers:Record<number,string>):PlacementResult{
- const levels:PlacementLevel[]=['A1','A2','B1','B2','C1','C2'];const breakdown:any={},domains:any={},topics:any={};let score=0
- for(const l of levels){const qs=questions.filter(q=>q.level===l),correct=qs.filter(q=>answers[q.id]===q.answer).length;breakdown[l]={correct,total:qs.length,percent:qs.length?Math.round(correct/qs.length*100):0}}
- for(const q of questions){const ok=answers[q.id]===q.answer;if(ok)score++;const d=domains[q.domain]||(domains[q.domain]={correct:0,total:0,percent:0});d.total++;if(ok)d.correct++;const t=topics[q.topic]||(topics[q.topic]={topic:q.topic,correct:0,total:0,percent:0});t.total++;if(ok)t.correct++}
- for(const d of Object.values(domains) as any[])d.percent=Math.round(d.correct/d.total*100);for(const t of Object.values(topics) as any[])t.percent=Math.round(t.correct/t.total*100)
- // Conservative placement: a learner reaches a band only with >= 75% at that band and no major gap (<50%) below it.
- // With 8 items per band this means at least 6/8 correct at the target level.
- let level:PlacementLevel='A1';for(const l of levels){if(!breakdown[l].total)continue;const idx=levels.indexOf(l),lower=levels.slice(0,idx);if(breakdown[l].percent>=75&&lower.every(x=>breakdown[x].percent>=50))level=l}
- const mistakes=questions.filter(q=>answers[q.id]!==q.answer).map(q=>({id:q.id,level:q.level,domain:q.domain,topic:q.topic,question:q.q,answer:answers[q.id]||'—',correctAnswer:q.answer}))
- const weakTopics=(Object.values(topics) as any[]).filter(x=>x.percent<75).sort((a,b)=>a.percent-b.percent||b.total-a.total)
- const recommendation=`Ориентировочный уровень ${level}. Для более точного решения учитывай слабые темы и при необходимости повторный тест: этот Placement Test проверяет прежде всего grammar, vocabulary и reading/phrasing.`
- return {level,score,total:questions.length,percent:questions.length?Math.round(score/questions.length*100):0,breakdown,domainBreakdown:domains,weakTopics,mistakes,recommendation,completedAt:new Date().toISOString()}
+ const score=questions.filter(q=>answers[q.id]===q.answer).length
+ const breakdown=countByLevel(questions,answers)
+ const domainBreakdown={} as Record<PlacementDomain,PlacementDomainResult>
+ for(const domain of ['Grammar','Vocabulary'] as const){
+  const subset=questions.filter(q=>q.domain===domain)
+  const correct=subset.filter(q=>answers[q.id]===q.answer).length
+  const byLevel=countByLevel(subset,answers)
+  domainBreakdown[domain]={correct,total:subset.length,percent:pct(correct,subset.length),level:estimatePlacementLevel(byLevel),breakdown:byLevel}
+ }
+ const topics=new Map<string,PlacementCount&{topic:string;domain:PlacementDomain}>()
+ for(const q of questions){
+  const key=q.domain+'\u0000'+q.topic
+  const stat=topics.get(key)||{domain:q.domain,topic:q.topic,correct:0,total:0,percent:0}
+  stat.total++
+  if(answers[q.id]===q.answer)stat.correct++
+  topics.set(key,stat)
+ }
+ const weakTopics=[...topics.values()].map(x=>({...x,percent:pct(x.correct,x.total)})).filter(x=>x.correct<x.total)
+  .sort((a,b)=>(b.total-b.correct)-(a.total-a.correct)||a.percent-b.percent||a.topic.localeCompare(b.topic))
+ const review:PlacementAnswerReview[]=questions.map(q=>({id:q.id,level:q.level,domain:q.domain,topic:q.topic,question:q.q,answer:answers[q.id]||'—',correctAnswer:q.answer,correct:answers[q.id]===q.answer}))
+ const mistakes=review.filter(item=>!item.correct)
+ const level=estimatePlacementLevel(breakdown)
+ const grammar=domainBreakdown.Grammar,vocabulary=domainBreakdown.Vocabulary
+ const weakest=grammar.percent<=vocabulary.percent?'Grammar':'Vocabulary'
+ const sectionAdvice=weakest==='Grammar'
+  ?'Начни с грамматических уроков MEWAY и повтори конструкции, в которых ошибся.'
+  :'Начни со словаря и разговорных фраз MEWAY, затем закрепляй их в коротких текстах и диалогах.'
+ const recommendation=`Grammar: ${grammar.correct}/50 (${grammar.percent}%), ориентир ${grammar.level}. Vocabulary: ${vocabulary.correct}/50 (${vocabulary.percent}%), ориентир ${vocabulary.level}. ${sectionAdvice} Результат основан на ответах в этом тесте.`
+ return {level,score,total:questions.length,percent:pct(score,questions.length),breakdown,domainBreakdown,weakTopics,mistakes,review,recommendation,completedAt:new Date().toISOString()}
+}
+// Stable pseudo-random choice for the sixth and later tests: the client GET and
+// server POST always agree; no previous form immediately repeats after form 5.
+export function nextPlacementVariant(last:{attempt?:number;variant?:number;completedAt?:string}|null,userId=''):number{
+ const attempts=Math.max(0,Math.floor(Number(last?.attempt)||0))
+ if(attempts<5)return attempts+1
+ const previous=Math.max(1,Math.min(5,Math.floor(Number(last?.variant)||5)))
+ const pool=[1,2,3,4,5].filter(v=>v!==previous)
+ const seed=`${userId}:${last?.completedAt||''}:${attempts}:${previous}`
+ let hash=2166136261
+ for(const char of seed)hash=Math.imul(hash^char.charCodeAt(0),16777619)>>>0
+ return pool[hash%pool.length]
+}
+export function validatePlacementForm(questions:unknown):questions is PlacementQuestion[]{
+ if(!Array.isArray(questions)||questions.length!==PLACEMENT_ITEMS_PER_FORM)return false
+ if(questions.slice(0,50).some(q=>q?.domain!=='Grammar')||questions.slice(50).some(q=>q?.domain!=='Vocabulary'))return false
+ if(new Set(questions.map(q=>q.id)).size!==100)return false
+ for(const q of questions){
+  if(!q||!Number.isSafeInteger(q.id)||!PLACEMENT_LEVELS.includes(q.level)||!['Grammar','Vocabulary'].includes(q.domain))return false
+  if(typeof q.q!=='string'||!q.q.trim()||q.q.length>800||typeof q.topic!=='string'||!q.topic.trim()||q.topic.length>90)return false
+  if(!Array.isArray(q.options)||q.options.length!==4||q.options.some((x:unknown)=>typeof x!=='string'||!x.trim()||(x as string).length>300))return false
+  if(new Set(q.options).size!==4||!q.options.includes(q.answer))return false
+ }
+ for(const domain of ['Grammar','Vocabulary']){
+  const counts=PLACEMENT_LEVELS.map(level=>questions.filter(q=>q.domain===domain&&q.level===level).length)
+  // Enough evidence in every CEFR band for each separate section.
+  if(counts.some(n=>n<6))return false
+ }
+ return true
 }

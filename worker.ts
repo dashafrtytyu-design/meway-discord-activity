@@ -1,5 +1,5 @@
 import { MEWAY_BUILD_ID } from './buildVersion'
-import { placementVariants, PLACEMENT_RETAKE_DAYS } from './src/placement'
+import { placementVariants, evaluatePlacement, nextPlacementVariant, validatePlacementForm } from './src/placement'
 import {gradeGameAnswers,proportionalXp} from './src/xpScoring.mjs'
 interface Env {
   ASSETS: Fetcher
@@ -706,42 +706,75 @@ export default {
       }
     }
 
-    if (url.pathname === '/api/placement-config' && request.method === 'GET') {
+    // Placement Test 7.31.26: one GET on opening to reconcile across devices,
+    // zero requests during the 100 questions, one POST at submission.
+    // Existing 48-item admin overrides are retained in D1 for audit but are not
+    // compatible with the new 100-item blueprint; all five forms use the new bank.
+    const placementForms=async()=>{
+      const hit=cachedPublic('placement-config') as {data?:string}|null
+      const row:{data?:string}=hit||(await env.DB.prepare('SELECT data FROM placement_config WHERE id=1').first<{data:string}>())||{}
+      if(!hit)setPublic('placement-config',row)
+      let stored:any={}
+      try{stored=row.data?JSON.parse(row.data):{}}catch{}
+      const forms:Record<number,any>={}
+      for(let v=1;v<=5;v++){
+        const custom=stored?.variants?.[v]||stored?.variants?.[String(v)]
+        forms[v]=validatePlacementForm(custom)?custom:placementVariants[v]
+      }
+      return forms
+    }
+    if(url.pathname==='/api/placement-config'&&request.method==='GET'){
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
       await ensureDb(env)
-      // CLOUD-SAVER: variant selection needs only the last counted result, not the full audit history.
-      // Full placement_history remains intact and is read only from the admin Students audit screen.
-      const [cfgRow,lastRow]=await Promise.all([
-        (async()=>{const hit=cachedPublic('placement-config') as {data?:string}|null;if(hit)return hit;const row=await env.DB.prepare('SELECT data FROM placement_config WHERE id=1').first<{data:string}>();setPublic('placement-config',row||{});return row})(),
-        env.DB.prepare('SELECT data,updated_at FROM placement_results WHERE user_id=?').bind(user.id).first<{data:string;updated_at:string}>()
-      ])
-      let variants:any=placementVariants;try{const parsed=cfgRow?.data?JSON.parse(cfgRow.data):null;if(parsed?.variants)variants=parsed.variants;else if(Array.isArray(parsed?.questions))variants={...placementVariants,1:parsed.questions}}catch{}
-      let last:any=null;try{last=lastRow?.data?{...JSON.parse(lastRow.data),createdAt:lastRow.updated_at}:null}catch{}
-      const now=Date.now(),gap=PLACEMENT_RETAKE_DAYS*86400000
-      let variant=1,eligible=true,attempt=1
-      if(last){const previousAttempt=Math.max(1,Number(last.attempt)||1),elapsed=now-Date.parse(last.completedAt||last.createdAt||'');eligible=elapsed>=gap;if(!eligible){variant=Math.max(1,Math.min(5,Number(last.variant)||1));attempt=previousAttempt}else if(previousAttempt<5){variant=previousAttempt+1;attempt=previousAttempt+1}else{attempt=previousAttempt+1;const lastV=Number(last.variant)||5;const pool=[1,2,3,4,5].filter(v=>v!==lastV);let h=0;for(const c of user.id)h=(h*31+c.charCodeAt(0))>>>0;variant=pool[(h+Math.floor(now/gap))%pool.length]}}
-      const questions=(variants[String(variant)]||variants[variant]||placementVariants[variant]||placementVariants[1])
-      return json({ok:true,questions,variant,attempt,eligible,retakeDays:PLACEMENT_RETAKE_DAYS,lastCompletedAt:last?.completedAt||last?.createdAt||null})
+      const [forms,lastRow]=await Promise.all([placementForms(),env.DB.prepare('SELECT data FROM placement_results WHERE user_id=?').bind(user.id).first<{data:string}>()])
+      let last:any=null;try{last=lastRow?.data?JSON.parse(lastRow.data):null}catch{}
+      const variant=nextPlacementVariant(last,user.id)
+      // Payload contains only the selected form, not all 500 items.
+      return json({ok:true,variant,attempt:Math.max(1,(Number(last?.attempt)||0)+1),eligible:true,retakeDays:0,questions:forms[variant]})
     }
-
-    if (url.pathname === '/api/placement' && request.method === 'POST') {
+    if(url.pathname==='/api/placement'&&request.method==='POST'){
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
-      await ensureDb(env);const body=await request.json<any>().catch(()=>null);if(!body||!body.level)return json({ok:false,error:'Invalid placement result.'},400)
-      const lastRow=await env.DB.prepare('SELECT data,updated_at FROM placement_results WHERE user_id=?').bind(user.id).first<{data:string;updated_at:string}>()
-      let last:any=null;try{last=lastRow?.data?{...JSON.parse(lastRow.data),createdAt:lastRow.updated_at}:null}catch{}
-      const now=new Date().toISOString(),gap=PLACEMENT_RETAKE_DAYS*86400000,previousAttempt=Math.max(0,Number(last?.attempt)||0)
-      const eligible=!last||(Date.now()-Date.parse(last.completedAt||last.createdAt||''))>=gap;const variant=Math.max(1,Math.min(5,Number(body.variant)||1));const attempt=previousAttempt+(eligible?1:0)
-      const record={...body,variant,attempt,counted:eligible,completedAt:now,daysSincePrevious:last?Math.floor((Date.now()-Date.parse(last.completedAt||last.createdAt||''))/86400000):null,previousLevel:last?.level||null}
-      const statements=[env.DB.prepare('INSERT INTO placement_history (user_id,data,created_at) VALUES (?,?,?)').bind(user.id,JSON.stringify(record),now)]
-      if(eligible)statements.push(env.DB.prepare('INSERT OR REPLACE INTO placement_results (user_id,data,updated_at) VALUES (?,?,?)').bind(user.id,JSON.stringify(record),now))
+      await ensureDb(env)
+      const body=await request.json<any>().catch(()=>null)
+      if(!body||typeof body.answers!=='object'||!body.answers||Array.isArray(body.answers)||typeof body.submissionId!=='string'||body.submissionId.length<12||body.submissionId.length>100)return json({ok:false,error:'Invalid Placement Test answers.'},400)
+      const [forms,lastRow]=await Promise.all([placementForms(),env.DB.prepare('SELECT data,updated_at FROM placement_results WHERE user_id=?').bind(user.id).first<{data:string;updated_at:string}>()])
+      let last:any=null;try{last=lastRow?.data?JSON.parse(lastRow.data):null}catch{}
+      if(last?.submissionId===body.submissionId)return json({ok:true,counted:true,attempt:last.attempt,variant:last.variant,result:last})
+      const variant=nextPlacementVariant(last,user.id)
+      if(Number(body.variant)!==variant)return json({ok:false,error:'Вариант уже изменился. Открой Placement Test заново, чтобы продолжить.',expectedVariant:variant},409)
+      const questions=forms[variant]
+      if(!validatePlacementForm(questions))return json({ok:false,error:'Invalid Placement Test configuration.'},500)
+      const keys=Object.keys(body.answers)
+      if(keys.length!==questions.length||questions.some(q=>!Object.prototype.hasOwnProperty.call(body.answers,q.id)||typeof body.answers[q.id]!=='string'||!q.options.includes(body.answers[q.id])))return json({ok:false,error:'Не все 100 вопросов заполнены или ответы некорректны.'},400)
+      const now=new Date().toISOString()
+      const calculated=evaluatePlacement(questions,body.answers as Record<number,string>)
+      const record={...calculated,variant,attempt:Math.max(1,(Number(last?.attempt)||0)+1),submissionId:body.submissionId,counted:true,completedAt:now,previousLevel:last?.level||null}
+      const statements=[
+        env.DB.prepare('INSERT INTO placement_history (user_id,data,created_at) VALUES (?,?,?)').bind(user.id,JSON.stringify(record),now),
+        env.DB.prepare('INSERT OR REPLACE INTO placement_results (user_id,data,updated_at) VALUES (?,?,?)').bind(user.id,JSON.stringify(record),now)
+      ]
       await env.DB.batch(statements)
-      clearQueryCache('students');return json({ok:true,counted:eligible,attempt,variant,result:record})
+      clearQueryCache('students')
+      return json({ok:true,counted:true,attempt:record.attempt,variant,result:record})
     }
-
-    if (url.pathname === '/api/admin/placement-config') {
-      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403);await ensureDb(env)
-      if(request.method==='GET'){const row=await env.DB.prepare('SELECT data FROM placement_config WHERE id=1').first<{data:string}>();let config:any={variants:placementVariants};try{if(row?.data)config={...config,...JSON.parse(row.data)}}catch{};return json({ok:true,...config})}
-      if(request.method==='PUT'){const body=await request.json<any>().catch(()=>null);if(!body)return json({ok:false,error:'Invalid config.'},400);const variants=body.variants||{1:body.questions};for(let v=1;v<=5;v++){const qs=variants[v]||variants[String(v)];if(!Array.isArray(qs)||qs.length!==48)return json({ok:false,error:`Variant ${v} must contain exactly 48 questions.`},400)}const now=new Date().toISOString();await env.DB.prepare('INSERT OR REPLACE INTO placement_config (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify({variants}),now).run();clearPublic();return json({ok:true,variants})}
+    if(url.pathname==='/api/admin/placement-config'){
+      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403)
+      await ensureDb(env)
+      if(request.method==='GET')return json({ok:true,variants:await placementForms()})
+      if(request.method==='PUT'){
+        const body=await request.json<any>().catch(()=>null)
+        if(!body?.variants)return json({ok:false,error:'Invalid Placement Test configuration.'},400)
+        const variants:Record<number,any>={}
+        for(let v=1;v<=5;v++){
+          const questions=body.variants[v]||body.variants[String(v)]
+          if(!validatePlacementForm(questions))return json({ok:false,error:`Вариант ${v}: 100 вопросов, первые 50 Grammar, затем 50 Vocabulary, не менее 6 вопросов каждого уровня в каждом разделе, четыре разных ответа на вопрос.`,},400)
+          variants[v]=questions
+        }
+        const now=new Date().toISOString()
+        await env.DB.prepare('INSERT OR REPLACE INTO placement_config (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify({variants}),now).run()
+        clearPublic()
+        return json({ok:true,variants})
+      }
     }
 
     if (url.pathname === '/api/settings' && request.method === 'GET') {
@@ -816,29 +849,117 @@ export default {
       return json({ok:true,leaders})
     }
 
+    // Admin student directory: bounded keyset pages. NEVER load all progress JSON,
+    // all placement history or the entire curriculum just to draw the directory.
+    // Every learner who opened MEWAY with Discord OAuth has a progress row.
     if (url.pathname === '/api/admin/students' && request.method === 'GET') {
-      const admin = await requireAdmin(request, env)
-      if (!admin) return json({ok:false,error:'Admin access required.'},403)
-      const studentsCached=getQueryCache<any[]>('students')
-      if(studentsCached)return json({ok:true,students:studentsCached})
+      const admin=await requireAdmin(request,env)
+      if(!admin)return json({ok:false,error:'Admin access required.'},403)
       await ensureDb(env)
-      const [rows,missions,items,accessRows,placementRows,placementHistoryRows]=await Promise.all([
-        env.DB.prepare('SELECT user_id, data, updated_at FROM progress ORDER BY updated_at DESC').all<{user_id:string;data:string;updated_at:string}>(),
-        listMissions(env,true),listContent(env,undefined,true),
-        env.DB.prepare('SELECT user_id,levels FROM course_access').all<{user_id:string;levels:string}>(),
-        env.DB.prepare('SELECT user_id,data FROM placement_results').all<{user_id:string;data:string}>(),
-        env.DB.prepare('SELECT user_id,data,created_at FROM placement_history ORDER BY created_at ASC').all<{user_id:string;data:string;created_at:string}>()
+      const limit=Math.min(60,Math.max(10,Number(url.searchParams.get('limit'))||40))
+      const search=(url.searchParams.get('q')||'').trim().slice(0,80)
+      const cursor=url.searchParams.get('cursor')||''
+      let after:{at:string;id:string}|null=null
+      if(cursor){
+        const parts=cursor.split('|')
+        if(parts.length!==2||parts[0].length<10||parts[0].length>64||!/^[0-9T: .+Z-]+$/.test(parts[0])||!/^\d{15,22}$/.test(parts[1]))return json({ok:false,error:'Invalid pagination cursor.'},400)
+        after={at:parts[0],id:parts[1]}
+      }
+      const cacheKey=!url.searchParams.has('fresh')&&!search&&!after?'students:page:first:'+limit:null
+      const cached=cacheKey?getQueryCache<any>(cacheKey):null
+      if(cached)return json(cached)
+      const predicates:string[]=[];const bindValues:(string|number)[]=[]
+      if(search){
+        // SQLite LOWER/NOCASE fold ASCII but not Cyrillic. Check the Russian
+        // lower-case, title-case and upper-case variants without client scans.
+        const lower=search.toLocaleLowerCase('ru-RU')
+        const variants=[...new Set([lower,lower.replace(/^\p{L}/u,c=>c.toLocaleUpperCase('ru-RU')),search.toLocaleUpperCase('ru-RU')])]
+        const checks:string[]=[]
+        for(const variant of variants){
+          const needle='%'+variant.replace(/[\\%_]/g,'\\$&')+'%'
+          checks.push(`(p.user_id LIKE ? ESCAPE '\\' OR LOWER(COALESCE(json_extract(p.data,'$.nickname'),'')) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(json_extract(p.data,'$.discordUsername'),'')) LIKE ? ESCAPE '\\' OR LOWER(COALESCE(json_extract(p.data,'$.discordGlobalName'),'')) LIKE ? ESCAPE '\\')`)
+          bindValues.push(needle,needle,needle,needle)
+        }
+        predicates.push('('+checks.join(' OR ')+')')
+      }
+      if(after){predicates.push('(p.updated_at < ? OR (p.updated_at = ? AND p.user_id < ?))');bindValues.push(after.at,after.at,after.id)}
+      const where=predicates.length?'WHERE '+predicates.join(' AND '):''
+      const query=`SELECT p.user_id,p.updated_at,
+        COALESCE(json_extract(p.data,'$.nickname'),json_extract(p.data,'$.discordGlobalName'),json_extract(p.data,'$.discordUsername'),'') AS name,
+        COALESCE(json_extract(p.data,'$.discordUsername'),'') AS discordUsername,
+        COALESCE(json_extract(p.data,'$.discordGlobalName'),'') AS discordGlobalName,
+        COALESCE(json_extract(p.data,'$.xp'),0) AS xp,
+        a.levels AS accessLevels,
+        json_extract(r.data,'$.level') AS placementLevel,
+        json_extract(r.data,'$.percent') AS placementPercent
+        FROM progress p
+        LEFT JOIN course_access a ON a.user_id=p.user_id
+        LEFT JOIN placement_results r ON r.user_id=p.user_id
+        ${where} ORDER BY p.updated_at DESC,p.user_id DESC LIMIT ?`
+      const pagePromise=env.DB.prepare(query).bind(...bindValues,limit+1).all<any>()
+      // Count only on the first page; no extra count on each "load more" click.
+      const countPromise=!after?env.DB.prepare(`SELECT COUNT(*) AS total FROM progress p ${search?where:''}`).bind(...(search?bindValues:[])).first<{total:number}>():Promise.resolve(null)
+      const [page,count]=await Promise.all([pagePromise,countPromise])
+      const rows=page.results||[];const hasMore=rows.length>limit;const selected=rows.slice(0,limit)
+      const students=selected.map((r:any)=>{
+        let accessLevels:CourseLevel[]=[]
+        try{accessLevels=(JSON.parse(r.accessLevels||'[]') as CourseLevel[]).filter(x=>COURSE_LEVELS.includes(x))}catch{}
+        const xp=Math.max(0,Number(r.xp)||0)
+        return {userId:r.user_id,name:String(r.name||`Discord ${r.user_id}`),discordUsername:r.discordUsername||'',discordGlobalName:r.discordGlobalName||'',xp,level:levelForXp(xp)?.name||'До BEGINNER',accessLevels,placement:r.placementLevel?{level:r.placementLevel,percent:Number(r.placementPercent)||0}:null,lastSeen:r.updated_at}
+      })
+      const last=selected[selected.length-1]
+      const payload={ok:true,students,total:count?.total??null,hasMore,nextCursor:hasMore&&last?`${last.updated_at}|${last.user_id}`:null}
+      if(cacheKey)setQueryCache(cacheKey,payload,15000)
+      return json(payload)
+    }
+
+    // Personal details, loaded ONLY when an admin opens that student's card.
+    const detailMatch=url.pathname.match(/^\/api\/admin\/students\/(\d+)\/details$/)
+    if(detailMatch&&request.method==='GET'){
+      const admin=await requireAdmin(request,env)
+      if(!admin)return json({ok:false,error:'Admin access required.'},403)
+      await ensureDb(env)
+      const uid=detailMatch[1]
+      const [progressRow,accessRow,placementRow,historyRows]=await Promise.all([
+        env.DB.prepare('SELECT data,updated_at FROM progress WHERE user_id=?').bind(uid).first<{data:string;updated_at:string}>(),
+        env.DB.prepare('SELECT levels FROM course_access WHERE user_id=?').bind(uid).first<{levels:string}>(),
+        env.DB.prepare('SELECT data FROM placement_results WHERE user_id=?').bind(uid).first<{data:string}>(),
+        env.DB.prepare('SELECT data,created_at FROM placement_history WHERE user_id=? ORDER BY id DESC LIMIT 50').bind(uid).all<{data:string;created_at:string}>()
       ])
-      const historyMap=new Map<string,any[]>();for(const r of placementHistoryRows.results||[]){let x:any=null;try{x=JSON.parse(r.data)}catch{};if(x){const a=historyMap.get(r.user_id)||[];a.push(x);historyMap.set(r.user_id,a)}};const accessMap=new Map((accessRows.results||[]).map(r=>{let x:CourseLevel[]=[];try{x=JSON.parse(r.levels)}catch{}return [r.user_id,x] as const}));const placementMap=new Map((placementRows.results||[]).map(r=>{let x:any=null;try{x=JSON.parse(r.data)}catch{}return [r.user_id,x] as const}))
-      const missionNames=new Map(missions.map(x=>[x.id,x.title]))
-      const contentNames=new Map(items.map(x=>[x.id,x.title]))
-      const students=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const xp=Math.max(0,Number(d.xp)||0);const lvl=levelForXp(xp);const answers=Math.max(0,Number(d.answerCount)||0),correct=Math.max(0,Number(d.correctAnswers)||0);const stats=d.sectionStats||{};const weakTopics=Object.entries(stats).map(([name,v]:any)=>({name,total:Number(v.total)||0,correct:Number(v.correct)||0,accuracy:v.total?Math.round(v.correct/v.total*100):0})).filter((x:any)=>x.total>=2).sort((a:any,b:any)=>a.accuracy-b.accuracy).slice(0,4);const fav=Object.entries(stats).sort((a:any,b:any)=>(Number(b[1]?.total)||0)-(Number(a[1]?.total)||0))[0]?.[0]||'—';const days=Array.isArray(d.activityDays)?d.activityDays:[];const cutoff7=Date.now()-7*86400000,cutoff30=Date.now()-30*86400000;return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||`Discord ${r.user_id}`,discordUsername:d.discordUsername||'',discordGlobalName:d.discordGlobalName||'',accessLevels:accessMap.get(r.user_id)||[],placement:placementMap.get(r.user_id)||null,placementHistory:historyMap.get(r.user_id)||[],xp,level:lvl?.name||'До BEGINNER',mistakes:Math.max(0,Number(d.mistakes)||0),correctAnswers:correct,answerCount:answers,accuracy:answers?Math.round(correct/answers*100):0,favoriteSection:fav,active7:days.filter((x:string)=>Date.parse(x)>=cutoff7).length,active30:days.filter((x:string)=>Date.parse(x)>=cutoff30).length,weakTopics,firstSeen:d.firstSeen||r.updated_at,lastSeen:d.lastSeen||r.updated_at,completedMissions:(d.completedMissions||[]).map((id:number)=>({id,title:missionNames.get(id)||`Миссия #${id}`})),completedContent:(d.completedContent||[]).map((id:number)=>({id,title:contentNames.get(id)||`Материал #${id}`})),events:Array.isArray(d.events)?d.events.slice(-20):[]}})
-      setQueryCache('students',students,30_000)
-      return json({ok:true,students})
+      if(!progressRow)return json({ok:false,error:'Ученик ещё не входил в MEWAY.'},404)
+      let progress:any={};let placement:any=null;let accessLevels:CourseLevel[]=[]
+      try{progress=JSON.parse(progressRow.data)}catch{}
+      try{placement=placementRow?.data?JSON.parse(placementRow.data):null}catch{}
+      try{accessLevels=(JSON.parse(accessRow?.levels||'[]') as CourseLevel[]).filter(x=>COURSE_LEVELS.includes(x))}catch{}
+      const stats=progress.sectionStats||{}
+      const weakTopics=Object.entries(stats).map(([name,v]:any)=>({name,total:Number(v?.total)||0,correct:Number(v?.correct)||0,accuracy:Number(v?.total)?Math.round(Number(v.correct)/Number(v.total)*100):0})).filter((x:any)=>x.total>=2).sort((a:any,b:any)=>a.accuracy-b.accuracy).slice(0,6)
+      const history=(historyRows.results||[]).map((r:any)=>{try{return JSON.parse(r.data)}catch{return null}}).filter(Boolean)
+      const xp=Math.max(0,Number(progress.xp)||0),answers=Math.max(0,Number(progress.answerCount)||0),correct=Math.max(0,Number(progress.correctAnswers)||0)
+      return json({ok:true,student:{userId:uid,name:progress.nickname||progress.discordGlobalName||progress.discordUsername||`Discord ${uid}`,discordUsername:progress.discordUsername||'',discordGlobalName:progress.discordGlobalName||'',xp,level:levelForXp(xp)?.name||'До BEGINNER',accessLevels,placement,placementHistory:history,mistakes:Math.max(0,Number(progress.mistakes)||0),correctAnswers:correct,answerCount:answers,accuracy:answers?Math.round(correct/answers*100):0,weakTopics,firstSeen:progress.firstSeen||progressRow.updated_at,lastSeen:progress.lastSeen||progressRow.updated_at,events:Array.isArray(progress.events)?progress.events.slice(-20):[]},historyLimit:50})
     }
 
     const accessMatch=url.pathname.match(/^\/api\/admin\/students\/(\d+)\/access$/)
-    if(accessMatch&&request.method==='PUT'){const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403);await ensureDb(env);const body=await request.json<any>().catch(()=>({}));const incoming=(Array.isArray(body.levels)?body.levels:[]).filter((x:any)=>COURSE_LEVELS.includes(x));const existing=await readCourseAccess(env,accessMatch[1]);const levels=Array.from(new Set(body.replace===true?incoming:[...existing,...incoming]));const updatedAt=new Date().toISOString();await env.DB.prepare('INSERT OR REPLACE INTO course_access (user_id,levels,updated_at) VALUES (?,?,?)').bind(accessMatch[1],JSON.stringify(levels),updatedAt).run();const signalPublished=await publishAccessSignal(env,accessMatch[1],levels,updatedAt);clearQueryCache('students');return json({ok:true,levels,signalPublished,warning:signalPublished?null:'Доступ сохранён в D1. KV не настроен или временно недоступен: ученику потребуется повторная авторизация для обновления доступа.'})}
+    if(accessMatch&&request.method==='PUT'){
+      const admin=await requireAdmin(request,env)
+      if(!admin)return json({ok:false,error:'Admin access required.'},403)
+      await ensureDb(env)
+      const body=await request.json<any>().catch(()=>null)
+      if(!body||!Array.isArray(body.levels)||body.levels.some((x:any)=>!COURSE_LEVELS.includes(x)))return json({ok:false,error:'Укажи допустимые уровни A1–C2.'},400)
+      const uid=accessMatch[1]
+      const known=await env.DB.prepare('SELECT 1 AS found FROM progress WHERE user_id=?').bind(uid).first()
+      if(!known)return json({ok:false,error:'Ученик не зарегистрирован в MEWAY.'},404)
+      const incoming=COURSE_LEVELS.filter(x=>body.levels.includes(x))
+      const existing=await readCourseAccess(env,uid)
+      const levels=body.replace===true?incoming:COURSE_LEVELS.filter(x=>existing.includes(x)||incoming.includes(x))
+      const updatedAt=new Date().toISOString()
+      await env.DB.batch([
+        env.DB.prepare('INSERT INTO course_access (user_id,levels,updated_at) VALUES (?,?,?) ON CONFLICT(user_id) DO UPDATE SET levels=excluded.levels,updated_at=excluded.updated_at').bind(uid,JSON.stringify(levels),updatedAt),
+        env.DB.prepare('INSERT INTO admin_audit (actor_id,user_id,action,detail,created_at) VALUES (?,?,?,?,?)').bind(admin.id,uid,'course_access',JSON.stringify({previous:existing,levels}),updatedAt)
+      ])
+      const signalPublished=await publishAccessSignal(env,uid,levels,updatedAt)
+      clearQueryCache('students')
+      return json({ok:true,levels,signalPublished,notice:'Доступ сохранён. После повторного открытия MEWAY ученик получит актуальные уровни.'})
+    }
 
     // Admin-only incident viewer: never polls and never records student activity by itself.
     if(url.pathname==='/api/admin/incidents'&&request.method==='GET'){

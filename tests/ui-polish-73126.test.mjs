@@ -18,8 +18,8 @@ test('Category selector has an unambiguous default label',()=>{
  assert.doesNotMatch(app,/Все направления — выбери категорию/);
 });
 test('Placement Test uses topic correct-answer counts without changing its evaluation',()=>{
- assert.match(app,/<small>Правильно: \{x\.correct\} из \{x\.total\}/);
- assert.match(app,/<b title="Правильно по этой теме в текущем тесте">\{x\.percent\}%<\/b>/);
+ assert.match(app,/Правильно: \{x\.correct\}\/\{x\.total\}/);
+ assert.match(app,/title="Точность только в текущем тесте">\{x\.percent\}%<\/b>/);
 });
 test('Mobile layout has explicit compact header override and a single active nav background',()=>{
  assert.match(css,/html\.mewayDiscordEmbedded \.app>main\{padding-top:18px!important;\}/);

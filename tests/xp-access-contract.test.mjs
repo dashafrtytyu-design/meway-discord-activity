@@ -5,6 +5,6 @@ const worker=readFileSync(new URL('../worker.ts',import.meta.url),'utf8');
 const app=readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8');
 test('XP requires server-side answer transcript',()=>{assert.match(worker,/Verified answer transcript required for XP/);assert.match(worker,/validTranscript/);assert.match(worker,/task\.correctAnswer/)});
 test('client submits mission and quiz answer transcripts',()=>{assert.match(app,/transcript\.current\[i\]=answer/);assert.match(app,/transcript\.current\[i\]=ans/);assert.match(app,/enqueueXp\('mission',m\.id,answers\)/)});
-test('course access additive by default and explicit replacement',()=>{assert.match(worker,/body\.replace===true\?incoming:\[\.\.\.existing,\.\.\.incoming\]/);assert.match(app,/JSON\.stringify\(\{levels,replace:true\}\)/)});
+test('course access additive by default and explicit replacement',()=>{assert.match(worker,/body\.replace===true\?incoming:COURSE_LEVELS\.filter\(x=>existing\.includes\(x\)\|\|incoming\.includes\(x\)\)/);assert.match(app,/JSON\.stringify\(\{levels,replace:true\}\)/)});
 test('no A3 level',()=>{assert.doesNotMatch(worker,/A3: '/)});
 test('XP claim uses D1 transaction and unique operation ledger',()=>{assert.match(worker,/env\.DB\.batch\(\[/);assert.match(worker,/INSERT OR IGNORE INTO xp_operations/)});

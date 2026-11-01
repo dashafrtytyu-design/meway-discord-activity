@@ -143,6 +143,22 @@ function stripPrivate(value:any):any{
 function studentMission(m:Mission){return stripPrivate({id:m.id,title:m.title,description:m.description,category:m.category,track:(m as any).track,topic:(m as any).topic,level:m.level,xp:m.xp,icon:m.icon,duration:m.duration,status:m.status,tasks:m.tasks})}
 function studentContent(x:ContentItem){return stripPrivate({id:x.id,section:x.section,title:x.title,description:x.description,status:x.status,level:x.level,icon:x.icon,xp:x.xp,category:x.category,track:(x as any).track,topic:(x as any).topic,duration:(x as any).duration,payload:x.payload})}
 
+// A1-C2 is decided by D1, never by an untrusted browser or cached UI flag.
+// Keep the locked card metadata visible while withholding exercises and answer keys.
+// A learner with no course access can see a locked card, but not its private material.
+function studentMissionForAccess(m:Mission, allowed:ReadonlySet<string>){
+  const safe=studentMission(m)
+  return allowed.has(m.level)?safe:{...safe,description:'',tasks:[],locked:true}
+}
+function studentContentForAccess(x:ContentItem, allowed:ReadonlySet<string>){
+  const safe=studentContent(x)
+  return allowed.has(x.level)?safe:{...safe,description:'',payload:{},locked:true}
+}
+async function learnerAccessSet(env:Env,userId:string){
+  return new Set(await readCourseAccess(env,userId,userId===env.ADMIN_DISCORD_ID))
+}
+
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=UTF-8', 'Cache-Control': 'no-store' } })
 }
@@ -196,8 +212,8 @@ async function ensureDb(env: Env) {
   dbReady = true
 }
 
-async function getRevisions(env:Env):Promise<Revisions>{
-  await ensureDb(env);const hit=getQueryCache<Revisions>('revisions');if(hit)return hit
+async function getRevisions(env:Env,forceFresh=false):Promise<Revisions>{
+  await ensureDb(env);const hit=forceFresh?null:getQueryCache<Revisions>('revisions');if(hit)return hit
   const row=await env.DB.prepare('SELECT data FROM meway_meta WHERE id=1').first<{data:string}>();let rev={...EMPTY_REVISIONS};try{if(row?.data)rev={...rev,...JSON.parse(row.data)}}catch{};setQueryCache('revisions',rev,15_000);return rev
 }
 
@@ -232,7 +248,13 @@ function invalidatePublishedCatalogIfChanged(rev:Revisions){
   ;(globalThis as any).__mewayCatalogStamp=stamp
 }
 async function bumpRevision(env:Env,key:keyof Revisions,now=new Date().toISOString()){
-  const rev=await getRevisions(env);const next={...rev,[key]:now};await env.DB.prepare('INSERT OR REPLACE INTO meway_meta (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify(next),now).run();clearQueryCache('revisions');await publishContentSignal(next);return next
+  // Atomic per-section revision: never overwrite updates from another Worker isolate.
+  await env.DB.prepare('INSERT INTO meway_meta (id,data,updated_at) VALUES (1,json_object(?,?),?) ON CONFLICT(id) DO UPDATE SET data=json_set(meway_meta.data,?,?),updated_at=excluded.updated_at')
+    .bind(key,now,now,`$.${key}`,now).run()
+  clearQueryCache('revisions')
+  const next=await getRevisions(env,true)
+  await publishContentSignal(next)
+  return next
 }
 function resourceKey(section:string|undefined):keyof Revisions{return (section||'games') as keyof Revisions}
 
@@ -281,9 +303,11 @@ async function loadGeneratedMissions(env:Env):Promise<Mission[]> {
   return generatedMissionsCache
 }
 
-async function listContent(env: Env, section?: string, all = false) {
+async function listContent(env: Env, section?: string, all = false, revisionSnapshot?: Revisions) {
   await ensureDb(env)
-  const key=`merged-content:${section||'all'}:${all?'all':'published'}`
+  const revisions=revisionSnapshot||await getRevisions(env,true)
+  const revision=section&&section in revisions?revisions[section as keyof Revisions]:[revisions.games,revisions.quizzes,revisions.words,revisions.challenges,revisions.rewards].join('|')
+  const key=`merged-content:${section||'all'}:${all?'all':'published'}:${revision}`
   const hit=getQueryCache<ContentItem[]>(key); if(hit) return hit
   const [custom, deleted] = await Promise.all([
     section ? env.DB.prepare('SELECT data, updated_at FROM content WHERE section = ?').bind(section).all<{data:string;updated_at:string}>() : env.DB.prepare('SELECT data, updated_at FROM content').all<{data:string;updated_at:string}>(),
@@ -351,9 +375,10 @@ async function requireAdmin(request: Request, env: Env) {
   return user && user.id === env.ADMIN_DISCORD_ID ? user : null
 }
 
-async function listMissions(env: Env, all = false) {
+async function listMissions(env: Env, all = false, revisionSnapshot?:Revisions) {
   await ensureDb(env)
-  const key=`merged-missions:${all?'all':'published'}`
+  const revision=(revisionSnapshot||await getRevisions(env,true)).missions
+  const key=`merged-missions:${all?'all':'published'}:${revision}`
   const hit=getQueryCache<Mission[]>(key); if(hit) return hit
   const [custom,deleted]=await Promise.all([
     env.DB.prepare('SELECT data FROM missions').all<{data:string}>(),
@@ -417,8 +442,57 @@ export default {
       }})
     }
 
+    // Manual, read-only check: verifies the DEPLOYED Worker's bot token and role hierarchy.
+    // No scheduled polling, no mutations, no secrets in the response.
+    if (url.pathname === '/api/admin/role-health' && request.method === 'GET') {
+      const admin=await requireAdmin(request,env)
+      if(!admin)return json({ok:false,error:'Admin required'},403)
+      if(!env.DISCORD_BOT_TOKEN||!env.DISCORD_GUILD_ID)return json({ok:true,ready:false,issues:['В Cloudflare отсутствует DISCORD_BOT_TOKEN или DISCORD_GUILD_ID.']})
+      const headers={Authorization:`Bot ${env.DISCORD_BOT_TOKEN}`}
+      const api='https://discord.com/api/v10'
+      try {
+        const botResponse=await fetch(`${api}/users/@me`,{headers})
+        if(!botResponse.ok)return json({ok:true,ready:false,issues:[`Токен бота не прошёл проверку Discord (HTTP ${botResponse.status}).`]})
+        const botUser=await botResponse.json<{id:string}>()
+        const [memberResponse,rolesResponse]=await Promise.all([
+          fetch(`${api}/guilds/${env.DISCORD_GUILD_ID}/members/${botUser.id}`,{headers}),
+          fetch(`${api}/guilds/${env.DISCORD_GUILD_ID}/roles`,{headers})
+        ])
+        if(!memberResponse.ok||!rolesResponse.ok)return json({ok:true,ready:false,issues:[`Не удалось прочитать участника или роли сервера: HTTP ${memberResponse.status}/${rolesResponse.status}.`]})
+        const member=await memberResponse.json<{roles:string[]}>()
+        const roles=await rolesResponse.json<Array<{id:string;position:number;permissions:string;managed?:boolean}>>()
+        const memberRoles=roles.filter(r=>r.id===env.DISCORD_GUILD_ID||(member.roles||[]).includes(r.id))
+        const topPosition=Math.max(0,...memberRoles.map(r=>Number(r.position)||0))
+        const manageRoles=memberRoles.some(r=>{try{const p=BigInt(r.permissions||'0');return (p&(1n<<28n))!==0n||(p&(1n<<3n))!==0n}catch{return false}})
+        const master=roles.find(r=>r.id===LEVEL_ROLES[LEVEL_ROLES.length-1].id)
+        const hierarchy=Boolean(master&&!master.managed&&topPosition>Number(master.position))
+        const issues:string[]=[]
+        if(!master)issues.push('Роль MASTER ZONE не найдена на этом Discord-сервере.')
+        if(master?.managed)issues.push('Роль MASTER ZONE управляется интеграцией и не может выдаваться обычным способом.')
+        if(!manageRoles)issues.push('У бота нет разрешения Manage Roles.')
+        if(master&&!hierarchy)issues.push('Наивысшая роль бота не выше MASTER ZONE.')
+        return json({ok:true,ready:issues.length===0,botOnlineNotRequired:true,masterZoneFound:Boolean(master),manageRoles,hierarchy,issues})
+      } catch(error){console.error('MEWAY manual role health check failed',error);return json({ok:true,ready:false,issues:['Discord API временно недоступен. Повтори проверку позже.']})}
+    }
+
     if (url.pathname === '/api/admin/ui-config' && request.method === 'PUT') {
       const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin required'},403);await ensureDb(env);const body=await request.json<any>().catch(()=>null);const raw=body?.config;if(!raw||typeof raw!=='object')return json({ok:false,error:'Invalid UI config'},400);const prev=await env.DB.prepare('SELECT data FROM ui_config WHERE id=1').first<{data:string}>();let old:any=DEFAULT_UI_CONFIG;try{if(prev?.data)old={...DEFAULT_UI_CONFIG,...JSON.parse(prev.data)}}catch{};const now=new Date().toISOString();const palette=raw.palette||{};const pages=(raw.pages&&typeof raw.pages==='object')?raw.pages:{};const safe:any={version:Math.max(1,Number(old.version)||1)+1,palette:{darkText:String(palette.darkText||DEFAULT_UI_CONFIG.palette.darkText).slice(0,20),darkMuted:String(palette.darkMuted||DEFAULT_UI_CONFIG.palette.darkMuted).slice(0,20),lightText:String(palette.lightText||DEFAULT_UI_CONFIG.palette.lightText).slice(0,20),lightMuted:String(palette.lightMuted||DEFAULT_UI_CONFIG.palette.lightMuted).slice(0,20),accent:String(palette.accent||DEFAULT_UI_CONFIG.palette.accent).slice(0,20),radius:Math.max(8,Math.min(36,Number(palette.radius)||22))},labels:{...DEFAULT_UI_CONFIG.labels,...(raw.labels||{})},pages,updatedAt:now};await env.DB.prepare('INSERT OR REPLACE INTO ui_config (id,data,updated_at) VALUES (1,?,?)').bind(JSON.stringify(safe),now).run();if(env.DISCORD_BOT_TOKEN){const changed=Object.keys(safe.palette).filter(k=>JSON.stringify(safe.palette[k])!==JSON.stringify(old.palette?.[k]));const content=`🧪 **MEWAY UI v${safe.version} опубликован**\nАдминистратор: ${admin.global_name||admin.username} (${admin.id})\nИзменено: ${changed.join(', ')||'тексты/настройки интерфейса'}\n${now}`;await fetch(`https://discord.com/api/v10/channels/${UI_AUDIT_CHANNEL_ID}/messages`,{method:'POST',headers:{Authorization:`Bot ${env.DISCORD_BOT_TOKEN}`,'Content-Type':'application/json'},body:JSON.stringify({content})}).catch(()=>null)}return json({ok:true,config:safe})
+    }
+
+    // One-time repair for older locally authenticated sessions. A visitor is
+    // visible in Students even if they have not completed a lesson or earned XP.
+    // The current OAuth bootstrap already registers new visitors; this is only
+    // for previously cached accounts that predate that registration logic.
+    if (url.pathname === '/api/visitor/register' && request.method === 'POST') {
+      const user=await requireUser(request)
+      if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      await ensureDb(env)
+      const now=new Date().toISOString()
+      const initial={discordUsername:user.username,discordGlobalName:user.global_name||'',nickname:user.global_name||user.username,xp:0,firstSeen:now,lastSeen:now,completedMissions:[],completedContent:[]}
+      const saved=await env.DB.prepare('INSERT OR IGNORE INTO progress (user_id,data,updated_at) VALUES (?,?,?)')
+        .bind(user.id,JSON.stringify(initial),now).run()
+      if(saved.meta?.changes)clearQueryCache('students')
+      return json({ok:true,registered:true})
     }
 
     if (url.pathname === '/api/auth/discord' && request.method === 'POST') {
@@ -842,7 +916,7 @@ export default {
     if ((url.pathname === '/api/content-signal' || url.pathname === '/api/manifest') && request.method === 'GET') {
       // One small authoritative revision read on Activity entry. Never serve a stale
       // edge/browser signal after an administrator publishes or edits content.
-      const revisions=await getRevisions(env)
+      const revisions=await getRevisions(env,true)
       return new Response(JSON.stringify({ok:true,appVersion:APP_CONTENT_VERSION,revisions}),{
         headers:{'Content-Type':'application/json; charset=UTF-8','Cache-Control':'no-store, max-age=0','Vary':'Authorization'}
       })
@@ -851,32 +925,36 @@ export default {
     if (url.pathname === '/api/sync' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
       const resource=url.searchParams.get('resource')||'';const since=url.searchParams.get('since')||'';await ensureDb(env)
-      if(resource==='missions'){const [changed,deleted]=await Promise.all([env.DB.prepare('SELECT data,updated_at FROM missions WHERE updated_at > ?').bind(since).all<{data:string;updated_at:string}>(),env.DB.prepare('SELECT id,deleted_at FROM deleted_missions WHERE deleted_at > ?').bind(since).all<{id:number;deleted_at:string}>()]);return json({ok:true,resource,changed:(changed.results||[]).map(x=>{try{return resource==='missions'?studentMission(JSON.parse(x.data)):studentContent(JSON.parse(x.data))}catch{return null}}).filter(Boolean),deleted:(deleted.results||[]).map(x=>x.id),revision:(await getRevisions(env)).missions})}
-      if(['games','quizzes','words','challenges','rewards'].includes(resource)){const [changed,deleted]=await Promise.all([env.DB.prepare('SELECT data,updated_at FROM content WHERE section = ? AND datetime(updated_at) > datetime(?)').bind(resource,since).all<{data:string;updated_at:string}>(),env.DB.prepare('SELECT id,deleted_at FROM deleted_content WHERE deleted_at > ?').bind(since).all<{id:number;deleted_at:string}>()]);return json({ok:true,resource,changed:(changed.results||[]).map(x=>{try{return resource==='missions'?studentMission(JSON.parse(x.data)):studentContent(JSON.parse(x.data))}catch{return null}}).filter(Boolean),deleted:(deleted.results||[]).map(x=>x.id),revision:(await getRevisions(env))[resource as keyof Revisions]})}
+      const allowed=await learnerAccessSet(env,user.id)
+      if(resource==='missions'){const [changed,deleted]=await Promise.all([env.DB.prepare('SELECT data,updated_at FROM missions WHERE updated_at > ?').bind(since).all<{data:string;updated_at:string}>(),env.DB.prepare('SELECT id,deleted_at FROM deleted_missions WHERE deleted_at > ?').bind(since).all<{id:number;deleted_at:string}>()]);return json({ok:true,resource,changed:(changed.results||[]).map(x=>{try{return studentMissionForAccess(JSON.parse(x.data),allowed)}catch{return null}}).filter(Boolean),deleted:(deleted.results||[]).map(x=>x.id),revision:(await getRevisions(env)).missions})}
+      if(['games','quizzes','words','challenges','rewards'].includes(resource)){const [changed,deleted]=await Promise.all([env.DB.prepare('SELECT data,updated_at FROM content WHERE section = ? AND datetime(updated_at) > datetime(?)').bind(resource,since).all<{data:string;updated_at:string}>(),env.DB.prepare('SELECT id,deleted_at FROM deleted_content WHERE deleted_at > ?').bind(since).all<{id:number;deleted_at:string}>()]);return json({ok:true,resource,changed:(changed.results||[]).map(x=>{try{return studentContentForAccess(JSON.parse(x.data),allowed)}catch{return null}}).filter(Boolean),deleted:(deleted.results||[]).map(x=>x.id),revision:(await getRevisions(env))[resource as keyof Revisions]})}
       return json({ok:false,error:'Unknown sync resource.'},400)
     }
 
     if (url.pathname === '/api/content' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      const allowed=await learnerAccessSet(env,user.id)
       const section=url.searchParams.get('section') || undefined
-      const key=`content:${section||'all'}`
+      const revisions=await getRevisions(env,true)
+      const revision=section&&section in revisions?revisions[section as keyof Revisions]:[revisions.games,revisions.quizzes,revisions.words,revisions.challenges,revisions.rewards].join('|')
+      const key=`content:${section||'all'}:${revision}`
       const hit=cachedPublic(key)
-      if(hit) return json({ok:true,items:hit})
-      const items=await listContent(env,section)
+      if(hit) return json({ok:true,items:(hit as ContentItem[]).map(x=>studentContentForAccess(x,allowed))})
+      const items=await listContent(env,section,false,revisions)
       const safeItems=items.map(studentContent)
       setPublic(key,safeItems)
-      return json({ok:true,items:safeItems})
+      return json({ok:true,items:items.map(x=>studentContentForAccess(x,allowed))})
     }
 
 
     if (url.pathname === '/api/learning-catalog' && request.method === 'GET') {
       const user=await requireUser(request)
       if(!user)return json({ok:false,error:'Discord authentication required.'},401)
-      const rev=await getRevisions(env)
+      const rev=await getRevisions(env,true)
       invalidatePublishedCatalogIfChanged(rev)
       const [missions,quizzes,words,challenges,games]=await Promise.all([
-        listMissions(env,false),listContent(env,'quizzes',false),listContent(env,'words',false),
-        listContent(env,'challenges',false),gameProgressCatalog(env)
+        listMissions(env,false,rev),listContent(env,'quizzes',false,rev),listContent(env,'words',false,rev),
+        listContent(env,'challenges',false,rev),gameProgressCatalog(env)
       ])
       return json({ok:true,revisions:rev,catalog:compactLearningCatalog(missions,quizzes,words,challenges,games)})
     }
@@ -1078,7 +1156,9 @@ export default {
       if (!admin) return json({ ok: false, error: 'Admin access required.' }, 403)
       const section=url.searchParams.get('section')||undefined
       const [missions, items, settings] = await Promise.all([listMissions(env, true), section?listContent(env, section, true):Promise.resolve([] as ContentItem[]), getSettings(env)])
-      return json({ ok: true, missions, items, settings })
+      // Admin list preview contains no images or question payloads. Editors fetch the full item on demand.
+      const compact=url.searchParams.get('compact')==='1'
+      return json({ok:true,missions:compact?missions.map(m=>({...m,tasks:[],taskCount:m.tasks?.length||0})):missions,items:compact?items.map(i=>({...i,payload:{}})):items,settings})
     }
 
     if (url.pathname === '/api/admin/settings') {
@@ -1110,7 +1190,14 @@ export default {
       const match=url.pathname.match(/^\/api\/admin\/content\/(\d+)$/)
       if (!match && request.method==='GET') {
         const section=url.searchParams.get('section')||undefined
-        return json({ok:true,items:await listContent(env,section,true)})
+        const items=await listContent(env,section,true)
+        return json({ok:true,items:url.searchParams.get('compact')==='1'?items.map(i=>({...i,payload:{}})):items})
+      }
+      if (match && request.method==='GET') {
+        const section=url.searchParams.get('section')||undefined
+        if(!section||!['games','quizzes','words','challenges','rewards'].includes(section))return json({ok:false,error:'Укажи раздел материала'},400)
+        const item=(await listContent(env,section,true)).find(i=>i.id===Number(match[1]))
+        return item?json({ok:true,item}):json({ok:false,error:'Материал не найден'},404)
       }
       if ((request.method==='POST'&&!match)||(request.method==='PUT'&&match)) {
         const requestId=crypto.randomUUID()
@@ -1138,7 +1225,7 @@ export default {
           }
           await ensureDb(env)
           const data=JSON.stringify(item)
-          if (data.length>12_000_000) return json({ok:false,code:'CONTENT_TOO_LARGE',requestId,error:'Слишком большой материал для D1'},413)
+          if (new TextEncoder().encode(data).byteLength>1_900_000) return json({ok:false,code:'D1_ROW_TOO_LARGE',requestId,error:'Материал превышает предел D1 (2 МБ на запись). Уменьши количество или размер фото, сохрани и повтори.'},413)
           const now=new Date().toISOString()
           if (!match) {
             // Client-chosen stable ID makes POST safe to retry after a lost response.
@@ -1174,15 +1261,16 @@ export default {
 
     if (url.pathname === '/api/missions' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
+      const allowed=await learnerAccessSet(env,user.id)
       const requestedLimit=Math.max(0,Math.min(2000,Number(url.searchParams.get('limit'))||0))
       const hit=!requestedLimit?cachedPublic('missions'):null
-      if(hit) return json({ok:true,missions:(hit as Mission[]).map(studentMission),settings:await getSettings(env),partial:false})
+      if(hit) return json({ok:true,missions:(hit as Mission[]).map(x=>studentMissionForAccess(x,allowed)),settings:await getSettings(env),partial:false})
       const missions=await listMissions(env)
       const limit=Math.max(0,Math.min(2000,Number(url.searchParams.get('limit'))||0))
       const result=limit?missions.slice(0,limit):missions
       const safeResult=result.map(studentMission)
       if(!limit)setPublic('missions',safeResult)
-      return json({ok:true,missions:safeResult,settings:await getSettings(env),partial:Boolean(limit)})
+      return json({ok:true,missions:result.map(x=>studentMissionForAccess(x,allowed)),settings:await getSettings(env),partial:Boolean(limit)})
     }
 
     if (url.pathname === '/api/admin/missions') {
@@ -1205,6 +1293,10 @@ export default {
       if (!admin) return json({ ok: false, error: 'Admin access required.' }, 403)
       await ensureDb(env)
       const id = Number(match[1])
+      if (request.method === 'GET') {
+        const mission=(await listMissions(env,true)).find(m=>m.id===id)
+        return mission?json({ok:true,mission}):json({ok:false,error:'Миссия не найдена'},404)
+      }
       if (request.method === 'PUT') {
         const mission = await request.json<Mission>(); mission.id = id
         await env.DB.prepare('INSERT OR REPLACE INTO missions (id, data, updated_at) VALUES (?, ?, ?)').bind(id, JSON.stringify(mission), new Date().toISOString()).run()

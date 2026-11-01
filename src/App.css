@@ -4326,3 +4326,16 @@ html.mewayDiscordEmbedded .topActions .avatar{display:grid;place-items:center;fl
  .dailyMission .dailyReward{display:flex!important;flex-direction:column;align-items:flex-end;gap:6px;max-width:100%;}
  .dailyMission .dailyReward button{white-space:normal;max-width:100%;}
 }
+
+/* Only the blue level-up notification gets white text. All other UI themes keep their original colours. */
+.app .levelUpToast > div > span,
+.app .levelUpToast > div > b,
+.app .levelUpToast > div > small{color:#fff!important}
+.app .levelUpToast > div > small{opacity:1!important;font-weight:700}
+.adminFilterBar{display:flex;align-items:center;gap:12px;margin:8px 0 12px;flex-wrap:wrap}
+.adminFilterBar input{flex:1;min-width:180px;max-width:440px;padding:11px 14px;border:1px solid #cbdff3;border-radius:12px;background:#fff;color:#173d63;font-size:14px}
+.adminFilterBar small{color:#617994}
+.adminMore{display:flex;align-items:center;justify-content:center;gap:15px;padding:18px}
+.adminMore button{border:1px solid #bdd9f3;background:#f3faff;color:#145caf;border-radius:11px;padding:10px 16px;cursor:pointer;font-weight:700}
+.darkTheme .adminFilterBar input{background:#152e46;color:#edf7ff;border-color:#31516e}
+.blueTheme .adminFilterBar input{background:#f1faff;color:#0d355c;border-color:#accfe5}

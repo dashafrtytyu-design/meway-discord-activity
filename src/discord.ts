@@ -56,6 +56,16 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
         const auth = cached?.data
         if (auth?.authenticated && auth.accessToken && auth.user?.id === lastUserId) {
           await discordSdk.commands.authenticate({ access_token: auth.accessToken })
+          // Older cached sessions may predate the registration of zero-XP visitors.
+          // Repair them once only; subsequent logins do not add Worker/D1 calls.
+          const visitorKey=`meway-visitor-registered:${lastUserId}`
+          if(localStorage.getItem(visitorKey)!=='1'){
+            try{
+              const confirmed=await fetch('/api/visitor/register',{method:'POST',headers:{Authorization:`Bearer ${auth.accessToken}`},cache:'no-store'})
+              if(confirmed.ok)localStorage.setItem(visitorKey,'1')
+            }catch{}
+          }
+
           // Restore the Admin UI locally even if an older cached bootstrap was
           // accidentally saved as "student". This performs ZERO Worker/D1 reads.
           // Server-side admin actions remain protected by requireAdmin().
@@ -158,6 +168,9 @@ export async function initializeDiscord(): Promise<MewayAuthResult> {
     }
 
     await discordSdk.commands.authenticate({ access_token: data.accessToken })
+    // The OAuth Worker registers a visitor before returning this successful response.
+    try{localStorage.setItem(`meway-visitor-registered:${data.user.id}`,'1')}catch{}
+
 
     // SAFE CACHE RECOVERY — no additional network request. The authenticated
     // bootstrap is persisted locally as an encrypted per-user recovery snapshot.

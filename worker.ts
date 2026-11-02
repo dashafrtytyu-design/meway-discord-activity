@@ -1,6 +1,8 @@
 import { MEWAY_BUILD_ID } from './buildVersion'
 import { placementVariants, evaluatePlacement, nextPlacementVariant, validatePlacementForm } from './src/placement'
 import {gradeGameAnswers,proportionalXp} from './src/xpScoring.mjs'
+import {activityWindowFlags,leaderboardWindowEligible} from './src/leaderboardRules.mjs'
+
 interface Env {
   ASSETS: Fetcher
   DB: D1Database
@@ -51,6 +53,20 @@ function verifiedActivityDays(source:unknown):string[]{
   if(!Array.isArray(source))return []
   return [...new Set(source.filter((s):s is string=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s+'T00:00:00Z'))))].sort().slice(-5000)
 }
+
+function leaderboardActivityDays(value:unknown):string[] {
+  let days:any = value
+  if (typeof days === 'string') {
+    try { days = JSON.parse(days) } catch { return [] }
+  }
+  if (!Array.isArray(days)) return []
+  return [...new Set(days.filter((day:any) =>
+    typeof day === 'string' &&
+    /^\d{4}-\d{2}-\d{2}$/.test(day) &&
+    !Number.isNaN(Date.parse(`${day}T00:00:00.000Z`))
+  ))]
+}
+
 function streakForDays(days:unknown,offsetMinutes=-300){const set=new Set(Array.isArray(days)?days.filter((x):x is string=>typeof x==='string'):[]);let n=0,d=new Date(activityDayAt(new Date().toISOString(),offsetMinutes)+"T12:00:00Z");for(;;){const k=d.toISOString().slice(0,10);if(!set.has(k))break;n++;d.setUTCDate(d.getUTCDate()-1)}return n}
 async function syncDiscordLevelRole(env:Env,userId:string,xp:number){
   if(!env.DISCORD_BOT_TOKEN||!env.DISCORD_GUILD_ID) return {ok:false,configured:false}
@@ -961,13 +977,63 @@ export default {
 
     if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
       const user=await requireUser(request);if(!user)return json({ok:false,error:'Discord authentication required.'},401)
-      const cached=getQueryCache<any[]>('leaderboard')
+      const requestedMode=url.searchParams.get('mode')||'xp'
+      const mode=['xp','xp7','xp30','completed'].includes(requestedMode)?requestedMode:'xp'
+      const cacheKey=`leaderboard:${mode}`
+      const cached=getQueryCache<any[]>(cacheKey)
       if(cached)return json({ok:true,leaders:cached})
       await ensureDb(env)
       const rows=await env.DB.prepare('SELECT user_id, data FROM progress').all<{user_id:string;data:string}>()
-      const now=Date.now(),d7=now-7*86400000,d30=now-30*86400000;const leaders=(rows.results||[]).map(r=>{const d:any=JSON.parse(r.data||'{}');const ev=Array.isArray(d.xpEvents)?d.xpEvents:[];return {name:d.nickname||d.discordGlobalName||d.discordUsername||'Ученик MEWAY',avatar:String(d.avatar||'').slice(0,750000),xp:Math.max(0,Number(d.xp)||0),xp7:ev.filter((e:any)=>Date.parse(e.date)>=d7).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),xp30:ev.filter((e:any)=>Date.parse(e.date)>=d30).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),completed:(d.completedMissions||[]).length+(d.completedContent||[]).length,visible:d.leaderboardVisible!==false}}).filter(x=>x.visible).slice(0,50)
-      setQueryCache('leaderboard',leaders,5*60_000)
-      return json({ok:true,leaders})
+      const now=Date.now(),nowIso=new Date(now).toISOString(),d7=now-7*86400000,d30=now-30*86400000
+      const leaders=(rows.results||[]).map(r=>{
+        const d:any=JSON.parse(r.data||'{}'),ev=Array.isArray(d.xpEvents)?d.xpEvents:[]
+        const activity=activityWindowFlags(leaderboardActivityDays(d.activityDays),activityDayAt(nowIso,d.activityTimezoneOffset))
+        const adminExcluded=d.leaderboardAdminExcluded===true||d.leaderboardAdminExcluded===1
+        return {userId:r.user_id,name:d.nickname||d.discordGlobalName||d.discordUsername||'Ученик MEWAY',avatar:String(d.avatar||'').slice(0,750000),xp:Math.max(0,Number(d.xp)||0),xp7:ev.filter((e:any)=>Date.parse(e.date)>=d7&&Date.parse(e.date)<=now).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),xp30:ev.filter((e:any)=>Date.parse(e.date)>=d30&&Date.parse(e.date)<=now).reduce((a:number,e:any)=>a+(Number(e.delta)||0),0),completed:(d.completedMissions||[]).length+(d.completedContent||[]).length,active7:activity.active7,active30:activity.active30,adminExcluded,visible:d.leaderboardVisible!==false}
+      }).filter(x=>x.visible&&!x.adminExcluded&&leaderboardWindowEligible(mode,{active7:x.active7,active30:x.active30}))
+      leaders.sort((a,b)=>(Number(b[mode])||0)-(Number(a[mode])||0))
+      const top=leaders.slice(0,50)
+      setQueryCache(cacheKey,top,5*60_000)
+      return json({ok:true,leaders:top})
+    }
+
+    // Admin-only leaderboard controls. Hiding a participant changes only the
+    // leaderboard flag; XP, lessons, profile and course access remain untouched.
+    if(url.pathname==='/api/admin/leaderboard'&&request.method==='GET'){
+      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403)
+      await ensureDb(env)
+      const rows=await env.DB.prepare(`SELECT user_id,
+        COALESCE(json_extract(data,'$.nickname'),json_extract(data,'$.discordGlobalName'),json_extract(data,'$.discordUsername'),'') AS name,
+        COALESCE(json_extract(data,'$.discordUsername'),'') AS discordUsername,
+        COALESCE(json_extract(data,'$.xp'),0) AS xp,
+        COALESCE(json_extract(data,'$.leaderboardVisible'),1) AS userVisible,
+        COALESCE(json_extract(data,'$.leaderboardAdminExcluded'),0) AS adminExcluded,
+        COALESCE(json_extract(data,'$.activityDays'),'[]') AS activityDays,
+        COALESCE(json_extract(data,'$.activityTimezoneOffset'),-300) AS activityTimezoneOffset
+        FROM progress ORDER BY xp DESC,user_id ASC`).all<any>()
+      const todayIso=new Date().toISOString()
+      const students=(rows.results||[]).map((r:any)=>{
+        let days:string[]=[];try{days=leaderboardActivityDays(r.activityDays)}catch{}
+        const activity=activityWindowFlags(days,activityDayAt(todayIso,r.activityTimezoneOffset))
+        return {userId:String(r.user_id),name:String(r.name||`Discord ${r.user_id}`),discordUsername:String(r.discordUsername||''),xp:Math.max(0,Number(r.xp)||0),userVisible:Number(r.userVisible)!==0,excluded:Number(r.adminExcluded)===1||r.adminExcluded===true,...activity}
+      })
+      return json({ok:true,students})
+    }
+    const leaderboardAdminMatch=url.pathname.match(/^\/api\/admin\/leaderboard\/(\d{15,22})$/)
+    if(leaderboardAdminMatch&&request.method==='PUT'){
+      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin access required.'},403)
+      const body=await request.json<any>().catch(()=>null)
+      if(typeof body?.excluded!=='boolean')return json({ok:false,error:'Укажи excluded: true или false.'},400)
+      await ensureDb(env)
+      const uid=leaderboardAdminMatch[1],now=new Date().toISOString()
+      const row=await env.DB.prepare('SELECT user_id FROM progress WHERE user_id=?').bind(uid).first<{user_id:string}>()
+      if(!row)return json({ok:false,error:'Ученик не найден.'},404)
+      // Do not update progress.updated_at: leaderboard moderation is not learner activity.
+      const result=await env.DB.prepare("UPDATE progress SET data=json_set(data,'$.leaderboardAdminExcluded',?) WHERE user_id=?").bind(body.excluded?1:0,uid).run()
+      if(!result.meta.changes)return json({ok:false,error:'Изменение не сохранено.'},409)
+      await env.DB.prepare('INSERT INTO admin_audit (actor_id,user_id,action,detail,created_at) VALUES (?,?,?,?,?)').bind(admin.id,uid,'leaderboard_visibility',JSON.stringify({excluded:body.excluded}),now).run()
+      clearQueryCache('leaderboard');clearQueryCache('students')
+      return json({ok:true,userId:uid,excluded:body.excluded,notice:body.excluded?'Участник скрыт из рейтинга. Его прогресс сохранён.':'Ограничение администратора снято.'})
     }
 
     // Admin student directory: bounded keyset pages. NEVER load all progress JSON,
@@ -1089,6 +1155,30 @@ export default {
       const rows=await env.DB.prepare('SELECT category, user_id, message, COUNT(*) AS repeats, MAX(created_at) AS last_at FROM server_incidents GROUP BY category,user_id,message ORDER BY last_at DESC LIMIT 100').all<any>();
       return json({ok:true,incidents:rows.results||[]});
     }
+    const addXpMatch=url.pathname.match(/^\/api\/admin\/students\/(\d+)\/add-xp$/);
+    if(addXpMatch&&request.method==='POST'){
+      const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin required'},403);
+      const body=await request.json<any>().catch(()=>({}));
+      const amount=body?.amount;
+      if(typeof amount!=='number'||!Number.isSafeInteger(amount)||amount<1)return json({ok:false,error:'Укажи положительное целое количество XP.'},400);
+      await ensureDb(env);
+      const uid=addXpMatch[1],now=new Date().toISOString();
+      const row=await env.DB.prepare('SELECT data FROM progress WHERE user_id=?').bind(uid).first<{data:string}>();
+      if(!row)return json({ok:false,error:'Ученик не найден.'},404);
+      let old:any={};try{old=JSON.parse(row.data||'{}')}catch{return json({ok:false,error:'Не удалось прочитать прогресс ученика.'},409)}
+      const xp=Math.max(0,Number(old.xp)||0),nextXp=xp+amount;
+      if(!Number.isSafeInteger(xp)||!Number.isSafeInteger(nextXp))return json({ok:false,error:'Итоговое количество XP превышает безопасный целочисленный предел.'},400);
+      const updated={...old,xp:nextXp,xpEvents:[...(Array.isArray(old.xpEvents)?old.xpEvents:[]),{date:now,delta:amount,reason:'admin grant'}].slice(-120),events:[...(Array.isArray(old.events)?old.events:[]),{date:now,type:'admin',text:`Administrator added ${amount} XP`}].slice(-80)};
+      const saved=await env.DB.prepare('UPDATE progress SET data=?,updated_at=? WHERE user_id=? AND data=?').bind(JSON.stringify(updated),now,uid,row.data).run();
+      if(!saved.meta.changes)return json({ok:false,error:'Прогресс изменился. Обнови карточку ученика и повтори действие.'},409);
+      await env.DB.prepare('INSERT INTO admin_audit (actor_id,user_id,action,detail,created_at) VALUES (?,?,?,?,?)').bind(admin.id,uid,'add_xp',JSON.stringify({amount,before:xp,after:nextXp}),now).run();
+      await publishProgressSignal(env,uid);
+      clearQueryCache('students');clearQueryCache('leaderboard');
+      const roleSync=await syncDiscordLevelRole(env,uid,nextXp);
+      if(!roleSync.ok)await env.DB.prepare('INSERT INTO server_incidents (category,user_id,message,created_at) VALUES (?,?,?,?)').bind('role_sync',uid,'Discord role sync failed after admin XP grant',now).run().catch(()=>null);
+      return json({ok:true,addedXp:amount,xp:nextXp,roleSync});
+    }
+
     const restoreMatch=url.pathname.match(/^\/api\/admin\/students\/(\d+)\/restore-xp$/);
     if(restoreMatch&&request.method==='POST'){
       const admin=await requireAdmin(request,env);if(!admin)return json({ok:false,error:'Admin required'},403);

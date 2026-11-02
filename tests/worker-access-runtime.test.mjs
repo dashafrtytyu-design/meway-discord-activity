@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs'
 import {createRequire} from 'node:module'
 import {runInNewContext} from 'node:vm'
 const require=createRequire(import.meta.url)
+import {activityWindowFlags,leaderboardWindowEligible} from '../src/leaderboardRules.mjs'
 const ts=require('typescript')
 const source=readFileSync(new URL('../worker.ts',import.meta.url),'utf8')
 const javascript=ts.transpileModule(source,{fileName:'worker.ts',compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText
@@ -20,6 +21,7 @@ function isolate(db,userId=ADMIN_ID){
  const requests=[]
  const fetch=async (url,opt={})=>{requests.push([url,opt.method||'GET']);if(String(url).includes('/api/users/@me'))return Response.json({id:userId,username:'user'});if(String(url).endsWith('/users/@me'))return Response.json({id:BOT_ID});if(String(url).endsWith(`/members/${BOT_ID}`))return Response.json({roles:['a']});if(String(url).endsWith('/roles'))return Response.json(roleData);throw new Error('Unexpected external fetch '+url)}
  const fakeRequire=id=>{
+  if(id.endsWith('leaderboardRules.mjs'))return {activityWindowFlags,leaderboardWindowEligible}
   if(id.endsWith('buildVersion'))return {MEWAY_BUILD_ID:'test'}
   if(id.endsWith('placement'))return {placementVariants:[],evaluatePlacement:()=>{},nextPlacementVariant:()=>{},validatePlacementForm:()=>{}}
   if(id.endsWith('xpScoring.mjs'))return {gradeGameAnswers:()=>{},proportionalXp:()=>{}}

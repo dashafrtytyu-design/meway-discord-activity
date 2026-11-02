@@ -4339,3 +4339,28 @@ html.mewayDiscordEmbedded .topActions .avatar{display:grid;place-items:center;fl
 .adminMore button{border:1px solid #bdd9f3;background:#f3faff;color:#145caf;border-radius:11px;padding:10px 16px;cursor:pointer;font-weight:700}
 .darkTheme .adminFilterBar input{background:#152e46;color:#edf7ff;border-color:#31516e}
 .blueTheme .adminFilterBar input{background:#f1faff;color:#0d355c;border-color:#accfe5}
+
+/* MEWAY targeted avatar shape correction: profile, header, editor preview and leaderboard. */
+.app .avatar, .app .bigAvatar, .app .avatarPreview img, .app .studentAvatar{
+ border-radius:50%!important;
+ overflow:hidden;
+}
+.app .avatar img, .app .bigAvatar img, .app .studentAvatar img{
+ border-radius:inherit!important;
+}
+
+/* Admin: focused controls for hiding and restoring leaderboard participants. */
+.leaderboardAdminList{display:grid;gap:10px;margin-top:14px}
+.leaderboardAdminRow{display:grid;grid-template-columns:minmax(180px,1.4fr) minmax(170px,1fr) minmax(145px,auto) auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:15px;background:var(--card)}
+.leaderboardAdminIdentity,.leaderboardAdminStats{display:grid;gap:4px;min-width:0}
+.leaderboardAdminIdentity b{overflow-wrap:anywhere}
+.leaderboardAdminIdentity small,.leaderboardAdminStats small{color:var(--muted);overflow-wrap:anywhere}
+.leaderboardAdminState{font-size:12px;font-weight:800;color:#16734a}
+.leaderboardAdminState.isHidden{color:#bd3349}
+.leaderboardAdminRow>button{min-height:40px;padding:9px 13px;border:1px solid var(--line);border-radius:11px;background:var(--card);color:var(--text);font-weight:800;cursor:pointer}
+.leaderboardAdminRow>button.danger{color:#b4233b;border-color:#e6a6b0;background:#fff5f6}
+.leaderboardAdminRow>button:disabled{opacity:.6;cursor:wait}
+.leaderboardAdminNotice{padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text)}
+.darkTheme .leaderboardAdminRow,.darkTheme .leaderboardAdminRow>button,.darkTheme .leaderboardAdminNotice{background:#10263a;color:#eaf5ff;border-color:#31516e}
+.blueTheme .leaderboardAdminRow,.blueTheme .leaderboardAdminNotice{background:#eaf7ff;border-color:#acd5ef;color:#103654}
+@media(max-width:760px){.leaderboardAdminRow{grid-template-columns:1fr auto;gap:9px}.leaderboardAdminStats,.leaderboardAdminState{grid-column:1}.leaderboardAdminRow>button{grid-column:2;grid-row:1/4;align-self:center;max-width:150px;white-space:normal}}
